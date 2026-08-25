@@ -153,16 +153,6 @@ export default function CaePage() {
               Sistema integral de validación de nuevo ingreso, gestión de expedientes y consulta de alumnos BELVER.
             </p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="text-right text-xs">
-              <span className="text-slate-400 block text-[10px]">OPERADOR CAE</span>
-              <span className="font-bold text-slate-800">Lic. Control Escolar</span>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-              CE
-            </div>
-          </div>
         </div>
 
         {/* Mensaje de Alerta */}
