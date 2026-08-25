@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { MateriasPDF } from '../utils/MateriasPDF';
 
 const ESTADOS_MEXICO = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas',
@@ -30,41 +29,78 @@ const SUBSISTEMAS_PREPA = [
 const MAX_PDF_SIZE_MB = 5;
 const MAX_IMG_SIZE_MB = 2;
 
+// Simulación de base de datos de trámites en Control Escolar para consulta
+const MOCK_TRAMITES = {
+  'BEL-2026-1001': {
+    folio: 'BEL-2026-1001',
+    aspirante: 'María Fernanda Ruiz Morales',
+    curp: 'RUAM050819MVERRL02',
+    modalidad: 'Nuevo Ingreso',
+    fechaRegistro: '2026-08-20',
+    vigencia: '2026-09-04',
+    estatus: 'APROBADO',
+    observaciones: 'Expediente digital cotejado exitosamente contra el original.',
+    matriculaAsignada: 'B26000001',
+    documentos: [
+      { nombre: 'Certificado de Secundaria', estatus: 'Validado' },
+      { nombre: 'Fotografía Oficial', estatus: 'Validado' },
+    ]
+  },
+  'BEL-2026-1002': {
+    folio: 'BEL-2026-1002',
+    aspirante: 'Carlos Eduardo Domínguez',
+    curp: 'DOEC040112HDFRNR09',
+    modalidad: 'Revalidación / Equivalencia',
+    fechaRegistro: '2026-08-22',
+    vigencia: '2026-09-06',
+    estatus: 'CON_OBSERVACIONES',
+    observaciones: 'La constancia de estudios carece del desglose oficial de calificaciones.',
+    matriculaAsignada: null,
+    documentos: [
+      { nombre: 'Constancia de Bachillerato', estatus: 'Rechazado - Incompleto' },
+      { nombre: 'CURP', estatus: 'Validado' },
+      { nombre: 'Acta de Nacimiento', estatus: 'Validado' },
+      { nombre: 'Fotografía Oficial', estatus: 'Validado' },
+    ]
+  }
+};
+
 export default function AdmissionPage() {
   const [step, setStep] = useState(1);
-  const [submittedFolio, setSubmittedFolio] = useState(null);
+  const [submittedData, setSubmittedData] = useState(null);
+  const [isConsultaOpen, setIsConsultaOpen] = useState(false);
+
+  // Estados para la consulta por folio
+  const [folioInput, setFolioInput] = useState('');
+  const [curpInput, setCurpInput] = useState('');
+  const [consultaResult, setConsultaResult] = useState(null);
+  const [consultaError, setConsultaError] = useState('');
 
   const [formData, setFormData] = useState({
-    // Paso 1: Personales
     fullName: '',
     curp: '',
     email: '',
     phone: '',
+    emergencyContactName: '',
+    emergencyPhone: '',
     country: 'México',
     state: 'Veracruz',
     municipality: '',
     colony: '',
-
-    // Paso 2: Antecedentes
-    admissionType: 'nuevo_ingreso', // 'nuevo_ingreso' | 'revalidacion'
+    street: '',
+    postalCode: '',
+    admissionType: 'nuevo_ingreso',
     secondaryType: 'Secundaria General',
     originSchool: '',
     gradYear: '',
     previousHighSchoolSystem: 'Colegio de Bachilleres del Estado de Veracruz (COBAEV)',
     previousHighSchoolName: '',
-
-    // Paso 3: Documentos
-    photo: null, // Ambos
-    studyCert: null, // Solo Nuevo Ingreso
-    constanciaEstudios: null, // Solo Revalidación
-    curpFile: null, // Solo Revalidación
-    actaNacimiento: null, // Solo Revalidación
+    photo: null,
+    studyCert: null,
+    constanciaEstudios: null,
+    curpFile: null,
+    actaNacimiento: null,
   });
-
-  // Lista dinámica de materias acreditadas para Revalidación
-  const [materiasAcreditadas, setMateriasAcreditadas] = useState([
-    { id: 1, materia: '', semestre: '1', calificacion: '' }
-  ]);
 
   const [errors, setErrors] = useState({});
 
@@ -73,7 +109,6 @@ export default function AdmissionPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Manejo de carga de archivos con validación de peso y formato
   const handleFileChange = (e, fileType) => {
     const { name, files } = e.target;
     const file = files[0];
@@ -92,7 +127,7 @@ export default function AdmissionPage() {
 
     if (fileType === 'image') {
       if (!file.type.startsWith('image/')) {
-        setErrors((prev) => ({ ...prev, [name]: 'La fotografía debe estar en formato de imagen (JPG, PNG).' }));
+        setErrors((prev) => ({ ...prev, [name]: 'La fotografía debe ser formato JPG o PNG.' }));
         return;
       }
       if (file.size > MAX_IMG_SIZE_MB * 1024 * 1024) {
@@ -105,67 +140,41 @@ export default function AdmissionPage() {
     setFormData((prev) => ({ ...prev, [name]: file }));
   };
 
-  // Gestión de materias acreditadas (Revalidación)
-  const addMateria = () => {
-    setMateriasAcreditadas((prev) => [
-      ...prev,
-      { id: Date.now(), materia: '', semestre: '1', calificacion: '' }
-    ]);
-  };
-
-  const removeMateria = (id) => {
-    if (materiasAcreditadas.length === 1) return;
-    setMateriasAcreditadas((prev) => prev.filter((m) => m.id !== id));
-  };
-
-  const handleMateriaChange = (id, field, value) => {
-    setMateriasAcreditadas((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
-    );
-  };
-
   const nextStep = () => {
     if (step === 1) {
       if (!formData.fullName || !formData.curp || !formData.email || !formData.phone || !formData.municipality) {
         alert('Por favor completa todos los campos personales y de residencia.');
         return;
       }
-      if (formData.curp.length < 18) {
-        alert('La CURP debe contar con 18 caracteres.');
+      if (formData.curp.trim().length !== 18) {
+        alert('La CURP debe contar exactamente con 18 caracteres.');
         return;
       }
     }
 
     if (step === 2) {
       if (formData.admissionType === 'nuevo_ingreso' && !formData.originSchool) {
-        alert('Ingresa el nombre de la secundaria de egreso.');
+        alert('Ingresa el nombre de la secundaria de procedencia.');
         return;
       }
-      if (formData.admissionType === 'revalidacion') {
-        if (!formData.previousHighSchoolName) {
-          alert('Ingresa el nombre del plantel de bachillerato de procedencia.');
-          return;
-        }
-        const materiasVacias = materiasAcreditadas.some((m) => !m.materia || !m.calificacion);
-        if (materiasVacias) {
-          alert('Por favor completa el nombre y calificación de todas las materias acreditadas agregadas.');
-          return;
-        }
+      if (formData.admissionType === 'revalidacion' && !formData.previousHighSchoolName) {
+        alert('Ingresa el nombre del plantel de bachillerato anterior.');
+        return;
       }
     }
 
     if (step === 3) {
       if (!formData.photo) {
-        alert('Es obligatorio adjuntar la Fotografía del aspirante.');
+        alert('Es obligatorio adjuntar la fotografía del aspirante.');
         return;
       }
       if (formData.admissionType === 'nuevo_ingreso' && !formData.studyCert) {
-        alert('Es obligatorio adjuntar el Certificado de Secundaria (PDF).');
+        alert('Es obligatorio adjuntar el Certificado de Secundaria en PDF.');
         return;
       }
       if (formData.admissionType === 'revalidacion') {
         if (!formData.constanciaEstudios || !formData.curpFile || !formData.actaNacimiento) {
-          alert('Para revalidación es obligatorio adjuntar: Constancia de Estudios, CURP y Acta de Nacimiento (PDFs).');
+          alert('Para revalidación debes adjuntar: Constancia de Estudios, CURP y Acta de Nacimiento (PDFs).');
           return;
         }
       }
@@ -178,11 +187,40 @@ export default function AdmissionPage() {
 
   const handleSubmit = () => {
     const randomFolio = `BEL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    setSubmittedFolio(randomFolio);
+    const fechaVigencia = new Date();
+    fechaVigencia.setDate(fechaVigencia.getDate() + 15);
+
+    setSubmittedData({
+      folio: randomFolio,
+      vigencia: fechaVigencia.toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      }),
+    });
   };
 
-  // Pantalla final con folio
-  if (submittedFolio) {
+  const handleConsultar = (e) => {
+    e.preventDefault();
+    setConsultaError('');
+    setConsultaResult(null);
+
+    const tramite = MOCK_TRAMITES[folioInput.trim().toUpperCase()];
+
+    if (!tramite) {
+      setConsultaError('No se encontró ninguna solicitud con el folio proporcionado.');
+      return;
+    }
+
+    if (curpInput.trim().toUpperCase() && tramite.curp !== curpInput.trim().toUpperCase()) {
+      setConsultaError('La CURP no coincide con el titular del folio consultado.');
+      return;
+    }
+
+    setConsultaResult(tramite);
+  };
+
+  if (submittedData) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-xl p-8 text-center space-y-6">
@@ -190,26 +228,28 @@ export default function AdmissionPage() {
             ✓
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">¡Registro de Admisión Recibido!</h2>
+            <h2 className="text-2xl font-bold text-slate-900">¡Solicitud de Admisión Registrada!</h2>
             <p className="text-xs text-slate-600 mt-2">
-              Tu expediente y documentación han sido remitidos al Centro de Atención Estudiantil (CAE) de BELVER.
+              Tu expediente digital ha sido enviado a <strong>Control Escolar</strong> para su revisión.
             </p>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-            <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Folio de Seguimiento</span>
-            <div className="text-2xl font-mono font-extrabold text-blue-950 mt-1 tracking-wider">
-              {submittedFolio}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center space-y-1">
+            <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase block">
+              Folio de Seguimiento
+            </span>
+            <div className="text-2xl font-mono font-extrabold text-blue-950 tracking-wider">
+              {submittedData.folio}
             </div>
-            <p className="text-[11px] text-slate-500 mt-1">Conserva este folio para consultar el dictamen de tu trámite.</p>
+            <div className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 py-1 px-3 rounded-lg inline-block mt-2">
+              ⚠️ Vigencia del folio hasta: <strong>{submittedData.vigencia}</strong>
+            </div>
           </div>
 
           <div className="text-left bg-blue-50 border border-blue-200 p-4 rounded-xl text-xs text-blue-950 space-y-1">
             <p><strong>Aspirante:</strong> {formData.fullName}</p>
-            <p><strong>Modalidad:</strong> {formData.admissionType === 'revalidacion' ? 'Revalidación / Equivalencia' : 'Nuevo Ingreso (Secundaria)'}</p>
-            {formData.admissionType === 'revalidacion' && (
-              <p><strong>Materias Acreditadas declaradas:</strong> {materiasAcreditadas.length}</p>
-            )}
+            <p><strong>CURP:</strong> <span className="font-mono">{formData.curp.toUpperCase()}</span></p>
+            <p><strong>Modalidad:</strong> {formData.admissionType === 'revalidacion' ? 'Revalidación / Equivalencia' : 'Nuevo Ingreso'}</p>
             <p><strong>Correo receptor:</strong> {formData.email}</p>
           </div>
 
@@ -217,7 +257,7 @@ export default function AdmissionPage() {
             onClick={() => window.location.reload()}
             className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
           >
-            Aceptar y Finalizar
+            Finalizar y Volver al Inicio
           </button>
         </div>
       </div>
@@ -228,27 +268,37 @@ export default function AdmissionPage() {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-3xl bg-white rounded-2xl border border-slate-200 shadow-md p-6 sm:p-8 space-y-6">
         
-        {/* Encabezado */}
-        <div className="text-center space-y-1">
-          <span className="text-[10px] font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
-            Proceso de Inscripción Oficial
-          </span>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">
-            Solicitud de Admisión a BELVER
-          </h1>
-          <p className="text-xs text-slate-500">
-            Bachillerato en Línea de Veracruz
-          </p>
+        {/* Encabezado y Botón de Consulta Pública */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <span className="text-[10px] font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
+              Portal Externo de Admisión
+            </span>
+            <h1 className="text-2xl font-bold text-slate-900 mt-1">
+              Solicitud de Inscripción a BELVER
+            </h1>
+            <p className="text-xs text-slate-500">
+              Bachillerato en Línea de Veracruz
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsConsultaOpen(true)}
+            className="px-3.5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-xs font-semibold transition self-start sm:self-auto shadow-sm flex items-center gap-1.5"
+          >
+            🔍 Consultar Estatus de Folio
+          </button>
         </div>
 
         {/* Stepper */}
         <div className="flex justify-between items-center relative py-2">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-0"></div>
           {[
-            { s: 1, label: 'Personales' },
+            { s: 1, label: 'Datos Personales' },
             { s: 2, label: 'Antecedentes' },
             { s: 3, label: 'Documentación' },
-            { s: 4, label: 'Revisión' }
+            { s: 4, label: 'Revisión y Envío' }
           ].map((item) => (
             <div key={item.s} className="relative z-10 flex flex-col items-center">
               <div
@@ -271,7 +321,7 @@ export default function AdmissionPage() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
-                1. Datos del Aspirante y Residencia
+                1. Datos del Aspirante, Domicilio y Contacto
               </h2>
 
               <div className="flex flex-col gap-1">
@@ -282,7 +332,7 @@ export default function AdmissionPage() {
                   required
                   value={formData.fullName}
                   onChange={handleChange}
-                  placeholder="Nombre(s) y Apellidos tal como figuran en acta"
+                  placeholder="Nombre(s) y Apellidos tal como aparecen en el acta"
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
                 />
               </div>
@@ -316,7 +366,7 @@ export default function AdmissionPage() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-700">Correo Electrónico (Receptor de Notificaciones)</label>
+                <label className="text-xs font-semibold text-slate-700">Correo Electrónico Oficial</label>
                 <input
                   name="email"
                   type="email"
@@ -328,6 +378,7 @@ export default function AdmissionPage() {
                 />
               </div>
 
+              {/* Domicilio */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-slate-700">País</label>
@@ -363,7 +414,7 @@ export default function AdmissionPage() {
                     required
                     value={formData.municipality}
                     onChange={handleChange}
-                    placeholder="Ej. Xalapa, Veracruz, Poza Rica..."
+                    placeholder="Ej. Xalapa, Veracruz, Córdoba..."
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
                   />
                 </div>
@@ -375,7 +426,7 @@ export default function AdmissionPage() {
                     type="text"
                     value={formData.colony}
                     onChange={handleChange}
-                    placeholder="Ej. Centro, El Mirador..."
+                    placeholder="Ej. Centro, Las Ánimas..."
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
                   />
                 </div>
@@ -383,7 +434,7 @@ export default function AdmissionPage() {
             </div>
           )}
 
-          {/* PASO 2: MODALIDAD Y MATERIAS ACREDITADAS */}
+          {/* PASO 2: MODALIDAD Y ANTECEDENTES */}
           {step === 2 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
@@ -391,7 +442,7 @@ export default function AdmissionPage() {
               </h2>
 
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-slate-700">Tipo de Trámite</label>
+                <label className="text-xs font-semibold text-slate-700">Modalidad de Registro</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer text-xs font-medium transition ${formData.admissionType === 'nuevo_ingreso' ? 'border-slate-900 bg-slate-50' : 'border-slate-200'}`}>
                     <input
@@ -412,12 +463,11 @@ export default function AdmissionPage() {
                       checked={formData.admissionType === 'revalidacion'}
                       onChange={handleChange}
                     />
-                    <span>Revalidación / Equivalencia <br/><span className="text-slate-500 text-[10px]">Vengo de otra prepa con materias aprobadas</span></span>
+                    <span>Revalidación / Equivalencia <br/><span className="text-slate-500 text-[10px]">Cuento con materias aprobadas de otro bachillerato</span></span>
                   </label>
                 </div>
               </div>
 
-              {/* Si es NUEVO INGRESO */}
               {formData.admissionType === 'nuevo_ingreso' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div className="flex flex-col gap-1">
@@ -448,11 +498,14 @@ export default function AdmissionPage() {
                   </div>
                 </div>
               ) : (
-                /* Si es REVALIDACIÓN */
-                <div className="space-y-4 bg-amber-50/70 border border-amber-200 p-4 rounded-xl">
+                <div className="space-y-3 bg-amber-50/70 border border-amber-200 p-4 rounded-xl">
+                  <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
+                    Información de la Preparatoria Anterior
+                  </span>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-amber-950">Subsistema de Prepa Anterior</label>
+                      <label className="text-xs font-semibold text-amber-950">Subsistema de Procedencia</label>
                       <select
                         name="previousHighSchoolSystem"
                         value={formData.previousHighSchoolSystem}
@@ -466,99 +519,28 @@ export default function AdmissionPage() {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-amber-950">Plantel / Escuela de Procedencia</label>
+                      <label className="text-xs font-semibold text-amber-950">Plantel / Escuela de Origen</label>
                       <input
                         name="previousHighSchoolName"
                         type="text"
                         required
                         value={formData.previousHighSchoolName}
                         onChange={handleChange}
-                        placeholder="Ej. COBAEV 35 Xalapa / CBTIS 13"
+                        placeholder="Ej. CBTIS 13 / COBAEV 35"
                         className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-800"
                       />
                     </div>
                   </div>
 
-                  {/* Tabla de Materias Acreditadas */}
-                  <div className="pt-2 border-t border-amber-200/80">
-                    <div className="flex justify-between items-center mb-2">
-                      <div>
-                        <span className="text-xs font-bold text-amber-900 block">
-                          Materias Acreditadas en Preparatoria Anterior
-                        </span>
-                        <span className="text-[10px] text-amber-700">
-                          Captura únicamente las asignaturas que aprobaste según tu constancia/historial.
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={addMateria}
-                        className="px-2.5 py-1 bg-amber-800 hover:bg-amber-900 text-white text-xs font-semibold rounded-lg shadow-sm"
-                      >
-                        + Agregar Materia
-                      </button>
-                      {/* Botón para generar PDF preliminar */}
-                      <button
-                         type="button"
-                         onClick={() => MateriasPDF(formData, materiasAcreditadas)}
-                         className="px-2.5 py-1 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg shadow-sm flex items-center gap-1"
-                      >
-                       📄 Descargar Cédula PDF
-                     </button>
-                    </div>
-
-                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                      {materiasAcreditadas.map((mat, index) => (
-                        <div key={mat.id} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-amber-200">
-                          <span className="text-[10px] font-bold text-slate-400 w-5 text-center">{index + 1}.</span>
-                          <input
-                            type="text"
-                            placeholder="Nombre de la Materia (ej. Matemáticas I)"
-                            value={mat.materia}
-                            onChange={(e) => handleMateriaChange(mat.id, 'materia', e.target.value)}
-                            className="flex-1 px-2.5 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-amber-800"
-                          />
-                          <select
-                            value={mat.semestre}
-                            onChange={(e) => handleMateriaChange(mat.id, 'semestre', e.target.value)}
-                            className="w-24 px-2 py-1 text-xs border border-slate-300 rounded-md bg-white outline-none focus:ring-1 focus:ring-amber-800"
-                          >
-                            <option value="1">1° Sem</option>
-                            <option value="2">2° Sem</option>
-                            <option value="3">3° Sem</option>
-                            <option value="4">4° Sem</option>
-                            <option value="5">5° Sem</option>
-                            <option value="6">6° Sem</option>
-                          </select>
-                          <input
-                            type="number"
-                            step="0.1"
-                            min="6"
-                            max="10"
-                            placeholder="Calif"
-                            value={mat.calificacion}
-                            onChange={(e) => handleMateriaChange(mat.id, 'calificacion', e.target.value)}
-                            className="w-16 px-2 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-amber-800"
-                          />
-                          {materiasAcreditadas.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeMateria(mat.id)}
-                              className="text-red-500 hover:text-red-700 font-bold px-1"
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <p className="text-[11px] text-amber-800 italic pt-1">
+                    * El personal de Control Escolar cotejará y capturará tus materias acreditadas directamente desde tu constancia.
+                  </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* PASO 3: DOCUMENTACIÓN SEGÚN MODALIDAD */}
+          {/* PASO 3: DOCUMENTACIÓN DIGITAL */}
           {step === 3 && (
             <div className="space-y-4">
               <div className="flex justify-between items-center border-b pb-2">
@@ -570,13 +552,12 @@ export default function AdmissionPage() {
                 </span>
               </div>
 
-              {/* Fotografía Infantil / Credencial (Obligatoria para ambos) */}
+              {/* Fotografía obligatoria */}
               <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                <label className="text-xs font-semibold text-slate-800 flex items-between justify-between">
+                <label className="text-xs font-semibold text-slate-800 flex justify-between">
                   <span>Fotografía del Aspirante (Tipo credencial / Infantil) <span className="text-red-500">*</span></span>
                   {formData.photo && <span className="text-[10px] text-emerald-700 font-mono">✓ Imagen cargada</span>}
                 </label>
-                <p className="text-[10px] text-slate-500">Formato JPG o PNG. Rostro visible, fondo claro y de frente.</p>
                 <input
                   name="photo"
                   type="file"
@@ -587,10 +568,9 @@ export default function AdmissionPage() {
                 {errors.photo && <span className="text-xs text-red-600 font-semibold">{errors.photo}</span>}
               </div>
 
-              {/* DOCUMENTOS PARA NUEVO INGRESO */}
               {formData.admissionType === 'nuevo_ingreso' ? (
                 <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <label className="text-xs font-semibold text-slate-800 flex items-between justify-between">
+                  <label className="text-xs font-semibold text-slate-800 flex justify-between">
                     <span>Certificado de Secundaria (PDF) <span className="text-red-500">*</span></span>
                     {formData.studyCert && <span className="text-[10px] text-emerald-700 font-mono">✓ {(formData.studyCert.size / 1024).toFixed(1)} KB</span>}
                   </label>
@@ -604,13 +584,11 @@ export default function AdmissionPage() {
                   {errors.studyCert && <span className="text-xs text-red-600 font-semibold">{errors.studyCert}</span>}
                 </div>
               ) : (
-                /* DOCUMENTOS PARA REVALIDACIÓN */
                 <div className="space-y-3 bg-amber-50/60 border border-amber-200 p-3.5 rounded-xl">
                   <span className="text-[11px] font-bold text-amber-900 block">
                     Documentos Oficiales para Revalidación (Únicamente PDF)
                   </span>
 
-                  {/* Constancia / Historial de Prepa */}
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950 flex justify-between">
                       <span>Constancia de Estudios / Historial de Prepa con Calificaciones (PDF) <span className="text-red-500">*</span></span>
@@ -626,7 +604,6 @@ export default function AdmissionPage() {
                     {errors.constanciaEstudios && <span className="text-xs text-red-600">{errors.constanciaEstudios}</span>}
                   </div>
 
-                  {/* CURP en PDF */}
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950 flex justify-between">
                       <span>CURP Actualizada (PDF) <span className="text-red-500">*</span></span>
@@ -642,7 +619,6 @@ export default function AdmissionPage() {
                     {errors.curpFile && <span className="text-xs text-red-600">{errors.curpFile}</span>}
                   </div>
 
-                  {/* Acta de Nacimiento en PDF */}
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950 flex justify-between">
                       <span>Acta de Nacimiento (PDF) <span className="text-red-500">*</span></span>
@@ -662,7 +638,7 @@ export default function AdmissionPage() {
             </div>
           )}
 
-          {/* PASO 4: CONFIRMACIÓN Y RESUMEN */}
+          {/* PASO 4: CONFIRMACIÓN Y REVISIÓN */}
           {step === 4 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
@@ -677,7 +653,7 @@ export default function AdmissionPage() {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">CURP</span>
-                    <span className="font-mono font-semibold text-slate-800">{formData.curp}</span>
+                    <span className="font-mono font-semibold text-slate-800">{formData.curp.toUpperCase()}</span>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Contacto</span>
@@ -691,7 +667,6 @@ export default function AdmissionPage() {
                   </div>
                 </div>
 
-                {/* Resumen de documentos adjuntos */}
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Archivos Adjuntos</span>
                   <div className="space-y-1">
@@ -719,9 +694,6 @@ export default function AdmissionPage() {
                           <span className="text-emerald-600 font-bold">✓</span>
                           <span>Acta de Nacimiento: <strong>{formData.actaNacimiento?.name}</strong></span>
                         </div>
-                        <div className="pt-2 text-[11px] text-amber-900">
-                          <strong>{materiasAcreditadas.length}</strong> materia(s) acreditada(s) declarada(s) para dictamen del CAE.
-                        </div>
                       </>
                     )}
                   </div>
@@ -729,12 +701,12 @@ export default function AdmissionPage() {
               </div>
 
               <p className="text-[11px] text-slate-500 text-center">
-                Al hacer clic en "Registrar Solicitud Oficial", confirmas que los datos ingresados y la documentación adjunta son verídicos.
+                Al presionar "Registrar Solicitud Oficial", tu expediente digital será enviado a Control Escolar para su dictamen.
               </p>
             </div>
           )}
 
-          {/* Botones de Navegación */}
+          {/* Navegación */}
           <div className="flex justify-between items-center pt-4 border-t border-slate-100">
             {step > 1 ? (
               <button
@@ -766,6 +738,137 @@ export default function AdmissionPage() {
           </div>
 
         </form>
+
+        {/* MODAL DE CONSULTA DE ESTATUS POR FOLIO */}
+        {isConsultaOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              
+              <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs">Consulta Pública de Solicitud</span>
+                  <span className="text-[10px] bg-blue-950 text-blue-300 px-1.5 py-0.5 rounded font-mono">BELVER</span>
+                </div>
+                <button onClick={() => setIsConsultaOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <form onSubmit={handleConsultar} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-slate-700">Folio Institucional</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. BEL-2026-1001"
+                        value={folioInput}
+                        onChange={(e) => setFolioInput(e.target.value)}
+                        className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800 uppercase font-mono"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-slate-700">CURP del Aspirante</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength={18}
+                        placeholder="18 caracteres"
+                        value={curpInput}
+                        onChange={(e) => setCurpInput(e.target.value)}
+                        className="px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800 uppercase font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition shadow-sm"
+                  >
+                    Consultar Estatus de Cotejo
+                  </button>
+                </form>
+
+                {consultaError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-medium text-center">
+                    {consultaError}
+                  </div>
+                )}
+
+                {consultaResult && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4 text-xs">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Aspirante</span>
+                        <span className="font-bold text-slate-900">{consultaResult.aspirante}</span>
+                      </div>
+
+                      <div>
+                        {consultaResult.estatus === 'APROBADO' && (
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold rounded-full text-[11px]">
+                            ✓ Dictamen Favorable
+                          </span>
+                        )}
+                        {consultaResult.estatus === 'CON_OBSERVACIONES' && (
+                          <span className="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-300 font-bold rounded-full text-[11px]">
+                            ⚠️ Observaciones Pendientes
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {consultaResult.matriculaAsignada && (
+                      <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold text-emerald-800 uppercase block">Matrícula Oficial Asignada</span>
+                          <span className="font-mono text-base font-extrabold text-emerald-950">{consultaResult.matriculaAsignada}</span>
+                        </div>
+                        <span className="text-[11px] text-emerald-700 font-semibold">Listo para inscripción</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block">Dictamen de Control Escolar</span>
+                      <p className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-800 text-[11px]">
+                        {consultaResult.observaciones}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block">Cotejo de Documentos</span>
+                      <div className="space-y-1 bg-white p-2.5 rounded-lg border border-slate-200">
+                        {consultaResult.documentos.map((doc, i) => (
+                          <div key={i} className="flex justify-between items-center text-[11px] border-b border-slate-100 last:border-none py-1">
+                            <span className="text-slate-700">{doc.nombre}</span>
+                            <span className={`font-semibold ${doc.estatus.includes('Validado') ? 'text-emerald-700' : 'text-red-600'}`}>
+                              {doc.estatus}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-slate-400 text-right">
+                      Vigencia del trámite hasta: <strong className="text-slate-600">{consultaResult.vigencia}</strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-slate-50 border-t border-slate-200 text-right">
+                <button
+                  type="button"
+                  onClick={() => setIsConsultaOpen(false)}
+                  className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-lg transition"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
