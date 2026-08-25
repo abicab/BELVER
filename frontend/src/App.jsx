@@ -22,44 +22,66 @@ const DEFAULT_BRANDING = {
   systemSubtitle: 'Control Interno y Servicios Escolares',
   headerColor: '#0f172a',
   accentColor: '#1e3a8a',
-  logoUrl: '', // Base64 o URL cargada
+  logoUrl: '',
 };
 
 const DEFAULT_USER_PROFILE = {
   name: 'Administrador TI',
   role: 'Super Administrador',
-  roleCode: 'ADMIN', // 'ADMIN' | 'CONTROL_ESCOLAR' | 'CAE' | 'FINANZAS'
-  avatarUrl: '', // Base64 cargada
+  roleCode: 'ADMIN',
+  avatarUrl: '',
+};
+
+const ROLE_MAPPING = {
+  ADMIN: { name: 'Administrador TI', role: 'Super Administrador', defaultModule: 'ControlEscolarPage' },
+  CONTROL_ESCOLAR: { name: 'Coordinación Escolar', role: 'Control Escolar', defaultModule: 'ControlEscolarPage' },
+  CAE: { name: 'Atención CAE', role: 'Personal CAE', defaultModule: 'CaePage' },
+  ALUMNO: { name: 'Alumno Portal', role: 'Estudiante', defaultModule: 'AlumnoPage' },
+  ALUMNO_UNICO: { name: 'Alumno Único', role: 'Estudiante Único', defaultModule: 'AlumnoUnicoPage' },
 };
 
 export default function App() {
-  const [currentModule, setCurrentModule] = useState('ControlEscolarPage');
-
-  // Estados de configuración de identidad y usuario
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentModule, setCurrentModule] = useState('LoginPage');
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [userProfile, setUserProfile] = useState(DEFAULT_USER_PROFILE);
-
-  // Control del modal de personalización
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [formConfig, setFormConfig] = useState({
-    ...branding,
-    ...userProfile,
-  });
+  const [formConfig, setFormConfig] = useState({ ...DEFAULT_BRANDING, ...DEFAULT_USER_PROFILE });
+
+  // Manejador del Login con tolerancias a la respuesta del backend
+  const handleLoginSuccess = (data) => {
+    // Normaliza el rol sin importar cómo lo envíe el backend
+    const rawRole = data?.user?.roleCode || data?.user?.role || data?.role || 'ADMIN';
+    const roleCode = String(rawRole).toUpperCase();
+    const roleInfo = ROLE_MAPPING[roleCode] || ROLE_MAPPING['ADMIN'];
+
+    const activeUser = {
+      name: data?.user?.nombreCompleto || data?.user?.name || roleInfo.name,
+      role: roleInfo.role,
+      roleCode: roleCode,
+      avatarUrl: data?.user?.avatarUrl || '',
+    };
+
+    setUserProfile(activeUser);
+    setIsAuthenticated(true);
+    setCurrentModule(roleInfo.defaultModule);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUserProfile(DEFAULT_USER_PROFILE);
+    setCurrentModule('LoginPage');
+  };
 
   const handleOpenConfig = () => {
-    setFormConfig({
-      ...branding,
-      ...userProfile,
-    });
+    setFormConfig({ ...branding, ...userProfile });
     setIsConfigOpen(true);
   };
 
-  // Procesar carga de archivo local (Exclusivo PNG)
   const handleImageUpload = (e, fieldName) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validación estricta: Solo formato PNG
     if (file.type !== 'image/png' && !file.name.toLowerCase().endsWith('.png')) {
       alert('El archivo seleccionado debe ser exclusivamente una imagen en formato PNG (.png).');
       e.target.value = '';
@@ -79,7 +101,6 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  // Restablecer a los valores predeterminados
   const handleResetDefaults = () => {
     if (confirm('¿Deseas restablecer todos los colores, logotipos y ajustes a sus valores originales de fábrica?')) {
       setFormConfig({
@@ -91,7 +112,6 @@ export default function App() {
 
   const handleSaveConfig = (e) => {
     e.preventDefault();
-
     setBranding({
       institutionName: formConfig.institutionName,
       shortName: formConfig.shortName,
@@ -116,14 +136,15 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900">
       
-      {/* Navbar visible únicamente en módulos internos */}
-      {!isPublicPage && (
+      {/* Navbar visible únicamente cuando hay autenticación y no es portal público */}
+      {isAuthenticated && !isPublicPage && (
         <Navbar
           activeModule={currentModule}
           onSelectModule={(modId) => setCurrentModule(modId)}
           branding={branding}
           userProfile={userProfile}
           onOpenConfig={handleOpenConfig}
+          onLogout={handleLogout}
         />
       )}
 
@@ -135,7 +156,7 @@ export default function App() {
             <span className="text-slate-300">Bachillerato en Línea de Veracruz • Portal de Registro</span>
           </div>
           <button
-            onClick={() => setCurrentModule('ControlEscolarPage')}
+            onClick={() => setCurrentModule('LoginPage')}
             className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg transition font-semibold text-[11px] border border-slate-700"
           >
             🔒 Acceso Personal Interno
@@ -145,17 +166,38 @@ export default function App() {
 
       {/* Vistas de los módulos */}
       <main className="flex-1">
+        {/* Muestra Login si no está autenticado ni está en página pública */}
+        {!isAuthenticated && !isPublicPage && (
+          <LoginPage onLoginSuccess={handleLoginSuccess} />
+        )}
+
+        {/* Módulos accesibles */}
         {currentModule === 'AdmissionPage' && <AdmissionPage />}
-        {currentModule === 'ControlEscolarPage' && <ControlEscolarPage />}
-        {currentModule === 'CaePage' && <CaePage />}
-        {currentModule === 'PagosPage' && <PagosPage />}
-        {currentModule === 'BitacoraPage' && <BitacoraPage />}
-        {currentModule === 'LoginPage' && <LoginPage />}
-        {currentModule === 'UsersPage' && <UsersPage />}
-        {currentModule === 'PlanEstudiosPage' && <PlanEstudiosPage />}
+
+        {isAuthenticated && (
+          <>
+            {currentModule === 'ControlEscolarPage' && <ControlEscolarPage />}
+            {currentModule === 'CaePage' && <CaePage />}
+            {currentModule === 'PagosPage' && <PagosPage />}
+            {currentModule === 'BitacoraPage' && <BitacoraPage />}
+            {currentModule === 'UsersPage' && <UsersPage />}
+            {currentModule === 'PlanEstudiosPage' && <PlanEstudiosPage />}
+            
+            {currentModule === 'AlumnoPage' && (
+              <div className="p-8 text-center text-slate-500 font-medium">
+                Panel Alumno (En construcción)
+              </div>
+            )}
+            {currentModule === 'AlumnoUnicoPage' && (
+              <div className="p-8 text-center text-slate-500 font-medium">
+                Panel Alumno Único (En construcción)
+              </div>
+            )}
+          </>
+        )}
       </main>
 
-      {/* MODAL DE PERSONALIZACIÓN COMPLETO */}
+      {/* Modal de personalización */}
       {isConfigOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8">
@@ -236,7 +278,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Subir Logotipo desde archivo local PNG */}
                 <div className="flex flex-col gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                   <label className="font-semibold text-slate-800 flex justify-between items-center">
                     <span>Logotipo Institucional (Exclusivo PNG)</span>
@@ -310,7 +351,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Subir Avatar desde archivo local PNG */}
                 <div className="flex flex-col gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                   <label className="font-semibold text-slate-800 flex justify-between items-center">
                     <span>Fotografía de Avatar (Exclusivo PNG)</span>
@@ -339,7 +379,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Botones de Acción del Modal */}
+              {/* Botones de Acción */}
               <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center -mx-6 -mb-4 mt-4">
                 <button
                   type="button"

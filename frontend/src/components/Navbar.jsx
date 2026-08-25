@@ -1,29 +1,25 @@
 import React from 'react';
 
-export default function Navbar({ activeModule, onSelectModule, branding, userProfile, onOpenConfig }) {
+export default function Navbar({ activeModule, onSelectModule, branding, userProfile, onOpenConfig, onLogout }) {
   const ALL_MODULES = [
-    // Módulos bajo tu responsabilidad directa
     { id: 'ControlEscolarPage', label: 'Control Escolar', roles: ['ADMIN', 'CONTROL_ESCOLAR'] },
-    { id: 'CaePage', label: 'Panel CAE', roles: ['ADMIN', 'CAE', 'CONTROL_ESCOLAR'] },
-    { id: 'PagosPage', label: 'Caja y Pagos', roles: ['ADMIN', 'CAE', 'FINANZAS'] },
+    { id: 'CaePage', label: 'Panel CAE', roles: ['ADMIN', 'CAE'] },
+    { id: 'PagosPage', label: 'Caja y Pagos', roles: ['ADMIN', 'FINANZAS', 'CAE'] },
     { id: 'BitacoraPage', label: 'Bitácora', roles: ['ADMIN'] },
-
-    // Módulos bajo la responsabilidad de tu compañero
     { id: 'UsersPage', label: 'Gestión de Usuarios', roles: ['ADMIN'] },
     { id: 'PlanEstudiosPage', label: 'Planes de Estudio', roles: ['ADMIN', 'CONTROL_ESCOLAR'] },
+    { id: 'AlumnoPage', label: 'Portal Alumno', roles: ['ADMIN', 'ALUMNO'] },
+    { id: 'AlumnoUnicoPage', label: 'Expediente Único', roles: ['ADMIN', 'ALUMNO_UNICO'] },
   ];
 
-  // Rol actual del usuario logueado (por defecto ADMIN para pruebas)
-  const currentRole = userProfile?.roleCode || 'ADMIN';
+  const currentRole = userProfile?.roleCode || 'GUEST';
 
-  // Filtrado de permisos: El Administrador ve todo; otros roles ven solo lo autorizado
   const visibleModules = ALL_MODULES.filter((mod) =>
     currentRole === 'ADMIN' ? true : mod.roles.includes(currentRole)
   );
 
-  // Cálculo de iniciales si no hay foto
   const getInitials = (name) => {
-    if (!name) return 'OP';
+    if (!name) return 'US';
     const parts = name.trim().split(' ');
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -34,7 +30,6 @@ export default function Navbar({ activeModule, onSelectModule, branding, userPro
       style={{ backgroundColor: branding?.headerColor || '#0f172a' }}
       className="text-white border-b border-white/10 shadow-md sticky top-0 z-40 transition-colors duration-300 select-none"
     >
-      {/* Cintillo Institucional Superior */}
       <div className="bg-black/30 px-4 sm:px-8 py-1 flex justify-between items-center text-[10px] text-slate-300 border-b border-white/5">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-white tracking-wide">SEV / ICC</span>
@@ -49,10 +44,7 @@ export default function Navbar({ activeModule, onSelectModule, branding, userPro
         </div>
       </div>
 
-      {/* Barra Principal de Navegación */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
-        
-        {/* Lado Izquierdo: Identidad Institucional */}
         <div className="flex items-center gap-2.5 shrink-0">
           {branding?.logoUrl ? (
             <img
@@ -84,7 +76,6 @@ export default function Navbar({ activeModule, onSelectModule, branding, userPro
           </div>
         </div>
 
-        {/* Centro: Pestañas de Módulos (Renderiza los módulos filtrados) */}
         <nav className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/10 overflow-x-auto max-w-full">
           {visibleModules.map((mod) => {
             const isActive = activeModule === mod.id;
@@ -105,28 +96,28 @@ export default function Navbar({ activeModule, onSelectModule, branding, userPro
           })}
         </nav>
 
-        {/* Lado Derecho: Ajustes y Perfil de Usuario */}
         <div className="flex items-center gap-2.5 shrink-0 border-l border-white/15 pl-3">
-          <button
-            onClick={onOpenConfig}
-            title="Personalizar Identidad Institucional y Perfil"
-            className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white text-xs font-semibold border border-white/15 transition flex items-center gap-1"
-          >
-            <span>⚙️</span>
-            <span className="hidden sm:inline text-[11px]">Ajustes</span>
-          </button>
+          {currentRole === 'ADMIN' && (
+            <button
+              onClick={onOpenConfig}
+              title="Personalizar Identidad Institucional"
+              className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-200 hover:text-white text-xs font-semibold border border-white/15 transition flex items-center gap-1"
+            >
+              <span>⚙️</span>
+              <span className="hidden sm:inline text-[11px]">Ajustes</span>
+            </button>
+          )}
 
           <div className="flex items-center gap-2">
             <div className="hidden lg:block text-right leading-tight">
               <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">
-                {userProfile?.role || 'Control y Auditoría'}
+                {userProfile?.role || 'Usuario'}
               </span>
               <span className="text-xs font-semibold text-white truncate max-w-[130px] block">
-                {userProfile?.name || 'Administrador TI'}
+                {userProfile?.name || 'Usuario'}
               </span>
             </div>
 
-            {/* Avatar / Iniciales */}
             {userProfile?.avatarUrl ? (
               <img
                 src={userProfile.avatarUrl}
@@ -141,9 +132,16 @@ export default function Navbar({ activeModule, onSelectModule, branding, userPro
                 {getInitials(userProfile?.name)}
               </div>
             )}
+
+            <button
+              onClick={onLogout}
+              title="Cerrar Sesión"
+              className="ml-1 px-2 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-800 text-red-200 text-xs font-semibold border border-red-500/30 transition"
+            >
+              🚪
+            </button>
           </div>
         </div>
-
       </div>
     </header>
   );
