@@ -150,6 +150,21 @@ export default function LoginPage({ onLoginSuccess, onGoToAdmission }) {
               <span>• <b>CAE:</b> cae_atencion</span>
               <span className="text-[9px] bg-blue-950 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800">Entrar ➔</span>
             </button>
+            <button
+              type="button"
+              onClick={() => executeLogin('227000510')}
+              className="text-left px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 flex justify-between items-center transition"
+            >
+              <span>• <b>Alumno:</b> Alumno</span>
+              <span className="text-[9px] bg-blue-950 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800">Entrar ➔</span>
+            </button><button
+              type="button"
+              onClick={() => executeLogin('207000112')}
+              className="text-left px-2.5 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-300 flex justify-between items-center transition"
+            >
+              <span>• <b>AlumonoUnico:</b> Alumno_Unico</span>
+              <span className="text-[9px] bg-blue-950 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800">Entrar ➔</span>
+            </button>
           </div>
         </div>
 

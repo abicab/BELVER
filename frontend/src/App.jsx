@@ -14,6 +14,8 @@ import BitacoraPage from './pages/BitacoraPage';
 import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
 import PlanEstudiosPage from './pages/PlanEstudiosPage';
+import AlumnoPage from './pages/AlumnoPage';
+import AlumnoUnicoPage from './pages/AlumnoUnicoPage';
 
 // Valores iniciales / por defecto del sistema
 const DEFAULT_BRANDING = {
@@ -48,9 +50,24 @@ export default function App() {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [formConfig, setFormConfig] = useState({ ...DEFAULT_BRANDING, ...DEFAULT_USER_PROFILE });
 
+  // Estado para guardar la información del alumno que el administrador decide visualizar
+  const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Manejador para redirigir desde UsersPage al portal del alumno seleccionado
+  const handleNavigateToPortal = (targetModule, studentData) => {
+    setSelectedStudent(studentData);
+    
+    // Mapeo flexible de módulos según el rol del estudiante seleccionado
+    if (targetModule === 'portal-alumno') {
+      const moduleName = studentData?.roleCode === 'ALUMNO_UNICO' ? 'AlumnoUnicoPage' : 'AlumnoPage';
+      setCurrentModule(moduleName);
+    } else {
+      setCurrentModule(targetModule);
+    }
+  };
+
   // Manejador del Login con tolerancias a la respuesta del backend
   const handleLoginSuccess = (data) => {
-    // Normaliza el rol sin importar cómo lo envíe el backend
     const rawRole = data?.user?.roleCode || data?.user?.role || data?.role || 'ADMIN';
     const roleCode = String(rawRole).toUpperCase();
     const roleInfo = ROLE_MAPPING[roleCode] || ROLE_MAPPING['ADMIN'];
@@ -70,6 +87,7 @@ export default function App() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserProfile(DEFAULT_USER_PROFILE);
+    setSelectedStudent(null);
     setCurrentModule('LoginPage');
   };
 
@@ -183,18 +201,20 @@ export default function App() {
             {currentModule === 'CaePage' && <CaePage />}
             {currentModule === 'PagosPage' && <PagosPage />}
             {currentModule === 'BitacoraPage' && <BitacoraPage />}
-            {currentModule === 'UsersPage' && <UsersPage />}
+            
+            {/* Se pasa la función de navegación/suplantación a UsersPage */}
+            {currentModule === 'UsersPage' && (
+              <UsersPage onNavigateToPortal={handleNavigateToPortal} />
+            )}
+
             {currentModule === 'PlanEstudiosPage' && <PlanEstudiosPage />}
             
+            {/* Se envían los datos del alumno seleccionado al Portal Alumno / Expediente Único */}
             {currentModule === 'AlumnoPage' && (
-              <div className="p-8 text-center text-slate-500 font-medium">
-                Panel Alumno (En construcción)
-              </div>
+              <AlumnoPage alumno={selectedStudent || undefined} />
             )}
             {currentModule === 'AlumnoUnicoPage' && (
-              <div className="p-8 text-center text-slate-500 font-medium">
-                Panel Alumno Único (En construcción)
-              </div>
+              <AlumnoUnicoPage alumno={selectedStudent || undefined} />
             )}
           </>
         )}
