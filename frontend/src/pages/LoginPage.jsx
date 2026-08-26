@@ -9,7 +9,7 @@ const MOCK_CREDENTIALS = {
   '207000112': { roleCode: 'ALUMNO_UNICO', name: 'Estudiante Único', pass: 'alumno123' },
 };
 
-export default function LoginPage({ onLoginSuccess }) {
+export default function LoginPage({ onLoginSuccess, onGoToAdmission }) {
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [error, setError] = useState('');
@@ -44,7 +44,6 @@ export default function LoginPage({ onLoginSuccess }) {
       return;
     }
 
-    // Validación opcional de contraseña local si existe el usuario registrado
     if (MOCK_CREDENTIALS[userKey] && MOCK_CREDENTIALS[userKey].pass !== passwordInput) {
       setError('Contraseña incorrecta para el usuario ingresado.');
       return;
@@ -110,8 +109,21 @@ export default function LoginPage({ onLoginSuccess }) {
           </button>
         </form>
 
+        {/* Enlace directo al Formulario de Admisión (Convocatoria) */}
+        {onGoToAdmission && (
+          <div className="mt-4 pt-4 border-t border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={onGoToAdmission}
+              className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition hover:underline inline-flex items-center gap-1"
+            >
+              <span>📋 ¿Eres aspirante nuevo? <strong>Ver convocatoria y registro ➔</strong></span>
+            </button>
+          </div>
+        )}
+
         {/* Accesos Rápidos de prueba interactivos */}
-        <div className="w-full text-[11px] text-slate-400 border-t border-slate-800 pt-4 mt-6">
+        <div className="w-full text-[11px] text-slate-400 border-t border-slate-800 pt-4 mt-4">
           <p className="font-semibold text-slate-300 mb-2">Accesos Rápidos de Prueba (Clic directo):</p>
           <div className="grid grid-cols-1 gap-1.5 text-[10px]">
             <button

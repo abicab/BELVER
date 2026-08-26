@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Navbar from './components/Navbar';
 
-// Módulos bajo tu responsabilidad
+// Módulos bajo responsabilidad de Abi
 import AdmissionPage from './pages/AdmissionPage';
 import ControlEscolarPage from './pages/ControlEscolarPage';
 import CaePage from './pages/CaePage';
@@ -10,7 +10,7 @@ import PagosPage from './pages/PagosPage';
 // Bitácora bajo la responsabilidad de ambos 
 import BitacoraPage from './pages/BitacoraPage';
 
-// Módulos bajo la responsabilidad de tu compañero
+// Módulos bajo responsabilidad de Rentería
 import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
 import PlanEstudiosPage from './pages/PlanEstudiosPage';
@@ -168,7 +168,10 @@ export default function App() {
       <main className="flex-1">
         {/* Muestra Login si no está autenticado ni está en página pública */}
         {!isAuthenticated && !isPublicPage && (
-          <LoginPage onLoginSuccess={handleLoginSuccess} />
+          <LoginPage 
+            onLoginSuccess={handleLoginSuccess} 
+            onGoToAdmission={() => setCurrentModule('AdmissionPage')}
+          />
         )}
 
         {/* Módulos accesibles */}
