@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-// Solicitudes simuladas recibidas desde AdmissionPage
+// Solicitudes simuladas actualizadas con los nuevos campos del formulario de admisión
 const INITIAL_SOLICITUDES = [
   {
     id: 1,
@@ -11,15 +11,29 @@ const INITIAL_SOLICITUDES = [
     curp: 'RUAM050819MVERRL02',
     email: 'maria.ruiz@gmail.com',
     telefono: '2281456789',
+    genderIdentity: 'Femenino',
+    lgbtqMember: 'No',
+    hasDisability: 'No',
+    educationalSupport: 'No',
+    employmentStatus: 'No trabaja',
+    hasComputer: 'Sí',
+    hasInternet: 'Sí',
+    domicilio: 'Calle Xalapa #12, Col. Centro, Xalapa, Ver.',
+    tutorName: 'Roberto Ruiz Pérez',
+    tutorPhone: '2281112233',
+    emergencyContactName: 'Carmen Morales',
+    emergencyPhone: '2289998877',
     modalidad: 'nuevo_ingreso',
     escuelaProcedencia: 'Secundaria Técnica No. 3 (Xalapa)',
-    promedioSecundaria: '9.2',
-    estatus: 'PENDIENTE', // 'PENDIENTE' | 'EN_REVISION' | 'APROBADO' | 'CON_OBSERVACIONES' | 'RECHAZADO'
+    estatus: 'PENDIENTE',
     matriculaAsignada: null,
+    passwordUnica: null,
     observaciones: '',
     documentos: [
-      { id: 'doc1', nombre: 'Certificado de Secundaria', archivo: 'Certificado_Secundaria_RUAM.pdf', peso: '1.4 MB', estatus: 'PENDIENTE' },
-      { id: 'doc2', nombre: 'Fotografía Oficial', archivo: 'Foto_Infantil_RUAM.jpg', peso: '450 KB', estatus: 'PENDIENTE' },
+      { id: 'foto', nombre: 'Fotografía Oficial', archivo: 'foto_aspirante.jpg', peso: '450 KB', estatus: 'PENDIENTE' },
+      { id: 'acta', nombre: 'Acta de Nacimiento', archivo: 'acta_nacimiento.pdf', peso: '1.8 MB', estatus: 'PENDIENTE' },
+      { id: 'curp', nombre: 'CURP Actualizada', archivo: 'curp_oficial.pdf', peso: '320 KB', estatus: 'PENDIENTE' },
+      { id: 'cert', nombre: 'Certificado de Secundaria', archivo: 'certificado_secundaria.pdf', peso: '1.4 MB', estatus: 'PENDIENTE' },
     ],
     materiasAcreditadas: []
   },
@@ -32,47 +46,34 @@ const INITIAL_SOLICITUDES = [
     curp: 'DOEC040112HDFRNR09',
     email: 'carlos.dominguez@outlook.com',
     telefono: '2288901234',
+    genderIdentity: 'Masculino',
+    lgbtqMember: 'No',
+    hasDisability: 'No',
+    educationalSupport: 'No',
+    employmentStatus: 'Medio tiempo',
+    hasComputer: 'Sí',
+    hasInternet: 'Sí',
+    domicilio: 'Av. Veracruz #45, Col. Progreso, Xalapa, Ver.',
+    tutorName: 'Sofía Solís Ramos',
+    tutorPhone: '2285554433',
+    emergencyContactName: 'Javier Domínguez',
+    emergencyPhone: '2287776655',
     modalidad: 'revalidacion',
     escuelaProcedencia: 'COBAEV Plantel 35 Xalapa',
-    subsistemaPrepa: 'Colegio de Bachilleres del Estado de Veracruz (COBAEV)',
-    promedioSecundaria: '',
     estatus: 'EN_REVISION',
     matriculaAsignada: null,
-    observaciones: 'En proceso de cotejo de materias acreditadas del 1° y 2° semestre.',
+    passwordUnica: null,
+    observaciones: 'En proceso de cotejo de materias acreditadas.',
     documentos: [
-      { id: 'doc1', nombre: 'Constancia / Historial de Bachillerato', archivo: 'Historial_COBAEV35.pdf', peso: '2.1 MB', estatus: 'VALIDADO' },
-      { id: 'doc2', nombre: 'CURP Actualizada', archivo: 'CURP_DOEC.pdf', peso: '320 KB', estatus: 'VALIDADO' },
-      { id: 'doc3', nombre: 'Acta de Nacimiento', archivo: 'Acta_DOEC.pdf', peso: '1.8 MB', estatus: 'VALIDADO' },
-      { id: 'doc4', nombre: 'Fotografía Oficial', archivo: 'Foto_DOEC.jpg', peso: '510 KB', estatus: 'VALIDADO' },
+      { id: 'foto', nombre: 'Fotografía Oficial', archivo: 'foto_carlos.jpg', peso: '510 KB', estatus: 'VALIDADO' },
+      { id: 'acta', nombre: 'Acta de Nacimiento', archivo: 'acta_doec.pdf', peso: '1.8 MB', estatus: 'VALIDADO' },
+      { id: 'curp', nombre: 'CURP Actualizada', archivo: 'curp_doec.pdf', peso: '320 KB', estatus: 'VALIDADO' },
+      { id: 'constancia', nombre: 'Constancia de Estudios', archivo: 'constancia_incompleta.pdf', peso: '2.1 MB', estatus: 'RECHAZADO' },
     ],
     materiasAcreditadas: [
       { id: 101, materia: 'Matemáticas I', semestre: '1', calificacion: '8.5' },
-      { id: 102, materia: 'Química I', semestre: '1', calificacion: '9.0' },
-      { id: 103, materia: 'Ética y Valores I', semestre: '1', calificacion: '10.0' },
-      { id: 104, materia: 'Taller de Lectura y Redacción I', semestre: '1', calificacion: '8.0' },
-      { id: 105, materia: 'Lengua Adicional al Español I (Inglés)', semestre: '1', calificacion: '9.0' }
+      { id: 102, materia: 'Química I', semestre: '1', calificacion: '9.0' }
     ]
-  },
-  {
-    id: 3,
-    folio: 'BEL-2026-1003',
-    fechaSolicitud: '2026-08-19',
-    vigencia: '2026-09-03',
-    aspirante: 'Andrea Paola Aguilar Méndez',
-    curp: 'AUMA031120MVERNG01',
-    email: 'andrea.aguilar@gmail.com',
-    telefono: '2283459876',
-    modalidad: 'nuevo_ingreso',
-    escuelaProcedencia: 'Telesecundaria Benito Juárez',
-    promedioSecundaria: '8.7',
-    estatus: 'APROBADO',
-    matriculaAsignada: 'B26000001',
-    observaciones: 'Expediente digital validado correctamente.',
-    documentos: [
-      { id: 'doc1', nombre: 'Certificado de Secundaria', archivo: 'Certificado_AUMA.pdf', peso: '1.1 MB', estatus: 'VALIDADO' },
-      { id: 'doc2', nombre: 'Fotografía Oficial', archivo: 'Foto_AUMA.png', peso: '620 KB', estatus: 'VALIDADO' },
-    ],
-    materiasAcreditadas: []
   }
 ];
 
@@ -88,8 +89,8 @@ export default function ControlEscolarPage() {
   const [tempObservaciones, setTempObservaciones] = useState('');
   const [tempDocumentos, setTempDocumentos] = useState([]);
 
-  // Consecutivo para generación de matrícula oficial (B + 26 + 6 dígitos)
-  const [consecutivoMatricula, setConsecutivoMatricula] = useState(2);
+  // Consecutivo para generación de matrícula oficial
+  const [consecutivoMatricula, setConsecutivoMatricula] = useState(3);
 
   // Apertura de modal de cotejo
   const handleOpenDictamen = (solicitud) => {
@@ -106,7 +107,6 @@ export default function ControlEscolarPage() {
     );
   };
 
-  // Gestión de materias de revalidación por Control Escolar
   const handleAddMateria = () => {
     setTempMaterias((prev) => [
       ...prev,
@@ -124,11 +124,16 @@ export default function ControlEscolarPage() {
     );
   };
 
-  // Algoritmo oficial de generación de matrícula BELVER: B + 26 + Consecutivo (6 dígitos)
+  // Generación de Matrícula Oficial y Contraseña Única Inalterable
   const generarMatriculaOficial = () => {
-    const anio = new Date().getFullYear().toString().slice(-2); // '26'
+    const anio = new Date().getFullYear().toString().slice(-2);
     const padding = String(consecutivoMatricula).padStart(6, '0');
     return `B${anio}${padding}`;
+  };
+
+  const generarPasswordUnica = () => {
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    return `BV-${randomNum}-X`;
   };
 
   // Emitir Dictamen Favorable / Aprobado
@@ -139,15 +144,12 @@ export default function ControlEscolarPage() {
       return;
     }
 
-    if (selectedSolicitud.modalidad === 'revalidacion' && tempMaterias.length === 0) {
-      if (!confirm('No has capturado materias acreditadas para esta revalidación. ¿Deseas aprobarlo como alumno de 1er semestre?')) {
-        return;
-      }
-    }
-
     let matricula = selectedSolicitud.matriculaAsignada;
+    let password = selectedSolicitud.passwordUnica;
+
     if (!matricula) {
       matricula = generarMatriculaOficial();
+      password = generarPasswordUnica();
       setConsecutivoMatricula((prev) => prev + 1);
     }
 
@@ -157,7 +159,8 @@ export default function ControlEscolarPage() {
           ...s,
           estatus: 'APROBADO',
           matriculaAsignada: matricula,
-          observaciones: tempObservaciones || 'Expediente cotejado y aprobado por Control Escolar.',
+          passwordUnica: password,
+          observaciones: '¡Felicidades! Expediente digital cotejado y aprobado exitosamente bajo el programa de inscripción gratuita.',
           documentos: tempDocumentos,
           materiasAcreditadas: tempMaterias
         };
@@ -166,7 +169,7 @@ export default function ControlEscolarPage() {
     });
 
     setSolicitudes(updatedSolicitudes);
-    alert(`Expediente aprobado exitosamente. Matrícula oficial asignada: ${matricula}`);
+    alert(`Expediente aprobado exitosamente.\nMatrícula Asignada: ${matricula}\nContraseña Única: ${password}`);
     setSelectedSolicitud(null);
   };
 
@@ -191,11 +194,10 @@ export default function ControlEscolarPage() {
     });
 
     setSolicitudes(updatedSolicitudes);
-    alert('Expediente marcado con observaciones. El aspirante podrá consultar el dictamen con su Folio.');
+    alert('Expediente marcado con correcciones requeridas. El aspirante podrá consultarlo y reemplazar sus archivos.');
     setSelectedSolicitud(null);
   };
 
-  // Filtros de tabla
   const solicitudesFiltradas = solicitudes.filter((sol) => {
     const matchBusqueda =
       sol.folio.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -212,17 +214,17 @@ export default function ControlEscolarPage() {
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* Encabezado Principal */}
+        {/* Encabezado */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-950 text-white px-2.5 py-1 rounded-md">
               Departamento de Control Escolar
             </span>
             <h1 className="text-2xl font-bold text-slate-900 mt-2">
-              Validación de Expedientes y Dictamen de Revalidación
+              Validación de Expedientes y Dictamen de Admisión (Gratuito)
             </h1>
             <p className="text-xs text-slate-500">
-              Bandeja oficial para cotejo de certificados, captura de materias acreditadas y matriculación.
+              Cotejo documental, perfil socio-demográfico/inclusión, asignación de matrícula y credenciales inalterables.
             </p>
           </div>
 
@@ -230,16 +232,14 @@ export default function ControlEscolarPage() {
             <div className="text-right">
               <span className="text-[10px] text-slate-400 block uppercase font-bold">Solicitudes Pendientes</span>
               <span className="text-lg font-black text-slate-900">
-                {solicitudes.filter((s) => s.estatus === 'PENDIENTE' || s.estatus === 'EN_REVISION').length}
+                {solicitudes.filter((s) => s.estatus === 'PENDIENTE' || s.estatus === 'EN_REVISION' || s.estatus === 'CON_OBSERVACIONES').length}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Barra de Búsqueda y Filtros Optimizada */}
+        {/* Filtros y Búsqueda */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-3">
-          
-          {/* Input de Búsqueda con Icono */}
           <div className="relative w-full lg:w-96">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
             <input
@@ -247,20 +247,17 @@ export default function ControlEscolarPage() {
               placeholder="Buscar por Folio, CURP o Nombre..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
             />
           </div>
 
-          {/* Controles de Filtrado Agrupados */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full lg:w-auto justify-end">
-            
-            {/* Filtro Estatus */}
-            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs">
               <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Estatus:</span>
               <select
                 value={filtroEstatus}
                 onChange={(e) => setFiltroEstatus(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer focus:ring-1 focus:ring-slate-800"
+                className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer"
               >
                 <option value="TODOS">Todos</option>
                 <option value="PENDIENTE">Pendiente</option>
@@ -269,39 +266,10 @@ export default function ControlEscolarPage() {
                 <option value="CON_OBSERVACIONES">Con Observaciones</option>
               </select>
             </div>
-
-            {/* Filtro Modalidad */}
-            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs w-full sm:w-auto justify-between sm:justify-start">
-              <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Modalidad:</span>
-              <div className="flex items-center gap-1">
-                {[
-                  { id: 'TODOS', label: 'Todas' },
-                  { id: 'nuevo_ingreso', label: 'Nuevo Ingreso' },
-                  { id: 'revalidacion', label: 'Revalidación' }
-                ].map((m) => {
-                  const isActive = filtroModalidad === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => setFiltroModalidad(m.id)}
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
-                        isActive
-                          ? 'bg-slate-900 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
           </div>
-
         </div>
 
-        {/* Tabla de Solicitudes */}
+        {/* Tabla */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -310,7 +278,7 @@ export default function ControlEscolarPage() {
                   <th className="p-4">Folio / Fecha</th>
                   <th className="p-4">Aspirante / CURP</th>
                   <th className="p-4">Modalidad</th>
-                  <th className="p-4">Escuela Procedencia</th>
+                  <th className="p-4">Procedencia</th>
                   <th className="p-4 text-center">Estatus</th>
                   <th className="p-4">Matrícula</th>
                   <th className="p-4 text-right">Acción</th>
@@ -320,7 +288,7 @@ export default function ControlEscolarPage() {
                 {solicitudesFiltradas.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="p-8 text-center text-slate-400 text-xs">
-                      No se encontraron solicitudes con los filtros aplicados.
+                      No se encontraron solicitudes.
                     </td>
                   </tr>
                 ) : (
@@ -341,15 +309,12 @@ export default function ControlEscolarPage() {
                           {sol.modalidad === 'revalidacion' ? 'Revalidación' : 'Nuevo Ingreso'}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-600">
-                        {sol.escuelaProcedencia}
-                      </td>
+                      <td className="p-4 text-slate-600">{sol.escuelaProcedencia}</td>
                       <td className="p-4 text-center">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
                           sol.estatus === 'APROBADO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                           sol.estatus === 'CON_OBSERVACIONES' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          sol.estatus === 'EN_REVISION' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                          'bg-slate-100 text-slate-700 border border-slate-200'
+                          'bg-blue-50 text-blue-700 border border-blue-200'
                         }`}>
                           {sol.estatus}
                         </span>
@@ -373,45 +338,105 @@ export default function ControlEscolarPage() {
           </div>
         </div>
 
-        {/* MODAL DE COTEJO Y DICTAMEN DE EXPEDIENTE */}
+        {/* Modal de Cotejo y Dictamen Integral */}
         {selectedSolicitud && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
             <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[90vh]">
               
-              {/* Header Modal */}
-              <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="font-bold text-xs">Inspección de Expediente: {selectedSolicitud.folio}</h3>
-                  <p className="text-[10px] text-slate-300">{selectedSolicitud.aspirante} • CURP: {selectedSolicitud.curp}</p>
+              {/* Header Modal Estilizado (Con Fuente Más Grande y Contraste Alto) */}
+              <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-300 font-bold text-base shadow-inner">
+                    📋
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h3 className="font-extrabold text-base tracking-tight text-white">Inspección de Expediente</h3>
+                      <span className="font-mono text-xs bg-blue-900/90 text-blue-200 px-2.5 py-0.5 rounded-md border border-blue-600/60 font-bold shadow-xs">
+                        {selectedSolicitud.folio}
+                      </span>
+                    </div>
+                    <div className="text-xs text-slate-200 mt-1 flex items-center gap-2 font-semibold">
+                      <span className="text-white text-sm tracking-wide">👤 {selectedSolicitud.aspirante}</span>
+                      <span className="text-blue-400">•</span>
+                      <span className="font-mono text-cyan-300 tracking-wider">CURP: {selectedSolicitud.curp}</span>
+                    </div>
+                  </div>
                 </div>
-                <button onClick={() => setSelectedSolicitud(null)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+
+                <button 
+                  onClick={() => setSelectedSolicitud(null)} 
+                  className="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700 shadow-sm"
+                  title="Cerrar ventana"
+                >
+                  ✕
+                </button>
               </div>
 
-              {/* Contenido con Scroll */}
               <div className="p-6 space-y-6 overflow-y-auto text-xs text-slate-700">
                 
-                {/* Bloque 1: Resumen del Aspirante */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Modalidad</span>
-                    <span className="font-bold text-slate-900 uppercase">
-                      {selectedSolicitud.modalidad === 'revalidacion' ? 'Revalidación / Equivalencia' : 'Nuevo Ingreso'}
-                    </span>
+                {/* Perfil Demográfico, Inclusión y Tecnológico */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  
+                  {/* Tarjeta 1: Identidad e Inclusión */}
+                  <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+                    <div className="flex items-center gap-1.5 text-blue-950 font-bold text-[10px] uppercase tracking-wider border-b border-slate-200/60 pb-1.5">
+                      <span>🧬</span> Identidad e Inclusión
+                    </div>
+                    <div className="space-y-1 text-slate-700">
+                      <p className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Género:</span> 
+                        <span className="font-semibold text-slate-900">{selectedSolicitud.genderIdentity || 'No especificado'}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Discapacidad:</span> 
+                        <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${selectedSolicitud.hasDisability !== 'No' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}`}>
+                          {selectedSolicitud.hasDisability}
+                        </span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Procedencia</span>
-                    <span className="font-semibold text-slate-800">{selectedSolicitud.escuelaProcedencia}</span>
+
+                  {/* Tarjeta 2: Perfil En Línea */}
+                  <div className="bg-gradient-to-br from-slate-50 to-indigo-50/40 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+                    <div className="flex items-center gap-1.5 text-indigo-950 font-bold text-[10px] uppercase tracking-wider border-b border-slate-200/60 pb-1.5">
+                      <span>💻</span> Perfil En Línea
+                    </div>
+                    <div className="space-y-1 text-slate-700">
+                      <p className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Laboral:</span> 
+                        <span className="font-semibold text-slate-900">{selectedSolicitud.employmentStatus}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span className="text-slate-500 font-medium">PC / Internet:</span> 
+                        <span className="font-semibold text-indigo-950 font-mono">{selectedSolicitud.hasComputer} / {selectedSolicitud.hasInternet}</span>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Contacto</span>
-                    <span className="text-slate-800">{selectedSolicitud.email} • {selectedSolicitud.telefono}</span>
+
+                  {/* Tarjeta 3: Contacto y Tutor */}
+                  <div className="bg-gradient-to-br from-slate-50 to-amber-50/40 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
+                    <div className="flex items-center gap-1.5 text-amber-950 font-bold text-[10px] uppercase tracking-wider border-b border-slate-200/60 pb-1.5">
+                      <span>🛡️</span> Contacto y Tutor
+                    </div>
+                    <div className="space-y-1 text-slate-700">
+                      <p className="flex justify-between">
+                        <span className="text-slate-500 font-medium">Móvil:</span> 
+                        <span className="font-semibold text-slate-900 font-mono">{selectedSolicitud.telefono}</span>
+                      </p>
+                      <p className="truncate">
+                        <span className="text-slate-500 font-medium block">Tutor:</span> 
+                        <span className="font-semibold text-slate-900 truncate block">{selectedSolicitud.tutorName || 'N/A'}</span>
+                      </p>
+                    </div>
                   </div>
+
                 </div>
 
-                {/* Bloque 2: Cotejo Documental */}
+                {/* Cotejo Documental */}
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">
-                    1. Validación y Cotejo de Documentación Digital
+                    1. Validación y Cotejo de Documentación Digital (Sin Pago - Gratuito)
                   </h4>
                   <div className="space-y-2">
                     {tempDocumentos.map((doc) => (
@@ -420,7 +445,7 @@ export default function ControlEscolarPage() {
                           <span className="text-lg">📄</span>
                           <div>
                             <span className="font-bold text-slate-800 block">{doc.nombre}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">{doc.archivo} ({doc.peso})</span>
+                            <span className="text-[10px] text-slate-400 font-mono">Archivo: {doc.archivo} ({doc.peso})</span>
                           </div>
                         </div>
 
@@ -452,96 +477,22 @@ export default function ControlEscolarPage() {
                   </div>
                 </div>
 
-                {/* Bloque 3: Captura Oficial de Materias Acreditadas (Exclusivo Revalidación) */}
-                {selectedSolicitud.modalidad === 'revalidacion' && (
-                  <div className="space-y-3 bg-amber-50/70 border border-amber-200 p-4 rounded-xl">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h4 className="font-bold text-amber-950 uppercase tracking-wider text-[11px]">
-                          2. Captura de Materias Acreditadas (Dictamen Oficial)
-                        </h4>
-                        <p className="text-[10px] text-amber-800">
-                          Control Escolar transcribe y aprueba las materias acreditadas según la constancia oficial.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddMateria}
-                        className="px-3 py-1 bg-amber-800 hover:bg-amber-900 text-white rounded-lg text-xs font-semibold shadow-sm"
-                      >
-                        + Agregar Materia
-                      </button>
-                    </div>
-
-                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                      {tempMaterias.length === 0 ? (
-                        <p className="text-center py-4 text-slate-400 text-xs italic">
-                          No hay materias acreditadas capturadas aún.
-                        </p>
-                      ) : (
-                        tempMaterias.map((mat, index) => (
-                          <div key={mat.id} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-amber-200">
-                            <span className="text-[10px] font-bold text-slate-400 w-5 text-center">{index + 1}.</span>
-                            <input
-                              type="text"
-                              placeholder="Nombre de la Materia Oficial"
-                              value={mat.materia}
-                              onChange={(e) => handleMateriaFieldChange(mat.id, 'materia', e.target.value)}
-                              className="flex-1 px-2.5 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-amber-800"
-                            />
-                            <select
-                              value={mat.semestre}
-                              onChange={(e) => handleMateriaFieldChange(mat.id, 'semestre', e.target.value)}
-                              className="w-24 px-2 py-1 text-xs border border-slate-300 rounded-md bg-white outline-none focus:ring-1 focus:ring-amber-800"
-                            >
-                              <option value="1">1° Sem</option>
-                              <option value="2">2° Sem</option>
-                              <option value="3">3° Sem</option>
-                              <option value="4">4° Sem</option>
-                              <option value="5">5° Sem</option>
-                              <option value="6">6° Sem</option>
-                            </select>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="6"
-                              max="10"
-                              placeholder="Calif"
-                              value={mat.calificacion}
-                              onChange={(e) => handleMateriaFieldChange(mat.id, 'calificacion', e.target.value)}
-                              className="w-16 px-2 py-1 text-xs border border-slate-300 rounded-md outline-none focus:ring-1 focus:ring-amber-800"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMateria(mat.id)}
-                              className="text-red-500 hover:text-red-700 font-bold px-1 text-sm"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Bloque 4: Observaciones del Dictamen */}
+                {/* Observaciones */}
                 <div className="space-y-1">
                   <label className="font-semibold text-slate-800 uppercase tracking-wider text-[11px]">
-                    Observaciones y Retroalimentación de Control Escolar
+                    Observaciones y Retroalimentación para el Aspirante
                   </label>
                   <textarea
                     rows={3}
                     value={tempObservaciones}
                     onChange={(e) => setTempObservaciones(e.target.value)}
-                    placeholder="Escribe comentarios para el dictamen o las observaciones que el aspirante debe corregir..."
+                    placeholder="Escribe las correcciones necesarias que el aspirante verá al consultar su folio..."
                     className="w-full p-2.5 text-xs border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800 bg-white"
                   />
                 </div>
 
               </div>
 
-              {/* Footer Modal: Acciones de Dictamen */}
               <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-2 shrink-0">
                 <button
                   type="button"
@@ -557,7 +508,7 @@ export default function ControlEscolarPage() {
                     onClick={handleRechazarConObservaciones}
                     className="px-4 py-2 text-xs font-semibold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl transition"
                   >
-                    Emitir Observaciones / Corrección
+                    Emitir Correcciones Requeridas
                   </button>
 
                   <button
@@ -565,7 +516,7 @@ export default function ControlEscolarPage() {
                     onClick={handleAprobarExpediente}
                     className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition shadow-md"
                   >
-                    ✓ Aprobar y Generar Matrícula
+                    ✓ Aprobar, Generar Matrícula y Contraseña Única
                   </button>
                 </div>
               </div>

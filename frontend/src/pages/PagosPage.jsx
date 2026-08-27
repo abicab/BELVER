@@ -1,123 +1,133 @@
 import React, { useState } from 'react';
 
+// Pagos iniciales simulados (enfocados solo en constancias y credenciales)
 const INITIAL_PAGOS = [
   {
     id: 1,
-    folioPago: 'PAG-2026-001',
-    matricula: 'BEL2401089',
-    alumno: 'Alejandro Morales Mendoza',
-    concepto: 'Cuota de Recuperación / Semestre',
-    monto: '$500.00',
-    referenciaBancaria: 'REF-98421034',
-    fecha: '2026-08-18',
-    estatus: 'Validado',
-    comprobanteArchivo: 'comprobante_morales.pdf'
+    matricula: 'B26000001',
+    aspirante: 'María Fernanda Ruiz Morales',
+    concepto: 'Emisión de Credencial Escolar',
+    monto: 150.00,
+    referenciaBancaria: 'REF98234190',
+    fechaPago: '2026-08-24',
+    metodo: 'Archivo Bancario (Layout)',
+    estatus: 'CONCILIADO'
   },
   {
     id: 2,
-    folioPago: 'PAG-2026-002',
-    matricula: 'BEL2601001',
-    alumno: 'Ana Karen López García',
-    concepto: 'Inscripción Nuevo Ingreso',
-    monto: '$650.00',
-    referenciaBancaria: 'REF-11209384',
-    fecha: '2026-08-18',
-    estatus: 'Pendiente',
-    comprobanteArchivo: 'ficha_deposito_karen.pdf'
-  },
-  {
-    id: 3,
-    folioPago: 'PAG-2026-003',
-    matricula: 'BEL2502014',
-    alumno: 'Sofía Valenzuela Herrera',
-    concepto: 'Examen Extraordinario',
-    monto: '$200.00',
-    referenciaBancaria: 'REF-55443322',
-    fecha: '2026-08-17',
-    estatus: 'Pendiente',
-    comprobanteArchivo: 'transferencia_sofia.pdf'
+    matricula: 'B26000002',
+    aspirante: 'Carlos Eduardo Domínguez',
+    concepto: 'Constancia de Estudios con Calificaciones',
+    monto: 85.00,
+    referenciaBancaria: 'REF77341200',
+    fechaPago: '2026-08-25',
+    metodo: 'Captura Manual (Ventanilla)',
+    estatus: 'CONCILIADO'
   }
+];
+
+const CONCEPTOS_COBRO = [
+  'Emisión de Credencial Escolar',
+  'Constancia de Estudios',
+  'Duplicado de Certificado',
+  'Examen Extraordinario / Regularización'
 ];
 
 export default function PagosPage() {
   const [pagos, setPagos] = useState(INITIAL_PAGOS);
-  const [filtroEstatus, setFiltroEstatus] = useState('Todos');
+  const [filtroConcepto, setFiltroConcepto] = useState('TODOS');
   const [busqueda, setBusqueda] = useState('');
-  const [mensajeExito, setMensajeExito] = useState(null);
 
-  // Formulario para nuevo registro manual
-  const [showModalRegistro, setShowModalRegistro] = useState(false);
-  const [nuevoPago, setNuevoPago] = useState({
+  // Estado para el modal de Carga Masiva (Archivo del Banco)
+  const [isLayoutOpen, setIsLayoutOpen] = useState(false);
+  const [archivoBanco, setArchivoBanco] = useState(null);
+  const [logProcesamiento, setLogProcesamiento] = useState(null);
+
+  // Estado para el modal de Captura Manual
+  const [isManualOpen, setIsManualOpen] = useState(false);
+  const [formManual, setFormManual] = useState({
     matricula: '',
-    alumno: '',
-    concepto: 'Inscripción Nuevo Ingreso',
-    monto: '',
+    aspirante: '',
+    concepto: 'Emisión de Credencial Escolar',
+    monto: '150.00',
     referenciaBancaria: '',
+    fechaPago: new Date().toISOString().split('T')[0]
   });
 
-  // Filtrado
-  const pagosFiltrados = pagos.filter((p) => {
-    const coincideBusqueda =
-      p.matricula.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.alumno.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.folioPago.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.referenciaBancaria.toLowerCase().includes(busqueda.toLowerCase());
-
-    const coincideEstatus =
-      filtroEstatus === 'Todos' ? true : p.estatus === filtroEstatus;
-
-    return coincideBusqueda && coincideEstatus;
-  });
-
-  // Validar Pago
-  const handleValidarPago = (id) => {
-    setPagos((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, estatus: 'Validado' } : item
-      )
-    );
-    setMensajeExito('Pago validado y cotejado correctamente.');
-    setTimeout(() => setMensajeExito(null), 4000);
-  };
-
-  // Rechazar Pago
-  const handleRechazarPago = (id) => {
-    setPagos((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, estatus: 'Rechazado' } : item
-      )
-    );
-    setMensajeExito('Pago marcado como Rechazado para aclaración con el alumno.');
-    setTimeout(() => setMensajeExito(null), 4000);
-  };
-
-  // Registrar nuevo pago
-  const handleGuardarNuevoPago = (e) => {
+  // Manejador para la subida y "traducción" del archivo del banco
+  const handleProcesarLayout = (e) => {
     e.preventDefault();
-    if (!nuevoPago.matricula || !nuevoPago.alumno || !nuevoPago.monto) {
-      alert('Por favor completa los campos requeridos.');
+    if (!archivoBanco) {
+      alert('Por favor selecciona un archivo proporcionado por el banco (.txt o .csv).');
       return;
     }
 
-    const nuevoRegistro = {
+    // Simulación de lectura y traducción del archivo bancario por el sistema
+    // Aquí el backend lee los caracteres fijos o separados por comas del banco y genera los registros
+    setTimeout(() => {
+      const nuevosPagosSimulados = [
+        {
+          id: Date.now(),
+          matricula: 'B26000005',
+          aspirante: 'Diana Laura Pérez (Carga Bancaria)',
+          concepto: 'Constancia de Estudios',
+          monto: 85.00,
+          referenciaBancaria: `BNK-${Math.floor(100000 + Math.random() * 900000)}`,
+          fechaPago: new Date().toISOString().split('T')[0],
+          metodo: 'Archivo Bancario (Layout)',
+          estatus: 'CONCILIADO'
+        }
+      ];
+
+      setPagos((prev) => [...nuevosPagosSimulados, ...prev]);
+      setLogProcesamiento(`Archivo "${archivoBanco.name}" procesado con éxito. 1 pago traducido y conciliado automáticamente.`);
+      setArchivoBanco(null);
+    }, 600);
+  };
+
+  // Manejador para captura manual de pagos
+  const handleGuardarManual = (e) => {
+    e.preventDefault();
+    if (!formManual.matricula || !formManual.aspirante || !formManual.referenciaBancaria) {
+      alert('Completa todos los campos obligatorios para el registro manual.');
+      return;
+    }
+
+    const nuevoPago = {
       id: Date.now(),
-      folioPago: `PAG-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-      matricula: nuevoPago.matricula.toUpperCase(),
-      alumno: nuevoPago.alumno,
-      concepto: nuevoPago.concepto,
-      monto: `$${nuevoPago.monto}`,
-      referenciaBancaria: nuevoPago.referenciaBancaria || 'N/A',
-      fecha: new Date().toISOString().split('T')[0],
-      estatus: 'Validado',
-      comprobanteArchivo: 'registro_manual.pdf'
+      matricula: formManual.matricula.trim().toUpperCase(),
+      aspirante: formManual.aspirante.trim(),
+      concepto: formManual.concepto,
+      monto: parseFloat(formManual.monto),
+      referenciaBancaria: formManual.referenciaBancaria.trim().toUpperCase(),
+      fechaPago: formManual.fechaPago,
+      metodo: 'Captura Manual (Ventanilla)',
+      estatus: 'CONCILIADO'
     };
 
-    setPagos([nuevoRegistro, ...pagos]);
-    setShowModalRegistro(false);
-    setNuevoPago({ matricula: '', alumno: '', concepto: 'Inscripción Nuevo Ingreso', monto: '', referenciaBancaria: '' });
-    setMensajeExito('Pago registrado y validado en el sistema.');
-    setTimeout(() => setMensajeExito(null), 4000);
+    setPagos((prev) => [nuevoPago, ...prev]);
+    setIsManualOpen(false);
+    setFormManual({
+      matricula: '',
+      aspirante: '',
+      concepto: 'Emisión de Credencial Escolar',
+      monto: '150.00',
+      referenciaBancaria: '',
+      fechaPago: new Date().toISOString().split('T')[0]
+    });
+    alert('Pago registrado y conciliado manualmente con éxito.');
   };
+
+  // Filtrado de pagos
+  const pagosFiltrados = pagos.filter((p) => {
+    const matchText =
+      p.aspirante.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.matricula.toLowerCase().includes(busqueda.toLowerCase()) ||
+      p.referenciaBancaria.toLowerCase().includes(busqueda.toLowerCase());
+
+    const matchConcepto = filtroConcepto === 'TODOS' ? true : p.concepto === filtroConcepto;
+    return matchText && matchConcepto;
+  });
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
@@ -126,122 +136,105 @@ export default function PagosPage() {
         {/* Encabezado */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-50 text-blue-900 px-2.5 py-1 rounded-md">
-              Módulo de Finanzas y Control
+            <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-950 text-white px-2.5 py-1 rounded-md">
+              Departamento de Finanzas y Servicios Escolares
             </span>
-            <h1 className="text-2xl font-bold text-slate-900 mt-1">
-              Registro y Cotejo de Pagos
+            <h1 className="text-2xl font-bold text-slate-900 mt-2">
+              Control de Pagos (Credenciales y Constancias)
             </h1>
             <p className="text-xs text-slate-500">
-              Validación interna de comprobantes de pago por trámites y cuotas de recuperación.
+              Módulo exclusivo para trámites secundarios (sin cobro de inscripción por programa gratuito). Conciliación bancaria y captura manual.
             </p>
           </div>
 
-          <button
-            onClick={() => setShowModalRegistro(true)}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition self-start md:self-auto"
-          >
-            + Registrar Pago Manual
-          </button>
-        </div>
-
-        {/* Mensaje de Éxito */}
-        {mensajeExito && (
-          <div className="bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl text-xs font-semibold flex justify-between items-center shadow-sm">
-            <span>✓ {mensajeExito}</span>
-            <button onClick={() => setMensajeExito(null)} className="font-bold ml-2">✕</button>
-          </div>
-        )}
-
-        {/* Barra de Filtros y Búsqueda */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-          <input
-            type="text"
-            placeholder="Buscar por Matrícula, Alumno, Folio o Referencia..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full sm:w-96 px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
-          />
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs font-semibold text-slate-500">Estatus:</span>
-            {['Todos', 'Pendiente', 'Validado', 'Rechazado'].map((st) => (
-              <button
-                key={st}
-                onClick={() => setFiltroEstatus(st)}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition ${
-                  filtroEstatus === st
-                    ? 'bg-slate-900 text-white'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={() => setIsManualOpen(true)}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition shadow-sm"
+            >
+              ＋ Captura Manual
+            </button>
+            <button
+              onClick={() => { setIsLayoutOpen(true); setLogProcesamiento(null); }}
+              className="px-3.5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-1.5"
+            >
+              📂 Cargar Archivo Bancario (Layout)
+            </button>
           </div>
         </div>
 
-        {/* Tabla de Pagos */}
+        {/* Filtros y Búsqueda */}
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-3">
+          <div className="relative w-full lg:w-96">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+            <input
+              type="text"
+              placeholder="Buscar por Matrícula, Alumno o Referencia..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs w-full lg:w-auto justify-between">
+            <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Concepto:</span>
+            <select
+              value={filtroConcepto}
+              onChange={(e) => setFiltroConcepto(e.target.value)}
+              className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer"
+            >
+              <option value="TODOS">Todos los conceptos</option>
+              {CONCEPTOS_COBRO.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Tabla de Pagos Registrados */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
                 <tr>
-                  <th className="p-4">Folio Pago</th>
                   <th className="p-4">Matrícula / Alumno</th>
-                  <th className="p-4">Concepto</th>
-                  <th className="p-4">Referencia</th>
+                  <th className="p-4">Concepto de Cobro</th>
+                  <th className="p-4">Referencia Bancaria</th>
                   <th className="p-4">Monto</th>
+                  <th className="p-4">Fecha</th>
+                  <th className="p-4">Método de Registro</th>
                   <th className="p-4 text-center">Estatus</th>
-                  <th className="p-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pagosFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="p-8 text-center text-slate-400 text-xs">
-                      No se encontraron registros de pago.
+                      No se encontraron registros de pagos.
                     </td>
                   </tr>
                 ) : (
-                  pagosFiltrados.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 transition">
-                      <td className="p-4 font-mono font-bold text-blue-950">{item.folioPago}</td>
-                      <td className="p-4 font-medium text-slate-900">
-                        {item.alumno}
-                        <div className="text-[11px] text-slate-400 font-mono">{item.matricula}</div>
+                  pagosFiltrados.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50 transition">
+                      <td className="p-4">
+                        <span className="font-mono font-bold text-blue-950 block">{p.matricula}</span>
+                        <span className="font-semibold text-slate-900">{p.aspirante}</span>
                       </td>
-                      <td className="p-4 text-slate-700">{item.concepto}</td>
-                      <td className="p-4 font-mono text-slate-500">{item.referenciaBancaria}</td>
-                      <td className="p-4 font-bold text-slate-900">{item.monto}</td>
-                      <td className="p-4 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          item.estatus === 'Pendiente' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                          item.estatus === 'Validado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          'bg-red-50 text-red-700 border border-red-200'
+                      <td className="p-4 font-medium text-slate-800">{p.concepto}</td>
+                      <td className="p-4 font-mono text-slate-600">{p.referenciaBancaria}</td>
+                      <td className="p-4 font-mono font-bold text-emerald-700">${p.monto.toFixed(2)} MXN</td>
+                      <td className="p-4 font-mono text-slate-500">{p.fechaPago}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          p.metodo.includes('Banco') ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
                         }`}>
-                          {item.estatus}
+                          {p.metodo}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
-                        {item.estatus === 'Pendiente' ? (
-                          <div className="flex justify-end gap-1.5">
-                            <button
-                              onClick={() => handleRechazarPago(item.id)}
-                              className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-semibold transition"
-                            >
-                              Rechazar
-                            </button>
-                            <button
-                              onClick={() => handleValidarPago(item.id)}
-                              className="px-3 py-1 bg-blue-900 text-white hover:bg-blue-800 rounded-lg text-xs font-semibold transition"
-                            >
-                              Validar
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-slate-400 font-medium">Procesado</span>
-                        )}
+                      <td className="p-4 text-center">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {p.estatus}
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -251,38 +244,89 @@ export default function PagosPage() {
           </div>
         </div>
 
-        {/* Modal para Registro Manual de Pago */}
-        {showModalRegistro && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        {/* MODAL DE CARGA DE ARCHIVO BANCARIO (LAYOUT / TRADUCTOR) */}
+        {isLayoutOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-              
               <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 className="font-bold text-xs">Captura Manual de Comprobante</h3>
-                <button onClick={() => setShowModalRegistro(false)} className="text-slate-400 hover:text-white font-bold">✕</button>
+                <h3 className="font-bold text-xs">Traductor y Conciliador de Archivo Bancario (Layout)</h3>
+                <button onClick={() => setIsLayoutOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
               </div>
 
-              <form onSubmit={handleGuardarNuevoPago} className="p-6 space-y-4 text-xs">
+              <form onSubmit={handleProcesarLayout} className="p-6 space-y-4 text-xs">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-950 space-y-1">
+                  <span className="font-bold block">💡 Instrucciones de Conciliación:</span>
+                  <p>Sube el archivo de texto (.txt / .csv) enviado por la institución bancaria con los depósitos del día. El sistema traducirá automáticamente las referencias y liberará los trámites de constancias o credenciales.</p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-semibold text-slate-700">Seleccionar Archivo del Banco</label>
+                  <input
+                    type="file"
+                    accept=".txt,.csv"
+                    onChange={(e) => setArchivoBanco(e.target.files[0])}
+                    className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
+                  />
+                  {archivoBanco && <span className="text-[10px] text-slate-500 font-mono">Archivo listo: {archivoBanco.name}</span>}
+                </div>
+
+                {logProcesamiento && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-semibold text-center">
+                    {logProcesamiento}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2 border-t">
+                  <button
+                    type="button"
+                    onClick={() => setIsLayoutOpen(false)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl font-bold shadow-md"
+                  >
+                    Procesar y Traducir Archivo
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE CAPTURA MANUAL DE PAGO */}
+        {isManualOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
+                <h3 className="font-bold text-xs">Registro Manual de Pago (Ventanilla)</h3>
+                <button onClick={() => setIsManualOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+              </div>
+
+              <form onSubmit={handleGuardarManual} className="p-6 space-y-4 text-xs">
                 <div className="flex flex-col gap-1">
                   <label className="font-semibold text-slate-700">Matrícula del Alumno</label>
                   <input
                     type="text"
                     required
-                    placeholder="Ej. BEL2401089"
-                    value={nuevoPago.matricula}
-                    onChange={(e) => setNuevoPago({ ...nuevoPago, matricula: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800 uppercase"
+                    placeholder="Ej. B26000001"
+                    value={formManual.matricula}
+                    onChange={(e) => setFormManual({ ...formManual, matricula: e.target.value })}
+                    className="px-3 py-2 border rounded-lg uppercase font-mono"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-700">Nombre del Alumno</label>
+                  <label className="font-semibold text-slate-700">Nombre Completo del Alumno</label>
                   <input
                     type="text"
                     required
-                    placeholder="Nombre completo"
-                    value={nuevoPago.alumno}
-                    onChange={(e) => setNuevoPago({ ...nuevoPago, alumno: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
+                    placeholder="Nombre del alumno"
+                    value={formManual.aspirante}
+                    onChange={(e) => setFormManual({ ...formManual, aspirante: e.target.value })}
+                    className="px-3 py-2 border rounded-lg"
                   />
                 </div>
 
@@ -290,59 +334,57 @@ export default function PagosPage() {
                   <div className="flex flex-col gap-1">
                     <label className="font-semibold text-slate-700">Concepto</label>
                     <select
-                      value={nuevoPago.concepto}
-                      onChange={(e) => setNuevoPago({ ...nuevoPago, concepto: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-slate-800"
+                      value={formManual.concepto}
+                      onChange={(e) => setFormManual({ ...formManual, concepto: e.target.value })}
+                      className="px-3 py-2 border rounded-lg bg-white"
                     >
-                      <option value="Inscripción Nuevo Ingreso">Inscripción Nuevo Ingreso</option>
-                      <option value="Cuota Semestral">Cuota Semestral</option>
-                      <option value="Examen Extraordinario">Examen Extraordinario</option>
-                      <option value="Constancia de Estudios">Constancia de Estudios</option>
+                      {CONCEPTOS_COBRO.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
                     </select>
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-700">Monto ($)</label>
+                    <label className="font-semibold text-slate-700">Monto ($ MXN)</label>
                     <input
                       type="number"
                       step="0.01"
                       required
-                      placeholder="500.00"
-                      value={nuevoPago.monto}
-                      onChange={(e) => setNuevoPago({ ...nuevoPago, monto: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
+                      value={formManual.monto}
+                      onChange={(e) => setFormManual({ ...formManual, monto: e.target.value })}
+                      className="px-3 py-2 border rounded-lg font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-700">Referencia Bancaria / Folio</label>
+                  <label className="font-semibold text-slate-700">Folio o Referencia Bancaria</label>
                   <input
                     type="text"
-                    placeholder="Ej. REF-998877"
-                    value={nuevoPago.referenciaBancaria}
-                    onChange={(e) => setNuevoPago({ ...nuevoPago, referenciaBancaria: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
+                    required
+                    placeholder="Ej. REF12345678"
+                    value={formManual.referenciaBancaria}
+                    onChange={(e) => setFormManual({ ...formManual, referenciaBancaria: e.target.value })}
+                    className="px-3 py-2 border rounded-lg uppercase font-mono"
                   />
                 </div>
 
-                <div className="flex justify-end gap-2 pt-3 border-t">
+                <div className="flex justify-end gap-2 pt-2 border-t">
                   <button
                     type="button"
-                    onClick={() => setShowModalRegistro(false)}
-                    className="px-4 py-2 text-slate-600 text-xs font-semibold hover:bg-slate-100 rounded-lg"
+                    onClick={() => setIsManualOpen(false)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 rounded-lg"
+                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-md"
                   >
-                    Guardar y Validar
+                    Guardar y Conciliar
                   </button>
                 </div>
               </form>
-
             </div>
           </div>
         )}

@@ -1,64 +1,64 @@
 import React, { useState } from 'react';
 
-// Registros de auditoría simulados en tiempo real
+// Registros de auditoría acotados estrictamente a Inicios de Sesión y Cambios en el sistema
 const INITIAL_LOGS = [
   {
     id: 1,
-    eventoId: 'EVT-9041',
-    timestamp: '2026-08-19 18:42:10',
+    eventoId: 'LOG-8012',
+    timestamp: '2026-08-26 08:30:15',
     usuario: 'operador_cae_01',
     rol: 'Control Escolar (CAE)',
-    modulo: 'CAE / Dictamen',
-    accion: 'Aprobación de Expediente',
-    detalle: 'Se validó expediente de María Fernanda Ruiz. Matrícula asignada: BEL2601001',
+    modulo: 'Seguridad / Auth',
+    accion: 'Inicio de Sesión Exitoso',
+    detalle: 'El usuario inició sesión correctamente desde la interfaz administrativa.',
     ip: '192.168.10.45',
     nivel: 'Informativo',
   },
   {
     id: 2,
-    eventoId: 'EVT-9040',
-    timestamp: '2026-08-19 17:15:33',
-    usuario: 'caja_finanzas',
-    rol: 'Caja / Finanzas',
-    modulo: 'Pagos',
-    accion: 'Validación de Pago',
-    detalle: 'Cotejo aprobado de comprobante REF-98421034 ($500.00) para alumno BEL2401089',
-    ip: '192.168.10.12',
+    eventoId: 'LOG-8011',
+    timestamp: '2026-08-25 14:22:10',
+    usuario: 'operador_cae_01',
+    rol: 'Control Escolar (CAE)',
+    modulo: 'Control Escolar',
+    accion: 'Cambio de Estatus (Aprobado)',
+    detalle: 'Se aprobó el expediente BEL-2026-1001 de María Fernanda Ruiz y se generó matrícula oficial B26000001.',
+    ip: '192.168.10.45',
     nivel: 'Informativo',
   },
   {
     id: 3,
-    eventoId: 'EVT-9039',
-    timestamp: '2026-08-19 16:02:18',
-    usuario: 'sistema_aspirante',
-    rol: 'Público / Aspirante',
-    modulo: 'Admisión',
-    accion: 'Registro de Solicitud',
-    detalle: 'Nuevo registro generado con folio BEL-2026-2180 (Modalidad: Equivalencia)',
-    ip: '187.141.67.89',
+    eventoId: 'LOG-8010',
+    timestamp: '2026-08-25 11:05:40',
+    usuario: 'caja_finanzas',
+    rol: 'Caja / Finanzas',
+    modulo: 'Seguridad / Auth',
+    accion: 'Inicio de Sesión Exitoso',
+    detalle: 'El usuario inició sesión correctamente desde la interfaz administrativa.',
+    ip: '192.168.10.12',
     nivel: 'Informativo',
   },
   {
     id: 4,
-    eventoId: 'EVT-9038',
-    timestamp: '2026-08-19 14:30:05',
-    usuario: 'operador_cae_02',
-    rol: 'Control Escolar (CAE)',
-    modulo: 'CAE / Dictamen',
-    accion: 'Rechazo con Observación',
-    detalle: 'Expediente FOL-1029 rechazado: "Certificado de secundaria ilegible".',
-    ip: '192.168.10.48',
-    nivel: 'Alerta',
+    eventoId: 'LOG-8009',
+    timestamp: '2026-08-25 11:15:20',
+    usuario: 'caja_finanzas',
+    rol: 'Caja / Finanzas',
+    modulo: 'Pagos',
+    accion: 'Modificación / Registro de Pago',
+    detalle: 'Conciliación manual registrada por concepto de Constancia de Estudios ($85.00) para alumno B26000002.',
+    ip: '192.168.10.12',
+    nivel: 'Informativo',
   },
   {
     id: 5,
-    eventoId: 'EVT-9037',
-    timestamp: '2026-08-19 09:11:40',
+    eventoId: 'LOG-8008',
+    timestamp: '2026-08-24 09:00:00',
     usuario: 'admin_general',
     rol: 'Administrador',
     modulo: 'Seguridad / Auth',
     accion: 'Intento de Acceso Fallido',
-    detalle: '3 intentos fallidos de contraseña para usuario admin_general',
+    detalle: 'Fallo de autenticación: Contraseña incorrecta ingresada para la cuenta admin_general.',
     ip: '201.120.45.19',
     nivel: 'Crítico',
   },
@@ -90,7 +90,7 @@ export default function BitacoraPage() {
   });
 
   const handleExportPDF = () => {
-    alert('Generando reporte institucional de auditoría en formato PDF...');
+    alert('Generando reporte institucional de auditoría (Inicios de sesión y cambios) en formato PDF...');
   };
 
   return (
@@ -104,10 +104,10 @@ export default function BitacoraPage() {
               Panel Exclusivo del Administrador
             </span>
             <h1 className="text-2xl font-bold text-slate-900 mt-2">
-              Bitácora de Auditoría y Trazabilidad
+              Bitácora de Inicios de Sesión y Cambios del Sistema
             </h1>
             <p className="text-xs text-slate-500">
-              Registro inmutable de operaciones, dictámenes y transacciones ejecutadas en el sistema BELVER.
+              Registro inmutable enfocado estrictamente a auditoría de accesos (logins) y modificaciones operativas en BELVER.
             </p>
           </div>
 
@@ -131,7 +131,7 @@ export default function BitacoraPage() {
 
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             <span className="text-xs font-semibold text-slate-500">Módulo:</span>
-            {['Todos', 'Admisión', 'CAE', 'Pagos', 'Seguridad'].map((mod) => (
+            {['Todos', 'Seguridad', 'Control Escolar', 'Pagos'].map((mod) => (
               <button
                 key={mod}
                 onClick={() => setFiltroModulo(mod)}
