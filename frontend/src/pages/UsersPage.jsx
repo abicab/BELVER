@@ -26,6 +26,7 @@ export default function UsersPage({ onNavigateToPortal }) {
   const [users, setUsers] = useState(INITIAL_USERS);
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstatus, setFiltroEstatus] = useState('TODOS');
+  const [filtroRol, setFiltroRol] = useState('TODOS');
 
   // Modales
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -82,7 +83,6 @@ export default function UsersPage({ onNavigateToPortal }) {
 
   const handleGoToStudentPortal = (user) => {
     if (onNavigateToPortal) {
-      // Pasa el objeto del usuario o su tipo al manejador del menú principal
       onNavigateToPortal('portal-alumno', user);
     } else {
       alert(`Redirigiendo al Portal Alumno para: ${user.name} (${user.username})`);
@@ -101,7 +101,10 @@ export default function UsersPage({ onNavigateToPortal }) {
     const coincideEstatus =
       filtroEstatus === 'TODOS' || u.estatus === filtroEstatus;
 
-    return coincideBusqueda && coincideEstatus;
+    const coincideRol =
+      filtroRol === 'TODOS' || u.roleCode === filtroRol;
+
+    return coincideBusqueda && coincideEstatus && coincideRol;
   });
 
   return (
@@ -130,30 +133,47 @@ export default function UsersPage({ onNavigateToPortal }) {
           </button>
         </div>
 
-        {/* Filtros de Búsqueda y Estatus */}
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+        {/* Filtros de Búsqueda, Rol y Estatus */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
           <input
             type="text"
             placeholder="Buscar por Nombre, Matrícula, Email o Rol..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full sm:w-96 px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800 shadow-sm"
+            className="w-full md:w-80 px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800 shadow-sm"
           />
 
-          <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200 self-end sm:self-auto text-xs">
-            {['TODOS', 'Activo', 'Baja'].map((est) => (
-              <button
-                key={est}
-                onClick={() => setFiltroEstatus(est)}
-                className={`px-3 py-1 rounded-lg font-bold transition ${
-                  filtroEstatus === est
-                    ? 'bg-slate-900 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {est}
-              </button>
-            ))}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full md:w-auto justify-end">
+            {/* Filtro por Rol */}
+            <select
+              value={filtroRol}
+              onChange={(e) => setFiltroRol(e.target.value)}
+              className="px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-slate-800 font-semibold text-slate-700 shadow-sm"
+            >
+              <option value="TODOS">Todos los Roles</option>
+              {Object.entries(ROLES_MAP).map(([code, name]) => (
+                <option key={code} value={code}>
+                  {name} ({code})
+                </option>
+              ))}
+            </select>
+
+            {/* Filtro por Estatus */}
+            <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
+              {['TODOS', 'Activo', 'Baja'].map((est) => (
+                <button
+                  key={est}
+                  onClick={() => setFiltroEstatus(est)}
+                  className={`px-3 py-1 rounded-lg font-bold transition ${
+                    filtroEstatus === est
+                      ? 'bg-slate-900 text-white'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {est}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -207,7 +227,6 @@ export default function UsersPage({ onNavigateToPortal }) {
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {/* Botón para entrar directamente al Portal Alumno si es un usuario estudiante */}
                             {esEstudiante && (
                               <button
                                 onClick={() => handleGoToStudentPortal(u)}
