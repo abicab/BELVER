@@ -148,12 +148,27 @@ export const registrarAspirante = async (
     const fechaVigencia = new Date();
     fechaVigencia.setDate(fechaVigencia.getDate() + 15);
 
+    // Mapeo seguro de campos en inglés (frontend) a los campos en español de Prisma
+    const {
+      previousSchoolCct,
+      previousHighSchoolName,
+      previousSchoolState,
+      currentSemester,
+      studyPlan,
+      ...restoDatos
+    } = datosValidados;
+
     const nuevoAspirante = await prisma.$transaction(async (tx) => {
       const aspirante = await tx.aspirante.create({
         data: {
           folio: randomFolio,
           vigenciaFolio: fechaVigencia,
-          ...datosValidados,
+          ...restoDatos,
+          cctBachilleratoPrevio: previousSchoolCct || null,
+          nombreBachilleratoPrevio: previousHighSchoolName || null,
+          estadoBachilleratoPrevio: previousSchoolState || null,
+          semestreActual: currentSemester || null,
+          planEstudios: studyPlan || null,
         },
       });
 
@@ -239,7 +254,7 @@ export const registrarAspirante = async (
   }
 };
 
-// Endpoint para actualizar documentos en revisión (Asegúrate de exportarlo bien aquí)
+// Endpoint para actualizar documentos en revisión
 export const actualizarDocumentoAspirante = async (
   req: Request,
   res: Response,
@@ -249,12 +264,10 @@ export const actualizarDocumentoAspirante = async (
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     if (!folio || !curp || !tipoDoc || !files || !files[tipoDoc]) {
-      res
-        .status(400)
-        .json({
-          ok: false,
-          mensaje: "Datos incompletos para la actualización del archivo.",
-        });
+      res.status(400).json({
+        ok: false,
+        mensaje: "Datos incompletos para la actualización del archivo.",
+      });
       return;
     }
 
