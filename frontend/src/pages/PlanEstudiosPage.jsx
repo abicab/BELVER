@@ -46,8 +46,8 @@ export default function PlanEstudiosPage({ userRole = 'CONTROL_ESCOLAR' }) {
     { codigo: '', nombre: '', semestre: 1, creditos: 6 }
   ]);
 
-  // Solo ADMIN o CONTROL_ESCOLAR pueden crear planes
-  const esAdministrador = userRole === 'ADMIN' || userRole === 'CONTROL_ESCOLAR';
+  // Solo el rol ADMIN puede crear planes de estudio
+  const esAdministrador = userRole === 'ADMIN';
 
   const handleAddMateriaField = () => {
     setMateriasForm([...materiasForm, { codigo: '', nombre: '', semestre: 1, creditos: 6 }]);
@@ -87,7 +87,7 @@ export default function PlanEstudiosPage({ userRole = 'CONTROL_ESCOLAR' }) {
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* Encabezado sin botón redundante de rol */}
+        {/* Encabezado */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-950 text-white px-2.5 py-1 rounded-md">
@@ -101,7 +101,7 @@ export default function PlanEstudiosPage({ userRole = 'CONTROL_ESCOLAR' }) {
             </p>
           </div>
 
-          {/* Acción condicional basada en permisos reales de usuario */}
+          {/* Acción condicional visible únicamente para administradores */}
           {esAdministrador && (
             <button
               onClick={() => setIsModalOpen(true)}
@@ -247,18 +247,19 @@ export default function PlanEstudiosPage({ userRole = 'CONTROL_ESCOLAR' }) {
 
                 {/* Sub-apartado de Materias */}
                 <div className="border-t border-slate-200 pt-4 space-y-3">
-                  <div className="flex justify-between items-center">
+                  {/* Encabezado pegajoso (sticky) al hacer scroll dentro del modal */}
+                  <div className="sticky top-0 z-10 bg-white py-2 flex justify-between items-center border-b border-slate-100 shadow-sm">
                     <h4 className="font-bold text-slate-900 uppercase">Asignaturas Integrantes del Plan</h4>
                     <button
                       type="button"
                       onClick={handleAddMateriaField}
-                      className="px-3 py-1 bg-blue-950 text-white text-[11px] font-bold rounded-lg hover:bg-blue-900 transition"
+                      className="px-3 py-1.5 bg-blue-950 text-white text-[11px] font-bold rounded-lg hover:bg-blue-900 transition shadow-sm"
                     >
                       + Agregar Materia
                     </button>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 pt-1">
                     {materiasForm.map((mat, index) => (
                       <div key={index} className="grid grid-cols-12 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 items-center">
                         <div className="col-span-2">

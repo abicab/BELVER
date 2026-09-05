@@ -238,7 +238,9 @@ export default function App() {
               <UsersPage onNavigateToPortal={handleNavigateToPortal} />
             )}
 
-            {currentModule === "PlanEstudiosPage" && <PlanEstudiosPage />}
+            {currentModule === "PlanEstudiosPage" && ( 
+              <PlanEstudiosPage userRole={userProfile?.roleCode} />
+            )}
 
             {currentModule === "AlumnoPage" && (
               <AlumnoPage alumno={selectedStudent || undefined} />
