@@ -21,7 +21,7 @@ export default function AdmissionPage() {
   const [isConsultaOpen, setIsConsultaOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // Estado de carga para el envío final
 
-  // Estados para los catálogos dinámicos cargados desde la Base de Datos
+  // Estados unificados para los catálogos dinámicos cargados desde el nuevo backend
   const [tiposSecundarias, setTiposSecundarias] = useState([]);
   const [subsistemasPrepa, setSubsistemasPrepa] = useState([]);
   const [mediosEnterado, setMediosEnterado] = useState([]);
@@ -30,27 +30,29 @@ export default function AdmissionPage() {
   const [situacionesLaborales, setSituacionesLaborales] = useState([]);
   const [discapacidadesDisponibles, setDiscapacidadesDisponibles] = useState(
     [],
-  ); // 🌟 Nuevo estado dinámico
+  );
+  const [parentescosDisponibles, setParentescosDisponibles] = useState([]);
+  const [semestresDisponibles, setSemestresDisponibles] = useState([]);
 
   // Estado para la vista previa de la fotografía
   const [photoPreview, setPhotoPreview] = useState(null);
 
-  // Cargar catálogos institucionales al montar el componente desde la API
+  // Cargar catálogos institucionales al montar el componente desde la API unificada del backend
   useEffect(() => {
     const cargarCatalogosDesdeBD = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:4000/api/admission/catalogos",
-        );
+        const response = await fetch("http://localhost:4000/api/catalogo");
         const resultado = await response.json();
         if (response.ok && resultado.ok) {
-          setTiposSecundarias(resultado.data.tiposSecundaria || []);
-          setSubsistemasPrepa(resultado.data.subsistemasBachillerato || []);
-          setMediosEnterado(resultado.data.mediosEnterado || []);
-          setGenerosIdentidad(resultado.data.generoIdentidad || []);
+          setTiposSecundarias(resultado.data.tipoSecundaria || []);
+          setSubsistemasPrepa(resultado.data.subsistema || []);
+          setMediosEnterado(resultado.data.medioEnterado || []);
+          setGenerosIdentidad(resultado.data.genero || []);
           setIdentidadesCulturales(resultado.data.identidadCultural || []);
           setSituacionesLaborales(resultado.data.situacionLaboral || []);
-          setDiscapacidadesDisponibles(resultado.data.discapacidades || []); // 🌟 Captura el catálogo de discapacidades
+          setDiscapacidadesDisponibles(resultado.data.discapacidad || []);
+          setParentescosDisponibles(resultado.data.parentesco || []);
+          setSemestresDisponibles(resultado.data.semestre || []);
         }
       } catch (error) {
         console.error(
@@ -108,7 +110,7 @@ export default function AdmissionPage() {
     tutorApellidoMaterno: "",
     tutorNombres: "",
     tutorParentesco: "",
-    tutorTelefono: "", // 👈 Unificado 100% en español con el backend
+    tutorTelefono: "",
     tipoAdmision: "nuevo_ingreso",
     tipoSecundaria: "",
     cctEscuelaProcedencia: "",
@@ -121,7 +123,7 @@ export default function AdmissionPage() {
     previousHighSchoolName: "",
     previousSchoolState: "",
     tipoEstudiante: "REGULAR",
-    currentSemester: "2",
+    currentSemester: "2° Semestre",
     studyPlan: "",
     photo: null,
     studyCert: null,
@@ -527,42 +529,48 @@ export default function AdmissionPage() {
   if (submittedData) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-xl p-8 text-center space-y-6">
-          <div className="w-16 h-16 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+        <div
+          id="comprobante-impresion"
+          className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-6 text-center space-y-4 print:border-none print:shadow-none print:p-0 print:m-0"
+        >
+          <div className="w-12 h-12 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center mx-auto text-xl font-bold mb-3">
             ✓
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-slate-900">
               ¡Solicitud Registrada Exitosamente!
             </h2>
-            <p className="text-xs text-slate-600 mt-2">
-              Hemos enviado un comprobante con tu folio al correo electrónico
-              registrado.
+            <p className="text-[11px] text-slate-600">
+              Comprobante oficial de registro institucional - BELVER.
             </p>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center space-y-1">
-            <span className="text-[10px] text-slate-500 font-bold tracking-wider uppercase block">
-              Folio de Seguimiento
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center space-y-1 my-4">
+            <span className="text-[9px] text-slate-500 font-bold tracking-wider uppercase block">
+              Folio de Seguimiento Oficial
             </span>
-            <div className="text-2xl font-mono font-extrabold text-blue-950 tracking-wider">
+            <div className="text-xl font-mono font-extrabold text-blue-950 tracking-wider">
               {submittedData.folio}
             </div>
-            <div className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 py-1 px-3 rounded-lg inline-block mt-2">
-              ⚠️ Vigencia del folio hasta:{" "}
-              <strong>{submittedData.vigencia}</strong>
+            <div className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 py-1 px-2 rounded-lg inline-block mt-1">
+              ⚠️ Vigencia del trámite: <strong>{submittedData.vigencia}</strong>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <p className="text-[10px] text-slate-500 px-2">
+            Conserva este documento. Control escolar validará tus archivos
+            adjuntos en el plazo establecido.
+          </p>
+
+          <div className="flex flex-col gap-2 pt-2 print:hidden">
             <button
               onClick={() => window.print()}
-              className="w-full py-2.5 text-xs font-semibold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition shadow-sm"
+              className="w-full py-2 text-xs font-semibold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition shadow-sm"
             >
-              📥 Descargar / Imprimir Comprobante PDF
+              📥 Imprimir / Guardar Comprobante PDF
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
+              className="w-full py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
             >
               Finalizar y Volver al Inicio
             </button>
@@ -788,7 +796,7 @@ export default function AdmissionPage() {
                       name="generoIdentidad"
                       value={formData.generoIdentidad}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
                     >
                       <option value="">SELECCIONE UNA OPCIÓN...</option>
                       {generosIdentidad.map((g) => (
@@ -806,7 +814,7 @@ export default function AdmissionPage() {
                       name="identidadCultural"
                       value={formData.identidadCultural}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
                     >
                       <option value="">SELECCIONE UNA OPCIÓN...</option>
                       {identidadesCulturales.map((i) => (
@@ -842,7 +850,7 @@ export default function AdmissionPage() {
                       name="apoyoEducativo"
                       value={formData.apoyoEducativo}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
                     >
                       <option value="NO">NO</option>
                       <option value="SÍ">SÍ</option>
@@ -1041,10 +1049,11 @@ export default function AdmissionPage() {
                         className="w-full px-2 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
                       >
                         <option value="">SELECCIONE UNA OPCIÓN...</option>
-                        <option value="MAMÁ">MAMÁ</option>
-                        <option value="PAPÁ">PAPÁ</option>
-                        <option value="SOY YO">SOY YO</option>
-                        <option value="OTRO">OTRO</option>
+                        {parentescosDisponibles.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="flex flex-col gap-1">
@@ -1134,7 +1143,7 @@ export default function AdmissionPage() {
                         name="tipoSecundaria"
                         value={formData.tipoSecundaria}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
                       >
                         <option value="">SELECCIONE UNA OPCIÓN...</option>
                         {tiposSecundarias.map((ts) => (
@@ -1224,7 +1233,7 @@ export default function AdmissionPage() {
                         name="sistemaBachilleratoPrevio"
                         value={formData.sistemaBachilleratoPrevio}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none"
+                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
                       >
                         <option value="">SELECCIONE UNA OPCIÓN...</option>
                         {subsistemasPrepa.map((sub) => (
@@ -1322,14 +1331,14 @@ export default function AdmissionPage() {
                         name="currentSemester"
                         value={formData.currentSemester}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none"
+                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
                       >
                         <option value="">SELECCIONE UNA OPCIÓN...</option>
-                        <option value="2">2° Semestre</option>
-                        <option value="3">3° Semestre</option>
-                        <option value="4">4° Semestre</option>
-                        <option value="5">5° Semestre</option>
-                        <option value="6">6° Semestre</option>
+                        {semestresDisponibles.map((sem) => (
+                          <option key={sem} value={sem}>
+                            {sem}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="flex flex-col gap-1 sm:col-span-2">
@@ -1644,7 +1653,7 @@ export default function AdmissionPage() {
                           <span className="font-semibold">
                             Semestre Cursado:
                           </span>{" "}
-                          {formData.currentSemester}° |{" "}
+                          {formData.currentSemester} |{" "}
                           <span className="font-semibold">Plan:</span>{" "}
                           {formData.studyPlan}
                         </div>
@@ -1764,34 +1773,41 @@ export default function AdmissionPage() {
 
         {/* MODAL DE CONSULTA FORMAL E INSTITUCIONAL */}
         {isConsultaOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 transform transition-all">
+              {/* Encabezado Obscuro Institucional */}
               <div className="px-6 py-4 bg-slate-950 text-white flex justify-between items-center border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-sm">
+                  <div className="w-8 h-8 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-sm shadow-inner">
                     📋
                   </div>
                   <div>
-                    <h2 className="text-xs font-bold tracking-widest uppercase text-slate-200">
-                      Sistema Institucional BELVER
+                    <h2 className="text-xs font-bold tracking-widest uppercase text-slate-100 flex items-center gap-2">
+                      Consulta Pública de Solicitud y Estatus
+                      <span className="text-[9px] bg-blue-900/80 text-blue-200 px-2 py-0.5 rounded font-mono font-normal">
+                        BELVER
+                      </span>
                     </h2>
-                    <p className="text-[11px] text-slate-400 font-medium">
-                      Consulta Pública de Solicitud y Estatus Académico
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      Sistema institucional de control de expedientes de
+                      admisión
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsConsultaOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition shadow-sm"
+                  className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition shadow-sm"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto text-xs bg-slate-50/50">
+              {/* Cuerpo del Modal */}
+              <div className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto text-xs bg-slate-50/60">
+                {/* Formulario de Consulta Limpio */}
                 <form
                   onSubmit={handleConsultar}
-                  className="space-y-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm"
+                  className="space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs"
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
@@ -1805,7 +1821,7 @@ export default function AdmissionPage() {
                         placeholder="Ej. BEL-2026-XXXX"
                         value={folioInput}
                         onChange={(e) => setFolioInput(e.target.value)}
-                        className="px-3.5 py-2.5 border border-slate-300 rounded-xl uppercase font-mono text-xs bg-slate-50/50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-950 transition"
+                        className="px-3.5 py-2.5 border border-slate-300 rounded-xl uppercase font-mono text-xs bg-slate-50/50 focus:bg-white outline-none focus:ring-2 focus:ring-slate-900 transition"
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -1820,14 +1836,14 @@ export default function AdmissionPage() {
                         placeholder="18 caracteres oficiales"
                         value={curpInput}
                         onChange={(e) => setCurpInput(e.target.value)}
-                        className="px-3.5 py-2.5 border border-slate-300 rounded-xl uppercase font-mono text-xs bg-slate-50/50 focus:bg-white outline-none focus:ring-2 focus:ring-blue-950 transition"
+                        className="px-3.5 py-2.5 border border-slate-300 rounded-xl uppercase font-mono text-xs bg-slate-50/50 focus:bg-white outline-none focus:ring-2 focus:ring-slate-900 transition"
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
                     disabled={cargandoConsulta}
-                    className="w-full py-3 bg-blue-950 hover:bg-blue-900 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs tracking-wider uppercase"
+                    className="w-full py-3 bg-slate-950 hover:bg-slate-900 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs tracking-wider uppercase disabled:opacity-50"
                   >
                     {cargandoConsulta ? (
                       <span className="flex items-center gap-2">
@@ -1853,34 +1869,35 @@ export default function AdmissionPage() {
                         Verificando en Base de Datos...
                       </span>
                     ) : (
-                      "Consultar Estatus en Tiempo Real"
+                      "Consultar Estatus y Expediente"
                     )}
                   </button>
                 </form>
 
                 {consultaError && (
-                  <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-center font-medium shadow-xs flex items-center justify-center gap-2">
+                  <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-center font-medium shadow-2xs flex items-center justify-center gap-2">
                     <span>⚠️</span> {consultaError}
                   </div>
                 )}
 
+                {/* Tarjeta de Resultados Híbrida */}
                 {consultaResult && (
-                  <div className="bg-white border border-slate-200/80 rounded-2xl p-5 space-y-5 shadow-sm animate-fadeIn">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 shadow-2xs animate-fadeIn">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-3">
                       <div>
-                        <span className="text-[10px] text-slate-400 font-extrabold tracking-widest uppercase block mb-0.5">
-                          Aspirante Registrado
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">
+                          Aspirante
                         </span>
-                        <h3 className="font-extrabold text-slate-900 text-sm tracking-wide">
+                        <h3 className="font-extrabold text-slate-900 text-sm">
                           {consultaResult.aspirante}
                         </h3>
                       </div>
-                      <span className="px-3.5 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 font-extrabold rounded-xl text-[10px] tracking-wider uppercase shadow-2xs">
-                        {consultaResult.estatus}
+                      <span className="px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 font-extrabold rounded-xl text-[10px] tracking-wider uppercase flex items-center gap-1.5 shadow-2xs">
+                        🔄 {consultaResult.estatus}
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] bg-slate-50/70 p-4 rounded-xl border border-slate-100">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50/80 p-4 rounded-xl border border-slate-100">
                       <div className="flex flex-col">
                         <span className="text-slate-400 font-bold uppercase text-[9px]">
                           Folio Oficial:
@@ -1915,119 +1932,130 @@ export default function AdmissionPage() {
                       </div>
                     </div>
 
+                    {/* Sección de Expediente de Documentos */}
                     <div className="space-y-3 pt-1">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                        <span className="text-[10px] font-extrabold text-slate-700 uppercase tracking-widest">
-                          Expediente Digital y Documentación
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                          Expediente de Documentos
                         </span>
-                        <span className="text-[9px] text-blue-900 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-md font-medium">
-                          💡 Archivos sujetos a validación escolar
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          💡 Puedes actualizar los ducumentos si aun no se han
+                          revisado
                         </span>
                       </div>
 
                       <div className="space-y-2.5">
-                        {consultaResult.documentos.map((doc, idx) => (
-                          <div
-                            key={idx}
-                            className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-50/50 hover:bg-slate-50 p-3.5 rounded-xl border border-slate-200/70 shadow-2xs gap-3 transition"
-                          >
-                            <div className="flex items-start gap-2.5 overflow-hidden">
-                              <div className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-xs shrink-0 shadow-2xs">
-                                📄
+                        {consultaResult.documentos &&
+                        consultaResult.documentos.length > 0 ? (
+                          consultaResult.documentos.map((doc, idx) => (
+                            <div
+                              key={idx}
+                              className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white hover:bg-slate-50/50 p-3.5 rounded-xl border border-slate-200 shadow-2xs gap-3 transition"
+                            >
+                              <div className="flex items-start gap-2.5 overflow-hidden">
+                                <div className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                                  📄
+                                </div>
+                                <div className="flex flex-col overflow-hidden">
+                                  <span className="font-bold text-slate-900 uppercase text-[11px] tracking-tight">
+                                    {traducirTipoDocumento(doc.tipo)}
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 font-mono truncate max-w-[210px] sm:max-w-[250px]">
+                                    Archivo: {doc.nombreArchivo} (
+                                    {doc.estatusDoc})
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex flex-col overflow-hidden">
-                                <span className="font-bold text-slate-900 uppercase text-[11px] tracking-tight">
-                                  {traducirTipoDocumento(doc.tipo)}
-                                </span>
-                                <span className="text-[10px] text-slate-500 font-mono truncate max-w-[210px] sm:max-w-[260px]">
-                                  {doc.nombreArchivo}
-                                </span>
-                              </div>
-                            </div>
 
-                            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
-                              <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-[9px] font-extrabold uppercase tracking-wider">
-                                {doc.estatusDoc}
-                              </span>
+                              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                <label className="cursor-pointer px-3.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-[10px] font-semibold transition shadow-xs flex items-center gap-1.5 shrink-0">
+                                  🔄 Reemplazar
+                                  <input
+                                    type="file"
+                                    accept={
+                                      doc.tipo === "photo" ? "image/*" : ".pdf"
+                                    }
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const nuevoArchivo = e.target.files[0];
+                                      if (!nuevoArchivo) return;
 
-                              <label className="cursor-pointer px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-semibold transition shadow-xs flex items-center gap-1.5 shrink-0">
-                                🔄 Actualizar
-                                <input
-                                  type="file"
-                                  accept={
-                                    doc.tipo === "photo" ? "image/*" : ".pdf"
-                                  }
-                                  className="hidden"
-                                  onChange={async (e) => {
-                                    const nuevoArchivo = e.target.files[0];
-                                    if (!nuevoArchivo) return;
-
-                                    const formDataUpdate = new FormData();
-                                    formDataUpdate.append(
-                                      "folio",
-                                      consultaResult.folio,
-                                    );
-                                    formDataUpdate.append(
-                                      "curp",
-                                      consultaResult.curp,
-                                    );
-                                    formDataUpdate.append("tipoDoc", doc.tipo);
-                                    formDataUpdate.append(
-                                      doc.tipo,
-                                      nuevoArchivo,
-                                    );
-
-                                    try {
-                                      const res = await fetch(
-                                        "http://localhost:4000/api/admission/actualizar-documento",
-                                        {
-                                          method: "PUT",
-                                          body: formDataUpdate,
-                                        },
+                                      const formDataUpdate = new FormData();
+                                      formDataUpdate.append(
+                                        "folio",
+                                        consultaResult.folio,
                                       );
-                                      const data = await res.json();
-                                      if (res.ok && data.ok) {
-                                        mostrarAlerta(
-                                          "¡El archivo digital se ha actualizado con éxito en el sistema!",
-                                          "Actualización Exitosa",
+                                      formDataUpdate.append(
+                                        "curp",
+                                        consultaResult.curp,
+                                      );
+                                      formDataUpdate.append(
+                                        "tipoDoc",
+                                        doc.tipo,
+                                      );
+                                      formDataUpdate.append(
+                                        doc.tipo,
+                                        nuevoArchivo,
+                                      );
+
+                                      try {
+                                        const res = await fetch(
+                                          "http://localhost:4000/api/admission/actualizar-documento",
+                                          {
+                                            method: "PUT",
+                                            body: formDataUpdate,
+                                          },
                                         );
-                                        handleConsultar();
-                                      } else {
+                                        const data = await res.json();
+                                        if (res.ok && data.ok) {
+                                          mostrarAlerta(
+                                            "¡El archivo digital se ha actualizado con éxito en el sistema!",
+                                            "Actualización Exitosa",
+                                          );
+                                          handleConsultar();
+                                        } else {
+                                          mostrarAlerta(
+                                            data.mensaje ||
+                                              "No se pudo actualizar el archivo.",
+                                            "Error",
+                                          );
+                                        }
+                                      } catch (err) {
+                                        console.error(
+                                          "Error al actualizar archivo:",
+                                          err,
+                                        );
                                         mostrarAlerta(
-                                          data.mensaje ||
-                                            "No se pudo actualizar el archivo.",
-                                          "Error",
+                                          "Error de conexión al intentar actualizar el documento.",
+                                          "Error de Red",
                                         );
                                       }
-                                    } catch (err) {
-                                      console.error(
-                                        "Error al actualizar archivo:",
-                                        err,
-                                      );
-                                      mostrarAlerta(
-                                        "Error de conexión al intentar actualizar el documento.",
-                                        "Error de Red",
-                                      );
-                                    }
-                                  }}
-                                />
-                              </label>
+                                    }}
+                                  />
+                                </label>
+                              </div>
                             </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                            No se encontraron documentos adjuntos para este
+                            registro.
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
+              {/* Pie del Modal */}
               <div className="px-6 py-4 bg-white border-t border-slate-200 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setIsConsultaOpen(false)}
                   className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition shadow-2xs"
                 >
-                  Cerrar Ventana
+                  Cerrar
                 </button>
               </div>
             </div>

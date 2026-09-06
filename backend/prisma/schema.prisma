@@ -7,10 +7,104 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ==========================================
+// DIRECTORIO MAESTRO DE CATÁLOGOS
+// ==========================================
+
+model Catalogo {
+  id            Int     @id @default(autoincrement())
+  nombreTabla   String  @unique
+  tituloVisible String
+  orden         Int     @default(0)
+  activo        Boolean @default(true)
+
+  @@map("catalogo")
+}
+
+// ==========================================
+// TABLAS DE CATÁLOGOS INSTITUCIONALES (Independientes para Admin)
+// ==========================================
+
+model TipoSecundaria {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("tipo_secundaria")
+}
+
+model Subsistema {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("subsistema")
+}
+
+model MedioEnterado {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("medio_enterado")
+}
+
+model Genero {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("genero")
+}
+
+model IdentidadCultural {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("identidad_cultural")
+}
+
+model SituacionLaboral {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("situacion_laboral")
+}
+
+model Discapacidad {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("discapacidad")
+}
+
+model Parentesco {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("parentesco")
+}
+
+model TipoEstudiante {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("tipo_estudiante")
+}
+
+model Semestre {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique
+
+  @@map("semestre")
+}
+
+// ==========================================
+// MODELO PRINCIPAL DE ASPIRANTES (Guarda textos)
+// ==========================================
+
 model Aspirante {
   id                        Int       @id @default(autoincrement())
   folio                     String    @unique
-  vigenciaFolio             DateTime
+  vigenciaFolio             DateTime?
+
+  // Datos Personales y de Contacto
   apellidoPaterno           String
   apellidoMaterno           String?
   nombres                   String
@@ -19,14 +113,14 @@ model Aspirante {
   correoElectronico2        String?
   telefonoCelular           String
   telefonoParticular        String?
+
+  // Inclusión y Diversidad (Textos directos)
   generoIdentidad           String?
   identidadCultural         String?
-  tieneDiscapacidad         String    @default("NO")
-  apoyoEducativo            String    @default("NO")
-  situacionLaboral          String?
-  cuentaComputadora         String    @default("SÍ")
-  cuentaInternet            String    @default("SÍ")
-  medioEnterado             String?
+  tieneDiscapacidad         String?
+  apoyoEducativo            String?   // Binario (SÍ / NO)
+
+  // Domicilio (SEPOMEX)
   pais                      String    @default("MÉXICO")
   codigoPostal              String
   estado                    String
@@ -35,17 +129,23 @@ model Aspirante {
   calle                     String
   numeroExterior            String?
   numeroInterior            String?
+
+  // Datos del Tutor
   tutorApellidoPaterno      String?
   tutorApellidoMaterno      String?
   tutorNombres              String?
   tutorParentesco           String?
   tutorTelefono             String?
-  tipoAdmision              String    @default("nuevo_ingreso")
+
+  // Modalidad y Antecedentes Académicos
+  tipoAdmision              String    // nuevo_ingreso o revalidacion
   tipoSecundaria            String?
   cctEscuelaProcedencia     String?
   nombreEscuelaProcedencia  String?
   estadoEscuelaProcedencia  String?
   promedioSecundaria        String?
+
+  // Historial de Bachillerato (Revalidación)
   sistemaBachilleratoPrevio String?
   otroSistemaProcedencia    String?
   cctBachilleratoPrevio     String?
@@ -54,13 +154,26 @@ model Aspirante {
   tipoEstudiante            String?
   semestreActual            String?
   planEstudios              String?
+
+  // Perfil Tecnológico y Estadística
+  situacionLaboral          String?
+  cuentaComputadora         String?   // Binario (SÍ / NO)
+  cuentaInternet            String?   // Binario (SÍ / NO)
+  medioEnterado             String?
+
+  // Fechas del Sistema
   creadoEn                  DateTime  @default(now())
   actualizadoEn             DateTime  @updatedAt
 
+  // Relación con Expediente Digital
   documentos                Documento[]
 
-  @@map("aspirantes")
+  @@map("aspirante")
 }
+
+// ==========================================
+// MODELO DE DOCUMENTOS (Expediente Digital)
+// ==========================================
 
 model Documento {
   id            Int       @id @default(autoincrement())
@@ -68,65 +181,9 @@ model Documento {
   aspirante     Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   tipoDoc       String
   nombreArchivo String
-  rutaArchivo   String
+  archivoBlob   Bytes     // Almacena el archivo binario directamente en la BD
   estatusDoc    String    @default("EN REVISIÓN")
   creadoEn      DateTime  @default(now())
 
-  @@map("documentos")
-}
-
-model TipoSecundariaCatalog {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(150)
-  creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("tipos_secundaria_catalog")
-}
-
-model SubsistemaBachilleratoCatalog {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(150)
-  creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("subsistemas_bachillerato_catalog")
-}
-
-model MedioEnteradoCatalog {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(150)
-  creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("medios_enterado_catalog")
-}
-
-model GeneroIdentidadCatalog {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(150)
-  creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("genero_identidad_catalog")
-}
-
-model IdentidadCulturalCatalog {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(150)
-  creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("identidad_cultural_catalog")
-}
-
-model SituacionLaboralCatalog {
-  id        Int      @id @default(autoincrement())
-  nombre    String   @unique @db.VarChar(150)
-  creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("situacion_laboral_catalog")
-}
-
-model DiscapacidadCatalog {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
-   creadoEn  DateTime @default(now()) @map("creado_en")
-
-  @@map("discapacidad_catalog")
+  @@map("documento")
 }

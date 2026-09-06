@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@media print {
+  body,
+  html {
+    background-color: white !important;
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* Ocultamos todo el contenido general de la app por seguridad */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Hacemos visible únicamente el comprobante y su contenido interno */
+  #comprobante-impresion,
+  #comprobante-impresion * {
+    visibility: visible;
+  }
+
+  /* Posicionamos el comprobante limpiamente arriba a la izquierda de la hoja */
+  #comprobante-impresion {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 400px;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

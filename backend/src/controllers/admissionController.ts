@@ -1,4 +1,3 @@
-// backend/src/controllers/admissionController.ts
 import { Request, Response } from "express";
 import prisma from "../config/prisma.js";
 import { admissionSchema } from "../middlewares/admissionValidation.js";
@@ -173,21 +172,19 @@ export const registrarAspirante = async (
       });
 
       if (files) {
-        const documentosData = [];
         for (const [fieldKey, fileList] of Object.entries(files)) {
           if (fileList && fileList.length > 0) {
             const file = fileList[0];
-            documentosData.push({
-              aspiranteId: aspirante.id,
-              tipoDoc: fieldKey,
-              nombreArchivo: file.originalname,
-              rutaArchivo: file.path,
-              estatusDoc: "EN REVISIÓN",
+            await tx.documento.create({
+              data: {
+                aspiranteId: aspirante.id,
+                tipoDoc: fieldKey,
+                nombreArchivo: file.originalname,
+                archivoBlob: file.buffer, // Se guarda el búfer binario temporal en la base de datos
+                estatusDoc: "EN REVISIÓN",
+              },
             });
           }
-        }
-        if (documentosData.length > 0) {
-          await tx.documento.createMany({ data: documentosData });
         }
       }
 
@@ -294,7 +291,7 @@ export const actualizarDocumentoAspirante = async (
         where: { id: docExistente.id },
         data: {
           nombreArchivo: archivoNuevo.originalname,
-          rutaArchivo: archivoNuevo.path,
+          archivoBlob: archivoNuevo.buffer,
           estatusDoc: "EN REVISIÓN",
         },
       });
@@ -304,7 +301,7 @@ export const actualizarDocumentoAspirante = async (
           aspiranteId: aspirante.id,
           tipoDoc: tipoDoc,
           nombreArchivo: archivoNuevo.originalname,
-          rutaArchivo: archivoNuevo.path,
+          archivoBlob: archivoNuevo.buffer,
           estatusDoc: "EN REVISIÓN",
         },
       });

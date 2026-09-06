@@ -1,10 +1,59 @@
-// backend/src/config/prisma.js o la ruta correspondiente a tu cliente de Prisma
 import prisma from "./src/config/prisma.js";
 
 async function poblar() {
-  console.log("Iniciando inserción de catálogos...");
+  console.log("Iniciando inserción de catálogos normalizados...");
 
-  // 1. Tipos de Secundaria
+  // 1. Directorio Maestro de Catálogos (Para el panel de administración)
+  const metadataCatalogos = [
+    {
+      nombreTabla: "tipoSecundaria",
+      tituloVisible: "Tipos de Secundaria",
+      orden: 1,
+    },
+    {
+      nombreTabla: "subsistema",
+      tituloVisible: "Subsistemas de Bachillerato",
+      orden: 2,
+    },
+    {
+      nombreTabla: "medioEnterado",
+      tituloVisible: "Medios por los que se enteró",
+      orden: 3,
+    },
+    { nombreTabla: "genero", tituloVisible: "Género e Identidad", orden: 4 },
+    {
+      nombreTabla: "identidadCultural",
+      tituloVisible: "Identidad Cultural",
+      orden: 5,
+    },
+    {
+      nombreTabla: "situacionLaboral",
+      tituloVisible: "Situación Laboral",
+      orden: 6,
+    },
+    { nombreTabla: "discapacidad", tituloVisible: "Discapacidades", orden: 7 },
+    {
+      nombreTabla: "parentesco",
+      tituloVisible: "Parentesco del Tutor",
+      orden: 8,
+    },
+    {
+      nombreTabla: "tipoEstudiante",
+      tituloVisible: "Tipos de Estudiante",
+      orden: 9,
+    },
+    { nombreTabla: "semestre", tituloVisible: "Semestres", orden: 10 },
+  ];
+
+  for (const cat of metadataCatalogos) {
+    await prisma.catalogo.upsert({
+      where: { nombreTabla: cat.nombreTabla },
+      update: { tituloVisible: cat.tituloVisible, orden: cat.orden },
+      create: cat,
+    });
+  }
+
+  // 2. Tipos de Secundaria
   const tiposSecundaria = [
     "SECUNDARIA GENERAL",
     "SECUNDARIA TÉCNICA",
@@ -14,14 +63,14 @@ async function poblar() {
     "OTRA INSTITUCIÓN",
   ];
   for (const nombre of tiposSecundaria) {
-    await prisma.tipoSecundariaCatalog.upsert({
+    await prisma.tipoSecundaria.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  // 2. Subsistemas de Bachillerato / Prepa
+  // 3. Subsistemas de Bachillerato / Prepa
   const subsistemas = [
     "A. SECUNDARIA",
     "C. DGB",
@@ -30,14 +79,14 @@ async function poblar() {
     "F. OTRO",
   ];
   for (const nombre of subsistemas) {
-    await prisma.subsistemaBachilleratoCatalog.upsert({
+    await prisma.subsistema.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  // 3. Medios por los que se enteró
+  // 4. Medios por los que se enteró
   const medios = [
     "FOLLETO INFORMATIVO",
     "FERIA O EXPOSICIÓN",
@@ -54,14 +103,14 @@ async function poblar() {
     "OTRO",
   ];
   for (const nombre of medios) {
-    await prisma.medioEnteradoCatalog.upsert({
+    await prisma.medioEnterado.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  // 4. Género / Identidad
+  // 5. Género / Identidad
   const generos = [
     "FEMENINO",
     "MASCULINO",
@@ -69,38 +118,38 @@ async function poblar() {
     "OTRO / PREFIERO NO DECIRLO",
   ];
   for (const nombre of generos) {
-    await prisma.generoIdentidadCatalog.upsert({
+    await prisma.genero.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  // 5. Identidad Cultural
+  // 6. Identidad Cultural
   const culturales = ["AFRODESCENDIENTE", "POBLACIÓN INDÍGENA", "NINGUNO"];
   for (const nombre of culturales) {
-    await prisma.identidadCulturalCatalog.upsert({
+    await prisma.identidadCultural.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  // 6. Situación Laboral
+  // 7. Situación Laboral
   const laborales = [
     "NO TRABAJA / ESTUDIANTE",
     "TRABAJA MEDIO TIEMPO",
     "TRABAJA TIEMPO COMPLETO",
   ];
   for (const nombre of laborales) {
-    await prisma.situacionLaboralCatalog.upsert({
+    await prisma.situacionLaboral.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  // 7. Discapacidades o Capacidades Especiales (¡Ahora dentro de la función!)
+  // 8. Discapacidades
   const discapacidades = [
     "AUTISMO",
     "DISCAPACIDAD MOTRIZ",
@@ -109,17 +158,54 @@ async function poblar() {
     "DISCAPACIDAD INTELECTUAL",
   ];
   for (const nombre of discapacidades) {
-    await prisma.discapacidadCatalog.upsert({
+    await prisma.discapacidad.upsert({
       where: { nombre },
       update: {},
       create: { nombre },
     });
   }
 
-  console.log("¡Todos los catálogos han sido poblados exitosamente!");
+  // 9. Parentesco del Tutor
+  const parentescos = ["MAMÁ", "PAPÁ", "SOY YO", "OTRO"];
+  for (const nombre of parentescos) {
+    await prisma.parentesco.upsert({
+      where: { nombre },
+      update: {},
+      create: { nombre },
+    });
+  }
+
+  // 10. Tipo de Estudiante
+  const tiposEstudiante = ["REGULAR", "REPETIDOR"];
+  for (const nombre of tiposEstudiante) {
+    await prisma.tipoEstudiante.upsert({
+      where: { nombre },
+      update: {},
+      create: { nombre },
+    });
+  }
+
+  // 11. Semestres
+  const semestres = [
+    "2° Semestre",
+    "3° Semestre",
+    "4° Semestre",
+    "5° Semestre",
+    "6° Semestre",
+  ];
+  for (const nombre of semestres) {
+    await prisma.semestre.upsert({
+      where: { nombre },
+      update: {},
+      create: { nombre },
+    });
+  }
+
+  console.log(
+    "¡Todos los catálogos normalizados han sido poblados exitosamente!",
+  );
 }
 
-// Invocación final del script
 poblar()
   .catch((e) => {
     console.error("Error al poblar catálogos:", e);

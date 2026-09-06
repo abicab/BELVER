@@ -1,4 +1,3 @@
-// backend/src/controllers/catalogController.ts
 import { Request, Response } from "express";
 import prisma from "../config/prisma.js";
 
@@ -7,43 +6,81 @@ export const obtenerCatalogos = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const [
-      tiposSecundaria,
-      subsistemasBachillerato,
-      mediosEnterado,
-      generoIdentidad,
-      identidadCultural,
-      situacionLaboral,
-      discapacidades, // 🌟 1. Añadimos el nuevo catálogo de discapacidades
-    ] = await Promise.all([
-      prisma.tipoSecundariaCatalog.findMany({ orderBy: { nombre: "asc" } }),
-      prisma.subsistemaBachilleratoCatalog.findMany({
-        orderBy: { nombre: "asc" },
-      }),
-      prisma.medioEnteradoCatalog.findMany({ orderBy: { nombre: "asc" } }),
-      prisma.generoIdentidadCatalog.findMany({ orderBy: { nombre: "asc" } }),
-      prisma.identidadCulturalCatalog.findMany({ orderBy: { nombre: "asc" } }),
-      prisma.situacionLaboralCatalog.findMany({ orderBy: { nombre: "asc" } }),
-      prisma.discapacidadCatalog.findMany({ orderBy: { nombre: "asc" } }), // 🌟 2. Consultamos la base de datos
-    ]);
+    const configuracionCatalogos = await prisma.catalogo.findMany({
+      where: { activo: true },
+      orderBy: { orden: "asc" },
+    });
+
+    const catalogosData: Record<string, string[]> = {};
+
+    for (const cat of configuracionCatalogos) {
+      let registros: { nombre: string }[] = [];
+
+      switch (cat.nombreTabla) {
+        case "tipoSecundaria":
+          registros = await prisma.tipoSecundaria.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "subsistema":
+          registros = await prisma.subsistema.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "medioEnterado":
+          registros = await prisma.medioEnterado.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "genero":
+          registros = await prisma.genero.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "identidadCultural":
+          registros = await prisma.identidadCultural.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "situacionLaboral":
+          registros = await prisma.situacionLaboral.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "discapacidad":
+          registros = await prisma.discapacidad.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "parentesco":
+          registros = await prisma.parentesco.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "tipoEstudiante":
+          registros = await prisma.tipoEstudiante.findMany({
+            select: { nombre: true },
+          });
+          break;
+        case "semestre":
+          registros = await prisma.semestre.findMany({
+            select: { nombre: true },
+          });
+          break;
+      }
+
+      catalogosData[cat.nombreTabla] = registros.map((r) => r.nombre);
+    }
 
     res.status(200).json({
       ok: true,
-      data: {
-        tiposSecundaria: tiposSecundaria.map((t) => t.nombre),
-        subsistemasBachillerato: subsistemasBachillerato.map((s) => s.nombre),
-        mediosEnterado: mediosEnterado.map((m) => m.nombre),
-        generoIdentidad: generoIdentidad.map((g) => g.nombre),
-        identidadCultural: identidadCultural.map((i) => i.nombre),
-        situacionLaboral: situacionLaboral.map((l) => l.nombre),
-        discapacidades: discapacidades.map((d) => d.nombre), // 🌟 3. Lo incluimos en la respuesta JSON
-      },
+      data: catalogosData,
     });
   } catch (error) {
-    console.error("Error al obtener los catálogos institucionales:", error);
+    console.error("Error al obtener los catálogos:", error);
     res.status(500).json({
       ok: false,
-      mensaje: "Error interno al consultar los catálogos.",
+      mensaje: "Error interno al cargar los catálogos.",
     });
   }
 };

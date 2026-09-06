@@ -1,25 +1,40 @@
-// backend/src/routes/admissionRoute.ts
 import { Router } from "express";
 import {
   registrarAspirante,
-  verificarDuplicado,
   consultarEstatus,
+  verificarDuplicado,
   actualizarDocumentoAspirante,
 } from "../controllers/admissionController.js";
-import { obtenerCatalogos } from "../controllers/catalogController.js";
-import { uploadMiddleware } from "../middlewares/uploadMiddleware.js";
+import { upload } from "../middlewares/uploadMiddleware.js";
 
 const router = Router();
 
-// Ruta de catálogos (Debe estar arriba para evitar conflictos)
-router.get("/catalogos", obtenerCatalogos);
-
 router.get("/verificar-duplicado", verificarDuplicado);
 router.get("/consulta", consultarEstatus);
-router.post("/registro", uploadMiddleware, registrarAspirante);
+
+// Ruta de registro con el middleware de Multer para capturar los archivos
+router.post(
+  "/registro",
+  upload.fields([
+    { name: "photo", maxCount: 1 },
+    { name: "actaNacimiento", maxCount: 1 },
+    { name: "curpFile", maxCount: 1 },
+    { name: "studyCert", maxCount: 1 },
+    { name: "constanciaEstudios", maxCount: 1 },
+  ]),
+  registrarAspirante,
+);
+
+// Ruta para actualizar documentos individuales con Multer
 router.put(
   "/actualizar-documento",
-  uploadMiddleware,
+  upload.fields([
+    { name: "photo", maxCount: 1 },
+    { name: "actaNacimiento", maxCount: 1 },
+    { name: "curpFile", maxCount: 1 },
+    { name: "studyCert", maxCount: 1 },
+    { name: "constanciaEstudios", maxCount: 1 },
+  ]),
   actualizarDocumentoAspirante,
 );
 
