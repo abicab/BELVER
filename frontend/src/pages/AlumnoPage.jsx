@@ -7,7 +7,7 @@ const DEFAULT_STUDENT = {
   nombre: 'Carlos Eduardo',
   apellidos: 'Domínguez Solís',
   direccion: 'C. Juárez #45, Col. Centro, Coatepec, Veracruz. C.P. 91500',
-  modalidadIngreso: 'Revalidación / Equivalencia', // O 'Ingreso Regular (Desde cero)'
+  modalidadIngreso: 'Revalidación / Equivalencia',
   esRevalidante: true,
   planEstudiosNombre: 'Plan de Estudios Bachillerato General SEP (Acuerdo 442)',
 };
@@ -62,8 +62,22 @@ const KARDEX_PLAN_COMPLETO = [
   },
 ];
 
-export default function AlumnoPage({ alumno = DEFAULT_STUDENT }) {
+export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTROL_ESCOLAR' }) {
   const [activeTab, setActiveTab] = useState('inicio');
+
+  // Estado para controlar qué semestres están desplegados (por defecto el semestre 2 en cursamiento)
+  const [openSemestres, setOpenSemestres] = useState({ 1: true });
+
+  // Puntos de control de rol
+  const rolesPermitidosDescarga = ['ADMIN', 'CONTROL_ESCOLAR'];
+  const puedeDescargarKardex = rolesPermitidosDescarga.includes(roleCode?.toUpperCase());
+
+  const toggleSemestre = (index) => {
+    setOpenSemestres((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
@@ -230,58 +244,87 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT }) {
                 <h2 className="text-base font-bold text-slate-900">Historial Académico (Kárdex Plan Completo)</h2>
                 <p className="text-xs text-slate-500">{alumno.planEstudiosNombre}</p>
               </div>
-              <button
-                onClick={() => alert('Descargando Kárdex en PDF...')}
-                className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold rounded-xl transition shadow-xs self-start"
-              >
-                📥 Descargar Kárdex Oficial PDF
-              </button>
+
+              {/* PUNTO 1: El botón solo se muestra si el usuario es Administrador o Control Escolar */}
+              {puedeDescargarKardex && (
+                <button
+                  onClick={() => alert('Descargando Kárdex en PDF...')}
+                  className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold rounded-xl transition shadow-xs self-start md:self-auto"
+                >
+                  📥 Descargar Kárdex Oficial PDF
+                </button>
+              )}
             </div>
 
-            <div className="space-y-6">
-              {KARDEX_PLAN_COMPLETO.map((bloque, idx) => (
-                <div key={idx} className="space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-                    {bloque.semestre}
-                  </h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
-                      <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                        <tr>
-                          <th className="p-2.5">Código</th>
-                          <th className="p-2.5">Materia</th>
-                          <th className="p-2.5">Créditos</th>
-                          <th className="p-2.5">Estatus</th>
-                          <th className="p-2.5 text-right">Calificación Final</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {bloque.materias.map((m, i) => (
-                          <tr key={i} className="hover:bg-slate-50">
-                            <td className="p-2.5 font-mono font-bold text-slate-800">{m.codigo}</td>
-                            <td className="p-2.5 font-semibold text-slate-900">{m.nombre}</td>
-                            <td className="p-2.5">{m.creditos}</td>
-                            <td className="p-2.5">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                m.estatus.includes('Acreditada')
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : m.estatus === 'Cursando'
-                                  ? 'bg-blue-50 text-blue-950 border-blue-200'
-                                  : 'bg-slate-100 text-slate-500 border-slate-200'
-                              }`}>
-                                {m.estatus}
-                              </span>
-                            </td>
-                            <td className="p-2.5 text-right font-mono font-bold text-slate-900">
-                              {m.calificacion > 0 ? m.calificacion.toFixed(1) : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {/* PUNTO 2: Lista desplegable de materias por semestre */}
+            <div className="space-y-3">
+              {KARDEX_PLAN_COMPLETO.map((bloque, idx) => {
+                const isOpen = !!openSemestres[idx];
+
+                return (
+                  <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                    {/* Encabezado colapsable */}
+                    <button
+                      onClick={() => toggleSemestre(idx)}
+                      className="w-full flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100 transition text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                          {bloque.semestre}
+                        </span>
+                        <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold">
+                          {bloque.materias.length} materias
+                        </span>
+                      </div>
+                      <span className="text-slate-500 font-bold text-xs">
+                        {isOpen ? '▲ Ocultar' : '▼ Desplegar'}
+                      </span>
+                    </button>
+
+                    {/* Contenido desplegable */}
+                    {isOpen && (
+                      <div className="p-3 bg-white border-t border-slate-200">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border border-slate-100 rounded-lg overflow-hidden">
+                            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                              <tr>
+                                <th className="p-2.5">Código</th>
+                                <th className="p-2.5">Materia</th>
+                                <th className="p-2.5">Créditos</th>
+                                <th className="p-2.5">Estatus</th>
+                                <th className="p-2.5 text-right">Calificación Final</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {bloque.materias.map((m, i) => (
+                                <tr key={i} className="hover:bg-slate-50">
+                                  <td className="p-2.5 font-mono font-bold text-slate-800">{m.codigo}</td>
+                                  <td className="p-2.5 font-semibold text-slate-900">{m.nombre}</td>
+                                  <td className="p-2.5">{m.creditos}</td>
+                                  <td className="p-2.5">
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                      m.estatus.includes('Acreditada')
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : m.estatus === 'Cursando'
+                                        ? 'bg-blue-50 text-blue-950 border-blue-200'
+                                        : 'bg-slate-100 text-slate-500 border-slate-200'
+                                    }`}>
+                                      {m.estatus}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                                    {m.calificacion > 0 ? m.calificacion.toFixed(1) : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
