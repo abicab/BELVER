@@ -22,7 +22,7 @@ model Catalogo {
 }
 
 // ==========================================
-// TABLAS DE CATÁLOGOS INSTITUCIONALES (Independientes para Admin)
+// TABLAS DE CATÁLOGOS INSTITUCIONALES
 // ==========================================
 
 model TipoSecundaria {
@@ -96,7 +96,7 @@ model Semestre {
 }
 
 // ==========================================
-// MODELO PRINCIPAL DE ASPIRANTES (Guarda textos)
+// MODELO PRINCIPAL DE ASPIRANTES
 // ==========================================
 
 model Aspirante {
@@ -114,11 +114,11 @@ model Aspirante {
   telefonoCelular           String
   telefonoParticular        String?
 
-  // Inclusión y Diversidad (Textos directos)
+  // Inclusión y Diversidad
   generoIdentidad           String?
   identidadCultural         String?
   tieneDiscapacidad         String?
-  apoyoEducativo            String?   // Binario (SÍ / NO)
+  apoyoEducativo            String?   
 
   // Domicilio (SEPOMEX)
   pais                      String    @default("MÉXICO")
@@ -138,7 +138,7 @@ model Aspirante {
   tutorTelefono             String?
 
   // Modalidad y Antecedentes Académicos
-  tipoAdmision              String    // nuevo_ingreso o revalidacion
+  tipoAdmision              String    
   tipoSecundaria            String?
   cctEscuelaProcedencia     String?
   nombreEscuelaProcedencia  String?
@@ -157,16 +157,17 @@ model Aspirante {
 
   // Perfil Tecnológico y Estadística
   situacionLaboral          String?
-  cuentaComputadora         String?   // Binario (SÍ / NO)
-  cuentaInternet            String?   // Binario (SÍ / NO)
+  cuentaComputadora         String?   
+  cuentaInternet            String?   
   medioEnterado             String?
 
   // Fechas del Sistema
   creadoEn                  DateTime  @default(now())
   actualizadoEn             DateTime  @updatedAt
 
-  // Relación con Expediente Digital
+  // Relaciones
   documentos                Documento[]
+  historiales               HistorialAcademico[] // <-- AQUÍ ESTÁ LA RELACIÓN QUE FALTABA
 
   @@map("aspirante")
 }
@@ -181,9 +182,75 @@ model Documento {
   aspirante     Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   tipoDoc       String
   nombreArchivo String
-  archivoBlob   Bytes     // Almacena el archivo binario directamente en la BD
+  archivoBlob   Bytes     
   estatusDoc    String    @default("EN REVISIÓN")
   creadoEn      DateTime  @default(now())
 
   @@map("documento")
+}
+
+// ==========================================
+// PLANES DE ESTUDIO Y ESTRUCTURA CURRICULAR
+// ==========================================
+
+model PlanEstudio {
+  id            Int         @id @default(autoincrement())
+  clave         String      @unique 
+  nombre        String
+  acuerdoSep    String
+  totalCreditos Int
+  descripcion   String?     @db.Text
+  activo        Boolean     @default(true)
+  creadoEn      DateTime    @default(now())
+  actualizadoEn DateTime    @updatedAt
+
+  materias      Materia[]
+
+  @@map("plan_estudio")
+}
+
+model Materia {
+  id             Int             @id @default(autoincrement())
+  planEstudioId  Int
+  planEstudio    PlanEstudio     @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  codigo         String          
+  nombre         String
+  semestre       Int             // 1 a 6
+  modulo         Int             @default(1) // Módulo dentro del semestre (1 u 2)
+  creditos       Int             @default(6)
+
+  // Seriación / Prerrequisitos
+  prerrequisitos Seriacion[]     @relation("MateriaPrerrequisito")
+  esPrerrequisitoDe Seriacion[]  @relation("MateriaSiguiente")
+
+  historiales    HistorialAcademico[]
+
+  @@unique([planEstudioId, codigo])
+  @@map("materia")
+}
+
+model Seriacion {
+  id                     Int     @id @default(autoincrement())
+  materiaId              Int     
+  materia                Materia @relation("MateriaPrerrequisito", fields: [materiaId], references: [id], onDelete: Cascade)
+  prerrequisitoMateriaId Int   
+  prerrequisito          Materia @relation("MateriaSiguiente", fields: [prerrequisitoMateriaId], references: [id], onDelete: Cascade)
+
+  @@unique([materiaId, prerrequisitoMateriaId])
+  @@map("seriacion")
+}
+
+model HistorialAcademico {
+  id           Int       @id @default(autoincrement())
+  aspiranteId  Int
+  aspirante    Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+  materiaId    Int
+  materia      Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  calificacion Float?
+  tipoExamen   String?   @default("F") // F: Final, R: Regularización
+  estatus      String    @default("CURSANDO") // APROBADA, REPROBADA, CURSANDO
+  periodo      String?   
+
+  @@unique([aspiranteId, materiaId])
+  @@map("historial_academico")
 }

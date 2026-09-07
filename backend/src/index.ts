@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import admissionRoutes from "./routes/admissionRoute";
 import catalogRoute from "./routes/catalogRoute";
+import studyPlanRoutes from "./routes/studyPlanRoutes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -14,6 +15,9 @@ app.use("/api/catalogo", catalogRoute);
 
 // Montar las rutas de inscripción
 app.use("/api/admission", admissionRoutes);
+
+// ruta de planes
+app.use("/api/planes", studyPlanRoutes);
 
 app.get("/", (req, res) => {
   res.json({ ok: true, mensaje: "API de BELVER funcionando correctamente 🚀" });

@@ -201,8 +201,101 @@ async function poblar() {
     });
   }
 
+  // 12. Plan de Estudios Principal
+  const plan = await prisma.planEstudio.upsert({
+    where: { clave: "BG-BELVER-2026" },
+    update: {},
+    create: {
+      clave: "BG-BELVER-2026",
+      nombre: "Bachillerato General Mixto Especializado",
+      acuerdoSep: "Acuerdo SEV-2026",
+      totalCreditos: 180,
+      descripcion:
+        "Modelo educativo flexible de Bachillerato en Línea de Veracruz con evaluación continua y carga modular.",
+      activo: true,
+    },
+  });
+
+  // 13. Catálogo de Materias Integradas
+  const materiasData = [
+    // Primer Semestre
+    { codigo: "MAT101", nombre: "Matemáticas I", semestre: 1, modulo: 1, creditos: 6 },
+    { codigo: "QUI101", nombre: "Química I", semestre: 1, modulo: 1, creditos: 6 },
+    { codigo: "LEO101", nombre: "Taller de Lectura y Redacción I", semestre: 1, modulo: 1, creditos: 6 },
+    { codigo: "ING101", nombre: "Inglés I", semestre: 1, modulo: 2, creditos: 6 },
+    { codigo: "INP101", nombre: "Informática I", semestre: 1, modulo: 2, creditos: 6 },
+    { codigo: "ETI101", nombre: "Ética y Valores I", semestre: 1, modulo: 2, creditos: 6 },
+
+    // Segundo Semestre
+    { codigo: "MAT102", nombre: "Matemáticas II", semestre: 2, modulo: 1, creditos: 6 },
+    { codigo: "QUI102", nombre: "Química II", semestre: 2, modulo: 1, creditos: 6 },
+    { codigo: "LEO102", nombre: "Taller de Lectura y Redacción II", semestre: 2, modulo: 1, creditos: 6 },
+    { codigo: "ING102", nombre: "Inglés II", semestre: 2, modulo: 2, creditos: 6 },
+    { codigo: "INP102", nombre: "Informática II", semestre: 2, modulo: 2, creditos: 6 },
+    { codigo: "ETI102", nombre: "Ética y Valores II", semestre: 2, modulo: 2, creditos: 6 },
+
+    // Tercer Semestre
+    { codigo: "MAT103", nombre: "Matemáticas III", semestre: 3, modulo: 1, creditos: 6 },
+    { codigo: "FIS101", nombre: "Física I", semestre: 3, modulo: 1, creditos: 6 },
+    { codigo: "BIO101", nombre: "Biología I", semestre: 3, modulo: 1, creditos: 6 },
+    { codigo: "HIS101", nombre: "Historia de México I", semestre: 3, modulo: 2, creditos: 6 },
+    { codigo: "LIT101", nombre: "Literatura I", semestre: 3, modulo: 2, creditos: 6 },
+    { codigo: "ING103", nombre: "Inglés III", semestre: 3, modulo: 2, creditos: 6 },
+
+    // Cuarto Semestre
+    { codigo: "MAT104", nombre: "Matemáticas IV", semestre: 4, modulo: 1, creditos: 6 },
+    { codigo: "FIS102", nombre: "Física II", semestre: 4, modulo: 1, creditos: 6 },
+    { codigo: "BIO102", nombre: "Biología II", semestre: 4, modulo: 1, creditos: 6 },
+    { codigo: "SOC101", nombre: "Introducción a las Ciencias Sociales", semestre: 4, modulo: 1, creditos: 6 },
+    { codigo: "HIS102", nombre: "Historia de México II", semestre: 4, modulo: 2, creditos: 6 },
+    { codigo: "LIT102", nombre: "Literatura II", semestre: 4, modulo: 2, creditos: 6 },
+    { codigo: "ING104", nombre: "Inglés IV", semestre: 4, modulo: 2, creditos: 6 },
+    { codigo: "ECO101", nombre: "Estructura Socioeconómica de México", semestre: 4, modulo: 2, creditos: 6 },
+
+    // Quinto Semestre
+    { codigo: "GEO101", nombre: "Geografía", semestre: 5, modulo: 1, creditos: 6 },
+    { codigo: "CMS101", nombre: "Estructura Social y Política", semestre: 5, modulo: 1, creditos: 6 },
+    { codigo: "EMP101", nombre: "Capacitación para el Trabajo I", semestre: 5, modulo: 1, creditos: 6 },
+    { codigo: "EMP102", nombre: "Capacitación para el Trabajo II", semestre: 5, modulo: 1, creditos: 6 },
+    { codigo: "PRO101", nombre: "Probabilidad y Estadística I", semestre: 5, modulo: 2, creditos: 6 },
+    { codigo: "MET101", nombre: "Metodología de la Investigación", semestre: 5, modulo: 2, creditos: 6 },
+    { codigo: "FIL101", nombre: "Filosofía I", semestre: 5, modulo: 2, creditos: 6 },
+    { codigo: "EMP103", nombre: "Capacitación para el Trabajo III", semestre: 5, modulo: 2, creditos: 6 },
+
+    // Sexto Semestre
+    { codigo: "ECOL101", nombre: "Ecología y Medio Ambiente", semestre: 6, modulo: 1, creditos: 6 },
+    { codigo: "HIS201", nombre: "Historia Universal Contemporánea", semestre: 6, modulo: 1, creditos: 6 },
+    { codigo: "EMP104", nombre: "Capacitación para el Trabajo IV", semestre: 6, modulo: 1, creditos: 6 },
+    { codigo: "EMP105", nombre: "Capacitación para el Trabajo V", semestre: 6, modulo: 1, creditos: 6 },
+    { codigo: "PRO102", nombre: "Probabilidad y Estadística II", semestre: 6, modulo: 2, creditos: 6 },
+    { codigo: "FIL102", nombre: "Filosofía II", semestre: 6, modulo: 2, creditos: 6 },
+    { codigo: "EMP106", nombre: "Capacitación para el Trabajo VI", semestre: 6, modulo: 2, creditos: 6 },
+    { codigo: "PROJ101", nombre: "Proyecto Integrador Final", semestre: 6, modulo: 2, creditos: 6 },
+  ];
+
+  for (const m of materiasData) {
+    await prisma.materia.upsert({
+      where: {
+        planEstudioId_codigo: {
+          planEstudioId: plan.id,
+          codigo: m.codigo,
+        },
+      },
+      update: {
+        nombre: m.nombre,
+        semestre: m.semestre,
+        modulo: m.modulo,
+        creditos: m.creditos,
+      },
+      create: {
+        ...m,
+        planEstudioId: plan.id,
+      },
+    });
+  }
+
   console.log(
-    "¡Todos los catálogos normalizados han sido poblados exitosamente!",
+    "¡Todos los catálogos normalizados, el plan de estudios y las materias han sido poblados exitosamente!",
   );
 }
 

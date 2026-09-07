@@ -170,5 +170,78 @@ CREATE TABLE `documento` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+
+-- CreateTable
+CREATE TABLE `plan_estudio` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `clave` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(191) NOT NULL,
+    `acuerdoSep` VARCHAR(191) NOT NULL,
+    `totalCreditos` INTEGER NOT NULL,
+    `descripcion` TEXT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `actualizadoEn` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `plan_estudio_clave_key`(`clave`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `materia` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `planEstudioId` INTEGER NOT NULL,
+    `codigo` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(191) NOT NULL,
+    `semestre` INTEGER NOT NULL,
+    `modulo` INTEGER NOT NULL DEFAULT 1,
+    `creditos` INTEGER NOT NULL DEFAULT 6,
+
+    UNIQUE INDEX `materia_planEstudioId_codigo_key`(`planEstudioId`, `codigo`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `seriacion` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `materiaId` INTEGER NOT NULL,
+    `prerrequisitoMateriaId` INTEGER NOT NULL,
+
+    UNIQUE INDEX `seriacion_materiaId_prerrequisitoMateriaId_key`(`materiaId`, `prerrequisitoMateriaId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `historial_academico` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `aspiranteId` INTEGER NOT NULL,
+    `materiaId` INTEGER NOT NULL,
+    `calificacion` DOUBLE NULL,
+    `tipoExamen` VARCHAR(191) NULL DEFAULT 'F',
+    `estatus` VARCHAR(191) NOT NULL DEFAULT 'CURSANDO',
+    `periodo` VARCHAR(191) NULL,
+
+    UNIQUE INDEX `historial_academico_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
 -- AddForeignKey
 ALTER TABLE `documento` ADD CONSTRAINT `documento_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+
+-- AddForeignKey
+ALTER TABLE `materia` ADD CONSTRAINT `materia_planEstudioId_fkey` FOREIGN KEY (`planEstudioId`) REFERENCES `plan_estudio`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `seriacion` ADD CONSTRAINT `seriacion_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `seriacion` ADD CONSTRAINT `seriacion_prerrequisitoMateriaId_fkey` FOREIGN KEY (`prerrequisitoMateriaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
