@@ -557,7 +557,7 @@ export default function AdmissionPage() {
           </div>
 
           <p className="text-[10px] text-slate-500 px-2">
-            Conserva este documento. Control escolar validará tus archivos
+            Conserva este documento. Control escolar validará los documentos
             adjuntos en el plazo establecido.
           </p>
 

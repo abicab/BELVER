@@ -4,6 +4,7 @@ import {
   consultarEstatus,
   verificarDuplicado,
   actualizarDocumentoAspirante,
+  aprobarYGenerarCredenciales,
 } from "../controllers/admissionController.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
 
@@ -37,5 +38,8 @@ router.put(
   ]),
   actualizarDocumentoAspirante,
 );
+
+// Ruta para aprobar aspirante y generar matrícula/contraseña (Protegida para administradores)
+router.patch("/aspirantes/:id/aprobar", aprobarYGenerarCredenciales);
 
 export default router;

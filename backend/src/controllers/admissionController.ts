@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../config/prisma.js";
 import { admissionSchema } from "../middlewares/admissionValidation.js";
 import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 // Configuración del transportador de correos
 const transporter = nodemailer.createTransport({
@@ -316,5 +317,129 @@ export const actualizarDocumentoAspirante = async (
     res
       .status(500)
       .json({ ok: false, mensaje: "Error interno al actualizar el archivo." });
+  }
+};
+
+// ENDPOINT PARA APROBAR ASPIRANTE Y GENERAR CREDENCIALES
+export const aprobarYGenerarCredenciales = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params; // ID del aspirante a aprobar
+
+    if (!id) {
+      res.status(400).json({
+        ok: false,
+        mensaje: "El ID del aspirante es obligatorio.",
+      });
+      return;
+    }
+
+    const aspiranteId = Number(id);
+    if (isNaN(aspiranteId)) {
+      res.status(400).json({
+        ok: false,
+        mensaje: "El ID proporcionado no es válido.",
+      });
+      return;
+    }
+
+    // Ejecutamos una transacción de Prisma para asegurar unicidad y consistencia en la matrícula
+    const resultado = await prisma.$transaction(async (tx) => {
+      const aspirante = await tx.aspirante.findUnique({
+        where: { id: aspiranteId },
+      });
+
+      if (!aspirante) {
+        throw new Error("ASPIRANTE_NO_ENCONTRADO");
+      }
+
+      // Si ya tiene matrícula, significa que ya fue aprobado anteriormente
+      if (aspirante.matricula) {
+        throw new Error("YA_TIENE_MATRICULA");
+      }
+
+      // 1. Generar Matrícula con formato estricto: B (BELVER) + 26 (Año) + 000001 (Incremental)
+      const anioActual = "26"; // O puedes usar new Date().getFullYear().toString().slice(-2);
+      const prefijo = `B${anioActual}`;
+
+      // Buscar el último registro que comience con este prefijo para calcular el consecutivo
+      const ultimoAlumno = await tx.aspirante.findFirst({
+        where: {
+          matricula: {
+            startsWith: prefijo,
+          },
+        },
+        orderBy: {
+          matricula: "desc",
+        },
+      });
+
+      let siguienteNumero = 1;
+      if (ultimoAlumno && ultimoAlumno.matricula) {
+        const partesNumericas = ultimoAlumno.matricula.replace(prefijo, "");
+        const numeroExtraido = parseInt(partesNumericas, 10);
+        if (!isNaN(numeroExtraido)) {
+          siguienteNumero = numeroExtraido + 1;
+        }
+      }
+
+      // Rellenar con ceros a la izquierda para completar 6 dígitos (ej. 000001)
+      const consecutivoStr = String(siguienteNumero).padStart(6, "0");
+      const nuevaMatricula = `${prefijo}${consecutivoStr}`;
+
+      // 2. Generar Contraseña segura y aleatoria (ej. 8 caracteres alfanuméricos seguros)
+      const passwordAleatorio = crypto
+        .randomBytes(4)
+        .toString("hex")
+        .toUpperCase(); // Ej: "A3F9B21C"
+
+      // 3. Actualizar al aspirante convirtiéndolo en alumno oficial con credenciales
+      const aspiranteActualizado = await tx.aspirante.update({
+        where: { id: aspiranteId },
+        data: {
+          matricula: nuevaMatricula,
+          password: passwordAleatorio,
+          rol: "ALUMNO",
+        },
+      });
+
+      return aspiranteActualizado;
+    });
+
+    res.status(200).json({
+      ok: true,
+      mensaje: "¡Aspirante aprobado y credenciales generadas exitosamente!",
+      data: {
+        id: resultado.id,
+        nombre: `${resultado.nombres} ${resultado.apellidoPaterno}`,
+        folio: resultado.folio,
+        matricula: resultado.matricula,
+        password: resultado.password, // Visible para el administrador conforme a la regla de negocio
+        rol: resultado.rol,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error al aprobar aspirante y generar credenciales:", error);
+
+    if (error.message === "ASPIRANTE_NO_ENCONTRADO") {
+      res.status(404).json({ ok: false, mensaje: "Aspirante no encontrado." });
+      return;
+    }
+
+    if (error.message === "YA_TIENE_MATRICULA") {
+      res.status(400).json({
+        ok: false,
+        mensaje:
+          "El aspirante ya cuenta con una matrícula asignada previamente.",
+      });
+      return;
+    }
+
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al procesar la aprobación del aspirante.",
+    });
   }
 };

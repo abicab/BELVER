@@ -26,8 +26,9 @@ model Catalogo {
 // ==========================================
 
 model TipoSecundaria {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("TipoSecundariaRel")
 
   @@map("tipo_secundaria")
 }
@@ -35,139 +36,179 @@ model TipoSecundaria {
 model Subsistema {
   id     Int    @id @default(autoincrement())
   nombre String @unique
+  aspirantes Aspirante[] @relation("SubsistemaRel")
 
   @@map("subsistema")
 }
 
 model MedioEnterado {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("MedioEnteradoRel")
 
   @@map("medio_enterado")
 }
 
 model Genero {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("GeneroRel")
 
   @@map("genero")
 }
 
 model IdentidadCultural {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("IdentidadCulturalRel")
 
   @@map("identidad_cultural")
 }
 
 model SituacionLaboral {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("SituacionLaboralRel")
 
   @@map("situacion_laboral")
 }
 
 model Discapacidad {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("DiscapacidadRel")
 
   @@map("discapacidad")
 }
 
 model Parentesco {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("ParentescoRel")
 
   @@map("parentesco")
 }
 
 model TipoEstudiante {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("TipoEstudianteRel")
 
   @@map("tipo_estudiante")
 }
 
 model Semestre {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique
+  id         Int         @id @default(autoincrement())
+  nombre     String      @unique
+  aspirantes Aspirante[] @relation("SemestreRel")
 
   @@map("semestre")
 }
 
 // ==========================================
-// MODELO PRINCIPAL DE ASPIRANTES
+// MODELO PRINCIPAL DE ASPIRANTES Y ALUMNOS
 // ==========================================
 
 model Aspirante {
-  id                        Int       @id @default(autoincrement())
-  folio                     String    @unique
-  vigenciaFolio             DateTime?
+  id                    Int       @id @default(autoincrement())
+  folio                 String    @unique
+  vigenciaFolio         DateTime?
+
+  // ==========================================
+  // CREDENCIALES DE ACCESO INSTITUCIONAL
+  // ==========================================
+  matricula             String?   @unique // Formato: B26000001
+  password              String?           // Contraseña segura generada (visible para admin)
+  rol                   String    @default("ASPIRANTE") // ASPIRANTE, ALUMNO, ADMIN
 
   // Datos Personales y de Contacto
-  apellidoPaterno           String
-  apellidoMaterno           String?
-  nombres                   String
-  curp                      String    @unique
-  correoElectronico1        String    @unique
-  correoElectronico2        String?
-  telefonoCelular           String
-  telefonoParticular        String?
+  apellidoPaterno       String
+  apellidoMaterno       String?
+  nombres               String
+  curp                  String    @unique
+  correoElectronico1    String    @unique
+  correoElectronico2    String?
+  telefonoCelular       String
+  telefonoParticular    String?
 
-  // Inclusión y Diversidad
-  generoIdentidad           String?
-  identidadCultural         String?
-  tieneDiscapacidad         String?
-  apoyoEducativo            String?   
+  // Inclusión y Diversidad (Relaciones con Catálogos)
+  generoId              Int?
+  genero                Genero?   @relation("GeneroRel", fields: [generoId], references: [id])
+
+  identidadCulturalId   Int?
+  identidadCultural     IdentidadCultural? @relation("IdentidadCulturalRel", fields: [identidadCulturalId], references: [id])
+
+  discapacidadId        Int?
+  discapacidad          Discapacidad? @relation("DiscapacidadRel", fields: [discapacidadId], references: [id])
+
+  apoyoEducativo        String?
 
   // Domicilio (SEPOMEX)
-  pais                      String    @default("MÉXICO")
-  codigoPostal              String
-  estado                    String
-  municipio                 String
-  colonia                   String
-  calle                     String
-  numeroExterior            String?
-  numeroInterior            String?
+  pais                  String    @default("MÉXICO")
+  codigoPostal          String
+  estado                String
+  municipio             String
+  colonia               String
+  calle                 String
+  numeroExterior        String?
+  numeroInterior        String?
 
   // Datos del Tutor
-  tutorApellidoPaterno      String?
-  tutorApellidoMaterno      String?
-  tutorNombres              String?
-  tutorParentesco           String?
-  tutorTelefono             String?
+  tutorApellidoPaterno  String?
+  tutorApellidoMaterno  String?
+  tutorNombres          String?
+
+  parentescoTutorId     Int?
+  tutorParentescoRel    Parentesco? @relation("ParentescoRel", fields: [parentescoTutorId], references: [id])
+
+  tutorTelefono         String?
 
   // Modalidad y Antecedentes Académicos
-  tipoAdmision              String    
-  tipoSecundaria            String?
-  cctEscuelaProcedencia     String?
-  nombreEscuelaProcedencia  String?
-  estadoEscuelaProcedencia  String?
-  promedioSecundaria        String?
+  tipoAdmision          String
+
+  tipoSecundariaId      Int?
+  tipoSecundariaRel     TipoSecundaria? @relation("TipoSecundariaRel", fields: [tipoSecundariaId], references: [id])
+
+  subsistemaId          Int?
+  subsistema            Subsistema? @relation("SubsistemaRel", fields: [subsistemaId], references: [id])
+
+  cctEscuelaProcedencia String?
+  nombreEscuelaProcedencia String?
+  estadoEscuelaProcedencia String?
+  promedioSecundaria    String?
 
   // Historial de Bachillerato (Revalidación)
   sistemaBachilleratoPrevio String?
-  otroSistemaProcedencia    String?
-  cctBachilleratoPrevio     String?
-  nombreBachilleratoPrevio  String?
-  estadoBachilleratoPrevio  String?
-  tipoEstudiante            String?
-  semestreActual            String?
-  planEstudios              String?
+  otroSistemaProcedencia String?
+  cctBachilleratoPrevio String?
+  nombreBachilleratoPrevio String?
+  estadoBachilleratoPrevio String?
+
+  tipoEstudianteId      Int?
+  tipoEstudianteRel     TipoEstudiante? @relation("TipoEstudianteRel", fields: [tipoEstudianteId], references: [id])
+
+  semestreId            Int?
+  semestreRel           Semestre? @relation("SemestreRel", fields: [semestreId], references: [id])
+
+  planEstudios          String?
 
   // Perfil Tecnológico y Estadística
-  situacionLaboral          String?
-  cuentaComputadora         String?   
-  cuentaInternet            String?   
-  medioEnterado             String?
+  situacionLaboralId    Int?
+  situacionLaboralRel   SituacionLaboral? @relation("SituacionLaboralRel", fields: [situacionLaboralId], references: [id])
+
+  cuentaComputadora     String?
+  cuentaInternet        String?
+
+  medioEnteradoId       Int?
+  medioEnteradoRel      MedioEnterado? @relation("MedioEnteradoRel", fields: [medioEnteradoId], references: [id])
 
   // Fechas del Sistema
-  creadoEn                  DateTime  @default(now())
-  actualizadoEn             DateTime  @updatedAt
+  creadoEn              DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  // Relaciones
-  documentos                Documento[]
-  historiales               HistorialAcademico[] // <-- AQUÍ ESTÁ LA RELACIÓN QUE FALTABA
+  // Relaciones Operativas
+  documentos            Documento[]
+  historiales           HistorialAcademico[]
 
   @@map("aspirante")
 }
@@ -182,7 +223,7 @@ model Documento {
   aspirante     Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   tipoDoc       String
   nombreArchivo String
-  archivoBlob   Bytes     
+  archivoBlob   Bytes
   estatusDoc    String    @default("EN REVISIÓN")
   creadoEn      DateTime  @default(now())
 
@@ -194,15 +235,15 @@ model Documento {
 // ==========================================
 
 model PlanEstudio {
-  id            Int         @id @default(autoincrement())
-  clave         String      @unique 
+  id            Int       @id @default(autoincrement())
+  clave         String    @unique
   nombre        String
   acuerdoSep    String
   totalCreditos Int
-  descripcion   String?     @db.Text
-  activo        Boolean     @default(true)
-  creadoEn      DateTime    @default(now())
-  actualizadoEn DateTime    @updatedAt
+  descripcion   String?   @db.Text
+  activo        Boolean   @default(true)
+  creadoEn      DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   materias      Materia[]
 
@@ -210,18 +251,18 @@ model PlanEstudio {
 }
 
 model Materia {
-  id             Int             @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   planEstudioId  Int
-  planEstudio    PlanEstudio     @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
-  codigo         String          
+  planEstudio    PlanEstudio  @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  codigo         String
   nombre         String
-  semestre       Int             // 1 a 6
-  modulo         Int             @default(1) // Módulo dentro del semestre (1 u 2)
-  creditos       Int             @default(6)
+  semestre       Int          // 1 a 6
+  modulo         Int          @default(1) // Módulo dentro del semestre (1 u 2)
+  credititos     Int          @default(6)
 
   // Seriación / Prerrequisitos
-  prerrequisitos Seriacion[]     @relation("MateriaPrerrequisito")
-  esPrerrequisitoDe Seriacion[]  @relation("MateriaSiguiente")
+  prerrequisitos Seriacion[]  @relation("MateriaPrerrequisito")
+  esPrerrequisitoDe Seriacion[] @relation("MateriaSiguiente")
 
   historiales    HistorialAcademico[]
 
@@ -231,9 +272,9 @@ model Materia {
 
 model Seriacion {
   id                     Int     @id @default(autoincrement())
-  materiaId              Int     
+  materiaId              Int
   materia                Materia @relation("MateriaPrerrequisito", fields: [materiaId], references: [id], onDelete: Cascade)
-  prerrequisitoMateriaId Int   
+  prerrequisitoMateriaId Int
   prerrequisito          Materia @relation("MateriaSiguiente", fields: [prerrequisitoMateriaId], references: [id], onDelete: Cascade)
 
   @@unique([materiaId, prerrequisitoMateriaId])
@@ -249,7 +290,7 @@ model HistorialAcademico {
   calificacion Float?
   tipoExamen   String?   @default("F") // F: Final, R: Regularización
   estatus      String    @default("CURSANDO") // APROBADA, REPROBADA, CURSANDO
-  periodo      String?   
+  periodo      String?
 
   @@unique([aspiranteId, materiaId])
   @@map("historial_academico")
