@@ -3,12 +3,15 @@ import cors from "cors";
 import admissionRoutes from "./routes/admissionRoute";
 import catalogRoute from "./routes/catalogRoute";
 import studyPlanRoutes from "./routes/studyPlanRoutes";
-
+import controlescolarRoutes from "./routes/controlescolarRoute.js";
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// ... dentro de tus middlewares de rutas:
+app.use("/api/controlescolar", controlescolarRoutes);
 
 // Ruta de Catalogos
 app.use("/api/catalogo", catalogRoute);

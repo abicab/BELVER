@@ -14,6 +14,7 @@ CREATE TABLE `catalogo` (
 CREATE TABLE `tipo_secundaria` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `tipo_secundaria_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -23,6 +24,7 @@ CREATE TABLE `tipo_secundaria` (
 CREATE TABLE `subsistema` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `subsistema_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -32,6 +34,7 @@ CREATE TABLE `subsistema` (
 CREATE TABLE `medio_enterado` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `medio_enterado_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -41,6 +44,7 @@ CREATE TABLE `medio_enterado` (
 CREATE TABLE `genero` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `genero_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -50,6 +54,7 @@ CREATE TABLE `genero` (
 CREATE TABLE `identidad_cultural` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `identidad_cultural_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -59,6 +64,7 @@ CREATE TABLE `identidad_cultural` (
 CREATE TABLE `situacion_laboral` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `situacion_laboral_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -68,6 +74,7 @@ CREATE TABLE `situacion_laboral` (
 CREATE TABLE `discapacidad` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `discapacidad_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -77,6 +84,7 @@ CREATE TABLE `discapacidad` (
 CREATE TABLE `parentesco` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `parentesco_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -86,6 +94,7 @@ CREATE TABLE `parentesco` (
 CREATE TABLE `tipo_estudiante` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `tipo_estudiante_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
@@ -95,8 +104,25 @@ CREATE TABLE `tipo_estudiante` (
 CREATE TABLE `semestre` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `nombre` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `semestre_nombre_key`(`nombre`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `usuario_admin` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `correo` VARCHAR(191) NOT NULL,
+    `password` VARCHAR(191) NOT NULL,
+    `nombres` VARCHAR(191) NOT NULL,
+    `apellidos` VARCHAR(191) NOT NULL,
+    `rol` VARCHAR(191) NOT NULL DEFAULT 'OPERADOR_ESCOLAR',
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `usuario_admin_correo_key`(`correo`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -135,6 +161,7 @@ CREATE TABLE `aspirante` (
     `tutorTelefono` VARCHAR(191) NULL,
     `tipoAdmision` VARCHAR(191) NOT NULL,
     `tipoSecundariaId` INTEGER NULL,
+    `subsistemaId` INTEGER NULL,
     `cctEscuelaProcedencia` VARCHAR(191) NULL,
     `nombreEscuelaProcedencia` VARCHAR(191) NULL,
     `estadoEscuelaProcedencia` VARCHAR(191) NULL,
@@ -151,6 +178,9 @@ CREATE TABLE `aspirante` (
     `cuentaComputadora` VARCHAR(191) NULL,
     `cuentaInternet` VARCHAR(191) NULL,
     `medioEnteradoId` INTEGER NULL,
+    `estatusAcademico` VARCHAR(191) NOT NULL DEFAULT 'ACTIVO_REGULAR',
+    `emergenciaContacto` VARCHAR(191) NULL,
+    `emergenciaTelefono` VARCHAR(191) NULL,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
@@ -158,6 +188,21 @@ CREATE TABLE `aspirante` (
     UNIQUE INDEX `aspirante_matricula_key`(`matricula`),
     UNIQUE INDEX `aspirante_curp_key`(`curp`),
     UNIQUE INDEX `aspirante_correoElectronico1_key`(`correoElectronico1`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `control_escolar` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `aspiranteId` INTEGER NOT NULL,
+    `dictamenGeneral` VARCHAR(191) NOT NULL DEFAULT 'PENDIENTE',
+    `observaciones` TEXT NULL,
+    `validadoPor` VARCHAR(191) NULL,
+    `fechaValidacion` DATETIME(3) NULL,
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `control_escolar_aspiranteId_key`(`aspiranteId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -171,6 +216,41 @@ CREATE TABLE `documento` (
     `estatusDoc` VARCHAR(191) NOT NULL DEFAULT 'EN REVISIÓN',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `auditoria` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `eventoId` VARCHAR(191) NOT NULL,
+    `usuarioAdminId` INTEGER NULL,
+    `usuarioTexto` VARCHAR(191) NULL,
+    `rol` VARCHAR(191) NULL,
+    `modulo` VARCHAR(191) NOT NULL,
+    `accion` VARCHAR(191) NOT NULL,
+    `detalle` TEXT NOT NULL,
+    `ip` VARCHAR(191) NULL,
+    `nivel` VARCHAR(191) NOT NULL DEFAULT 'Informativo',
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `auditoria_eventoId_key`(`eventoId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `pago` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `aspiranteId` INTEGER NOT NULL,
+    `concepto` VARCHAR(191) NOT NULL,
+    `monto` DOUBLE NOT NULL,
+    `referenciaBancaria` VARCHAR(191) NOT NULL,
+    `fechaPago` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `metodo` VARCHAR(191) NOT NULL DEFAULT 'Captura Manual (Ventanilla)',
+    `estatus` VARCHAR(191) NOT NULL DEFAULT 'CONCILIADO',
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `pago_referenciaBancaria_key`(`referenciaBancaria`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -198,7 +278,7 @@ CREATE TABLE `materia` (
     `nombre` VARCHAR(191) NOT NULL,
     `semestre` INTEGER NOT NULL,
     `modulo` INTEGER NOT NULL DEFAULT 1,
-    `credititos` INTEGER NOT NULL DEFAULT 6,
+    `creditos` INTEGER NOT NULL DEFAULT 6,
 
     UNIQUE INDEX `materia_planEstudioId_codigo_key`(`planEstudioId`, `codigo`),
     PRIMARY KEY (`id`)
@@ -228,6 +308,18 @@ CREATE TABLE `historial_academico` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `materia_inscrita` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `aspiranteId` INTEGER NOT NULL,
+    `materiaId` INTEGER NOT NULL,
+    `estatus` VARCHAR(191) NOT NULL DEFAULT 'Cursando',
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `materia_inscrita_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_generoId_fkey` FOREIGN KEY (`generoId`) REFERENCES `genero`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -244,6 +336,9 @@ ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_parentescoTutorId_fkey` FOREIG
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_tipoSecundariaId_fkey` FOREIGN KEY (`tipoSecundariaId`) REFERENCES `tipo_secundaria`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_subsistemaId_fkey` FOREIGN KEY (`subsistemaId`) REFERENCES `subsistema`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_tipoEstudianteId_fkey` FOREIGN KEY (`tipoEstudianteId`) REFERENCES `tipo_estudiante`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -256,7 +351,16 @@ ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_situacionLaboralId_fkey` FOREI
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_medioEnteradoId_fkey` FOREIGN KEY (`medioEnteradoId`) REFERENCES `medio_enterado`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `control_escolar` ADD CONSTRAINT `control_escolar_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `documento` ADD CONSTRAINT `documento_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `auditoria` ADD CONSTRAINT `auditoria_usuarioAdminId_fkey` FOREIGN KEY (`usuarioAdminId`) REFERENCES `usuario_admin`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `pago` ADD CONSTRAINT `pago_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `materia` ADD CONSTRAINT `materia_planEstudioId_fkey` FOREIGN KEY (`planEstudioId`) REFERENCES `plan_estudio`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
@@ -272,3 +376,9 @@ ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_aspiranteI
 
 -- AddForeignKey
 ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

@@ -71,7 +71,10 @@ export const consultarEstatus = async (
         folio: String(folio).trim().toUpperCase(),
         curp: String(curp).trim().toUpperCase(),
       },
-      include: { documentos: true },
+      include: {
+        documentos: true,
+        controlEscolar: true,
+      },
     });
 
     if (!aspirante) {
@@ -86,6 +89,16 @@ export const consultarEstatus = async (
     const fechaVigenciaObj = aspirante.vigenciaFolio
       ? new Date(aspirante.vigenciaFolio)
       : new Date();
+
+    let fechaValidacionFormateada = null;
+    if (aspirante.controlEscolar?.fechaValidacion) {
+      fechaValidacionFormateada = new Date(
+        aspirante.controlEscolar.fechaValidacion,
+      ).toLocaleString("es-MX", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    }
 
     res.status(200).json({
       ok: true,
@@ -104,8 +117,13 @@ export const consultarEstatus = async (
           month: "long",
           year: "numeric",
         }),
-        estatus: "EN REVISIÓN",
+        estatus: aspirante.controlEscolar?.dictamenGeneral || "EN REVISIÓN",
+        observaciones: aspirante.controlEscolar?.observaciones || null,
+        fechaValidacion: fechaValidacionFormateada,
+        matricula: aspirante.matricula || null, // Se envía la matrícula para mostrarla en pantalla
+        password: aspirante.password || null, // Se envía la contraseña permanente para mostrarla en pantalla
         documentos: aspirante.documentos.map((doc) => ({
+          id: doc.id,
           tipo: doc.tipoDoc,
           nombreArchivo: doc.nombreArchivo,
           estatusDoc: doc.estatusDoc,
@@ -148,15 +166,72 @@ export const registrarAspirante = async (
     const fechaVigencia = new Date();
     fechaVigencia.setDate(fechaVigencia.getDate() + 15);
 
-    // Mapeo seguro de campos en inglés (frontend) a los campos en español de Prisma
     const {
       previousSchoolCct,
       previousHighSchoolName,
       previousSchoolState,
       currentSemester,
       studyPlan,
+      generoIdentidad,
+      identidadCultural,
+      tieneDiscapacidad,
+      situacionLaboral,
+      medioEnterado,
+      tipoSecundaria,
+      tutorParentesco,
+      tipoEstudiante,
       ...restoDatos
     } = datosValidados;
+
+    const [
+      generoRecord,
+      identidadRecord,
+      discapacidadRecord,
+      situacionRecord,
+      medioRecord,
+      tipoSecundariaRecord,
+      parentescoRecord,
+      tipoEstudianteRecord,
+      semestreRecord,
+    ] = await Promise.all([
+      generoIdentidad
+        ? prisma.genero.findUnique({ where: { nombre: generoIdentidad } })
+        : null,
+      identidadCultural
+        ? prisma.identidadCultural.findUnique({
+            where: { nombre: identidadCultural },
+          })
+        : null,
+      tieneDiscapacidad && tieneDiscapacidad !== "NO"
+        ? prisma.discapacidad.findUnique({
+            where: { nombre: tieneDiscapacidad },
+          })
+        : null,
+      situacionLaboral
+        ? prisma.situacionLaboral.findUnique({
+            where: { nombre: situacionLaboral },
+          })
+        : null,
+      medioEnterado
+        ? prisma.medioEnterado.findUnique({ where: { nombre: medioEnterado } })
+        : null,
+      tipoSecundaria
+        ? prisma.tipoSecundaria.findUnique({
+            where: { nombre: tipoSecundaria },
+          })
+        : null,
+      tutorParentesco
+        ? prisma.parentesco.findUnique({ where: { nombre: tutorParentesco } })
+        : null,
+      tipoEstudiante
+        ? prisma.tipoEstudiante.findUnique({
+            where: { nombre: tipoEstudiante },
+          })
+        : null,
+      currentSemester
+        ? prisma.semestre.findUnique({ where: { nombre: currentSemester } })
+        : null,
+    ]);
 
     const nuevoAspirante = await prisma.$transaction(async (tx) => {
       const aspirante = await tx.aspirante.create({
@@ -167,8 +242,17 @@ export const registrarAspirante = async (
           cctBachilleratoPrevio: previousSchoolCct || null,
           nombreBachilleratoPrevio: previousHighSchoolName || null,
           estadoBachilleratoPrevio: previousSchoolState || null,
-          semestreActual: currentSemester || null,
           planEstudios: studyPlan || null,
+
+          generoId: generoRecord?.id || null,
+          identidadCulturalId: identidadRecord?.id || null,
+          discapacidadId: discapacidadRecord?.id || null,
+          situacionLaboralId: situacionRecord?.id || null,
+          medioEnteradoId: medioRecord?.id || null,
+          tipoSecundariaId: tipoSecundariaRecord?.id || null,
+          parentescoTutorId: parentescoRecord?.id || null,
+          tipoEstudianteId: tipoEstudianteRecord?.id || null,
+          semestreId: semestreRecord?.id || null,
         },
       });
 
@@ -181,7 +265,7 @@ export const registrarAspirante = async (
                 aspiranteId: aspirante.id,
                 tipoDoc: fieldKey,
                 nombreArchivo: file.originalname,
-                archivoBlob: file.buffer, // Se guarda el búfer binario temporal en la base de datos
+                archivoBlob: file.buffer,
                 estatusDoc: "EN REVISIÓN",
               },
             });
@@ -326,7 +410,7 @@ export const aprobarYGenerarCredenciales = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { id } = req.params; // ID del aspirante a aprobar
+    const { id } = req.params;
 
     if (!id) {
       res.status(400).json({
@@ -345,7 +429,6 @@ export const aprobarYGenerarCredenciales = async (
       return;
     }
 
-    // Ejecutamos una transacción de Prisma para asegurar unicidad y consistencia en la matrícula
     const resultado = await prisma.$transaction(async (tx) => {
       const aspirante = await tx.aspirante.findUnique({
         where: { id: aspiranteId },
@@ -355,16 +438,13 @@ export const aprobarYGenerarCredenciales = async (
         throw new Error("ASPIRANTE_NO_ENCONTRADO");
       }
 
-      // Si ya tiene matrícula, significa que ya fue aprobado anteriormente
       if (aspirante.matricula) {
         throw new Error("YA_TIENE_MATRICULA");
       }
 
-      // 1. Generar Matrícula con formato estricto: B (BELVER) + 26 (Año) + 000001 (Incremental)
-      const anioActual = "26"; // O puedes usar new Date().getFullYear().toString().slice(-2);
+      const anioActual = "26";
       const prefijo = `B${anioActual}`;
 
-      // Buscar el último registro que comience con este prefijo para calcular el consecutivo
       const ultimoAlumno = await tx.aspirante.findFirst({
         where: {
           matricula: {
@@ -385,17 +465,14 @@ export const aprobarYGenerarCredenciales = async (
         }
       }
 
-      // Rellenar con ceros a la izquierda para completar 6 dígitos (ej. 000001)
       const consecutivoStr = String(siguienteNumero).padStart(6, "0");
       const nuevaMatricula = `${prefijo}${consecutivoStr}`;
 
-      // 2. Generar Contraseña segura y aleatoria (ej. 8 caracteres alfanuméricos seguros)
       const passwordAleatorio = crypto
         .randomBytes(4)
         .toString("hex")
-        .toUpperCase(); // Ej: "A3F9B21C"
+        .toUpperCase();
 
-      // 3. Actualizar al aspirante convirtiéndolo en alumno oficial con credenciales
       const aspiranteActualizado = await tx.aspirante.update({
         where: { id: aspiranteId },
         data: {
@@ -416,7 +493,7 @@ export const aprobarYGenerarCredenciales = async (
         nombre: `${resultado.nombres} ${resultado.apellidoPaterno}`,
         folio: resultado.folio,
         matricula: resultado.matricula,
-        password: resultado.password, // Visible para el administrador conforme a la regla de negocio
+        password: resultado.password,
         rol: resultado.rol,
       },
     });
