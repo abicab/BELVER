@@ -116,23 +116,35 @@ model Semestre {
 }
 
 // ==========================================
-// USUARIOS ADMINISTRATIVOS (Control Escolar / Admin)
+// CONTROL DE TIPOS DE USUARIO Y USUARIOS
 // ==========================================
 
-model UsuarioAdmin {
-  id         Int         @id @default(autoincrement())
-  correo     String      @unique
-  password   String      // Contraseña hasheada (bcrypt)
-  nombres    String
-  apellidos  String
-  rol        String      @default("OPERADOR_ESCOLAR") // ADMINISTRADOR, OPERADOR, DIRECTOR
-  activo     Boolean     @default(true)
-  creadoEn   DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+model TipoUsuario {
+  id          Int       @id @default(autoincrement())
+  tipoUsuario String    @map("tipo_usuario")
+  activo      Boolean   @default(true)
 
-  auditorias Auditoria[]
+  usuarios    Usuario[]
 
-  @@map("usuario_admin")
+  @@map("tipo_usuario")
+}
+
+model Usuario {
+  id              Int         @id @default(autoincrement())
+  id_tipoUsuario  Int
+  tipoUsuario     TipoUsuario @relation(fields: [id_tipoUsuario], references: [id], onDelete: Restrict)
+  correo          String      @unique
+  contrasena      String      // Contraseña hasheada (bcrypt)
+  nombres         String
+  apellidoPaterno String
+  apellidoMaterno String?
+  activo          Boolean     @default(true)
+  creadoEn        DateTime    @default(now())
+  updateAt        DateTime    @updatedAt
+
+  auditorias      Auditoria[]
+
+  @@map("usuarios")
 }
 
 // ==========================================
@@ -287,14 +299,14 @@ model Documento {
 }
 
 // ==========================================
-// MÓDULO DE AUDITORÍA Y LOGS (Retención de 3 meses)
+// MÓDULO DE AUDITORÍA Y LOGS
 // ==========================================
 
 model Auditoria {
-  id             Int           @id @default(autoincrement())
-  eventoId       String        @unique // Ej. LOG-8012
-  usuarioAdminId Int?
-  usuarioAdmin   UsuarioAdmin? @relation(fields: [usuarioAdminId], references: [id], onDelete: SetNull)
+  id             Int      @id @default(autoincrement())
+  eventoId       String   @unique // Ej. LOG-8012
+  UsuariosId     Int?
+  usuario        Usuario? @relation(fields: [UsuariosId], references: [id], onDelete: SetNull)
   usuarioTexto   String?
   rol            String?
   modulo         String        // Seguridad / Auth, Control Escolar, Pagos, CAE, etc.
@@ -328,15 +340,13 @@ model Pago {
 }
 
 // ==========================================
-// PLANES DE ESTUDIO Y ESTRUCTURA CURRICULAR (Parte de tu compañero - Intacta)
+// PLANES DE ESTUDIO Y ESTRUCTURA CURRICULAR
 // ==========================================
 
 model PlanEstudio {
   id            Int       @id @default(autoincrement())
   clave         String    @unique
   nombre        String
-  acuerdoSep    String
-  totalCreditos Int
   descripcion   String?   @db.Text
   activo        Boolean   @default(true)
   creadoEn      DateTime  @default(now())
@@ -348,14 +358,13 @@ model PlanEstudio {
 }
 
 model Materia {
-  id            Int         @id @default(autoincrement())
-  planEstudioId Int
-  planEstudio   PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
-  codigo        String
-  nombre        String
-  semestre      Int         // 1 a 6
-  modulo        Int         @default(1) // Módulo dentro del semestre (1 u 2)
-  creditos      Int         @default(6)
+  id             Int         @id @default(autoincrement())
+  planEstudioId  Int
+  planEstudio    PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  codigo         String
+  nombreCompleto String      @map("nombre_completo")
+  nombreCorto    String      @map("nombre_corto")
+  semestre       Int         // 1 a 6
 
   prerrequisitos    Seriacion[] @relation("MateriaPrerrequisito")
   esPrerrequisitoDe Seriacion[] @relation("MateriaSiguiente")

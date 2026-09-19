@@ -6,12 +6,12 @@ export interface CargaMateriaInput {
   aspiranteId: number;
   materiaIds: number[];
   semestre: number;
-  modulo: number;
+  modulo?: number;
 }
 
 export class StudyPlanService {
   /**
-   * Obtiene todos los planes de estudio junto con sus materias asociadas.
+   * Obtiene todos los planes de estudio junto con sus materias asociadas ordenadas por semestre.
    */
   static async obtenerTodos() {
     return await prisma.planEstudio.findMany({
@@ -19,7 +19,6 @@ export class StudyPlanService {
         materias: {
           orderBy: [
             { semestre: 'asc' },
-            { modulo: 'asc' },
           ],
         },
       },
@@ -27,20 +26,19 @@ export class StudyPlanService {
   }
 
   /**
-   * Valida la inscripción de materias respetando el límite por módulo y la seriación.
+   * Valida la inscripción de materias respetando el límite por semestre y la seriación.
    */
   static async validarEInscribirMaterias({
     aspiranteId,
     materiaIds,
     semestre,
-    modulo,
   }: CargaMateriaInput) {
-    // 1. Regla de Límite de materias por módulo
+    // 1. Regla de Límite de materias por semestre
     const limitePermitido = semestre >= 4 ? 4 : 3;
 
     if (materiaIds.length > limitePermitido) {
       throw new Error(
-        `Para el semestre ${semestre} (Módulo ${modulo}), el límite máximo es de ${limitePermitido} materias. Seleccionaste ${materiaIds.length}.`
+        `Para el semestre ${semestre}, el límite máximo es de ${limitePermitido} materias. Seleccionaste ${materiaIds.length}.`
       );
     }
 
@@ -62,7 +60,7 @@ export class StudyPlanService {
 
         if (!aprobado) {
           throw new Error(
-            `No se puede cursar la materia seleccionada. Es necesario haber aprobado previamente: ${req.prerrequisito.nombre} (${req.prerrequisito.codigo}).`
+            `No se puede cursar la materia seleccionada. Es necesario haber aprobado previamente: ${req.prerrequisito.nombreCompleto} (${req.prerrequisito.codigo}).`
           );
         }
       }

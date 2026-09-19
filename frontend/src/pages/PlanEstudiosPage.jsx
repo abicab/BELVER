@@ -7,17 +7,16 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Estado del formulario de nuevo plan
+  // Estado del formulario de nuevo plan (actualizado sin acuerdoSep ni totalCreditos)
   const [formData, setFormData] = useState({
     clave: '',
     nombre: '',
-    acuerdoSep: '',
-    totalCreditos: '',
     descripcion: ''
   });
 
+  // Estado del formulario de materias con los campos correctos de la BD
   const [materiasForm, setMateriasForm] = useState([
-    { codigo: '', nombre: '', semestre: 1, modulo: 1, creditos: 6 }
+    { codigo: '', nombreCompleto: '', nombreCorto: '', semestre: 1 }
   ]);
 
   const esAdministrador = userRole === 'ADMIN';
@@ -29,29 +28,29 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
       if (!res.ok) throw new Error('Error al conectar con el servidor');
       const data = await res.json();
       
-      console.log("Respuesta recibida del backend:", data); // <--- AQUÍ
+      console.log("Respuesta recibida del backend:", data);
 
-    // Si tu backend responde { data: [...] } usa setPlanes(data.data)
-    setPlanes(Array.isArray(data) ? data : data.data || []);
-  } catch (err) {
-    console.error("Error consultando la API:", err);
-    setErrorMsg("No se pudieron cargar los planes de estudio. Revisa la conexión con el servidor.");
-  } finally {
-    setLoading(false);
-  }
-};
+      setPlanes(Array.isArray(data) ? data : data.data || []);
+    } catch (err) {
+      console.error("Error consultando la API:", err);
+      setErrorMsg("No se pudieron cargar los planes de estudio. Revisa la conexión con el servidor.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchPlanes();
   }, []);
 
-  // Funciones de gestión dinamica de materias en el modal
+  // Funciones de gestión dinámica de materias en el modal
   const handleAddMateriaField = () => {
-    setMateriasForm([...materiasForm, { codigo: '', nombre: '', semestre: 1, modulo: 1, creditos: 6 }]);
+    setMateriasForm([...materiasForm, { codigo: '', nombreCompleto: '', nombreCorto: '', semestre: 1 }]);
   };
 
   const handleMateriaChange = (index, field, value) => {
     const updated = [...materiasForm];
-    updated[index][field] = field === 'semestre' || field === 'creditos' || field === 'modulo' ? Number(value) : value;
+    updated[index][field] = field === 'semestre' ? Number(value) : value;
     setMateriasForm(updated);
   };
 
@@ -64,16 +63,6 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
   const handleCreatePlan = async (e) => {
     e.preventDefault();
     setErrorMsg('');
-
-    // Validar regla de máximo de materias por módulo antes de enviar
-    for (const m of materiasForm) {
-      const limite = m.semestre >= 4 ? 4 : 3;
-      const count = materiasForm.filter(x => x.semestre === m.semestre && x.modulo === m.modulo).length;
-      if (count > limite) {
-        setErrorMsg(`En el semestre ${m.semestre}, módulo ${m.modulo} no puedes asignar más de ${limite} materias.`);
-        return;
-      }
-    }
 
     try {
       const res = await fetch("http://localhost:4000/api/planes", {
@@ -89,8 +78,8 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
 
       await fetchPlanes();
       setIsModalOpen(false);
-      setFormData({ clave: '', nombre: '', acuerdoSep: '', totalCreditos: '', descripcion: '' });
-      setMateriasForm([{ codigo: '', nombre: '', semestre: 1, modulo: 1, creditos: 6 }]);
+      setFormData({ clave: '', nombre: '', descripcion: '' });
+      setMateriasForm([{ codigo: '', nombreCompleto: '', nombreCorto: '', semestre: 1 }]);
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -107,7 +96,7 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
               Gestión Curricular Institucional (BELVER)
             </span>
             <h1 className="text-2xl font-bold text-slate-900 mt-2">
-              Planes de Estudio SEP
+              Planes de Estudio
             </h1>
             <p className="text-xs text-slate-500">
               Malla curricular oficial incorporada a la Secretaría de Educación de Veracruz y SEP.
@@ -153,15 +142,11 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                         {plan.clave}
                       </span>
                       <h2 className="text-lg font-bold text-slate-900 mt-1">{plan.nombre}</h2>
-                      <p className="text-xs text-slate-400 font-semibold">{plan.acuerdoSep}</p>
                     </div>
                     <div className="text-right">
                       <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
                         {plan.activo ? 'Vigente' : 'Inactivo'}
                       </span>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Total: <strong>{plan.totalCreditos} Créditos SATCA</strong>
-                      </p>
                     </div>
                   </div>
 
@@ -181,16 +166,15 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                   {/* Tabla del Plan de Estudios */}
                   {planSeleccionado === plan.id && (
                     <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
-                      <h3 className="text-xs font-bold text-slate-900 uppercase">Estructura Curricular por Semestre y Módulo</h3>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase">Estructura Curricular por Semestre</h3>
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs border border-slate-200 rounded-lg overflow-hidden">
                           <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                             <tr>
                               <th className="p-2.5">Código</th>
-                              <th className="p-2.5">Asignatura</th>
-                              <th className="p-2.5">Semestre Sugerido</th>
-                              <th className="p-2.5">Módulo</th>
-                              <th className="p-2.5 text-right">Créditos</th>
+                              <th className="p-2.5">Nombre Completo</th>
+                              <th className="p-2.5">Nombre Corto</th>
+                              <th className="p-2.5">Semestre</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
@@ -198,19 +182,14 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                               plan.materias.map((mat) => (
                                 <tr key={mat.id || mat.codigo} className="hover:bg-slate-50">
                                   <td className="p-2.5 font-mono font-bold text-slate-800">{mat.codigo}</td>
-                                  <td className="p-2.5 font-semibold text-slate-900">{mat.nombre}</td>
-                                  <td className="p-2.5">{mat.semestre}° Semestre</td>
-                                  <td className="p-2.5">
-                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-semibold text-[11px]">
-                                      Módulo {mat.modulo}
-                                    </span>
-                                  </td>
-                                  <td className="p-2.5 text-right font-mono font-bold text-slate-800">{mat.creditos}</td>
+                                  <td className="p-2.5 font-semibold text-slate-900">{mat.nombreCompleto}</td>
+                                  <td className="p-2.5 text-slate-600">{mat.nombreCorto}</td>
+                                  <td className="p-2.5 font-bold text-blue-950">{mat.semestre}° Semestre</td>
                                 </tr>
                               ))
                             ) : (
                               <tr>
-                                <td colSpan="5" className="p-4 text-center text-slate-400">
+                                <td colSpan="4" className="p-4 text-center text-slate-400">
                                   No hay materias registradas para este plan.
                                 </td>
                               </tr>
@@ -255,20 +234,6 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Acuerdo / RVOE SEP</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ej. Acuerdo SEV-2026"
-                      value={formData.acuerdoSep}
-                      onChange={(e) => setFormData({ ...formData, acuerdoSep: e.target.value })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="md:col-span-2 flex flex-col gap-1">
                     <label className="font-semibold text-slate-800">Nombre Oficial del Plan</label>
                     <input
                       type="text"
@@ -276,17 +241,6 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                       placeholder="Ej. Bachillerato General Mixto Especializado"
                       value={formData.nombre}
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Total Créditos</label>
-                    <input
-                      type="number"
-                      required
-                      placeholder="180"
-                      value={formData.totalCreditos}
-                      onChange={(e) => setFormData({ ...formData, totalCreditos: e.target.value })}
                       className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
                     />
                   </div>
@@ -333,9 +287,19 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                           <input
                             type="text"
                             required
-                            placeholder="Nombre de la Materia"
-                            value={mat.nombre}
-                            onChange={(e) => handleMateriaChange(index, 'nombre', e.target.value)}
+                            placeholder="Nombre Completo"
+                            value={mat.nombreCompleto}
+                            onChange={(e) => handleMateriaChange(index, 'nombreCompleto', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-[11px]"
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            required
+                            placeholder="Nombre Corto"
+                            value={mat.nombreCorto}
+                            onChange={(e) => handleMateriaChange(index, 'nombreCorto', e.target.value)}
                             className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-[11px]"
                           />
                         </div>
@@ -349,27 +313,6 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                               <option key={s} value={s}>{s}° Sem.</option>
                             ))}
                           </select>
-                        </div>
-                        <div className="col-span-2">
-                          <select
-                            value={mat.modulo}
-                            onChange={(e) => handleMateriaChange(index, 'modulo', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-[11px]"
-                          >
-                            <option value={1}>Mod 1</option>
-                            <option value={2}>Mod 2</option>
-                            <option value={3}>Mod 3</option>
-                          </select>
-                        </div>
-                        <div className="col-span-1">
-                          <input
-                            type="number"
-                            required
-                            placeholder="Créditos"
-                            value={mat.creditos}
-                            onChange={(e) => handleMateriaChange(index, 'creditos', e.target.value)}
-                            className="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-[11px]"
-                          />
                         </div>
                         <div className="col-span-1 text-center">
                           <button

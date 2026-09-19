@@ -111,18 +111,29 @@ CREATE TABLE `semestre` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `usuario_admin` (
+CREATE TABLE `tipo_usuario` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `tipo_usuario` VARCHAR(191) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+-- CreateTable
+CREATE TABLE `usuarios` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `id_tipoUsuario` INTEGER NOT NULL,
     `correo` VARCHAR(191) NOT NULL,
-    `password` VARCHAR(191) NOT NULL,
+    `contrasena` VARCHAR(191) NOT NULL,
     `nombres` VARCHAR(191) NOT NULL,
-    `apellidos` VARCHAR(191) NOT NULL,
-    `rol` VARCHAR(191) NOT NULL DEFAULT 'OPERADOR_ESCOLAR',
+    `apellidoPaterno` VARCHAR(191) NOT NULL,
+    `apellidoMaterno` VARCHAR(191) NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
+    `updateAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `usuario_admin_correo_key`(`correo`),
+    UNIQUE INDEX `usuarios_correo_key`(`correo`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -223,7 +234,7 @@ CREATE TABLE `documento` (
 CREATE TABLE `auditoria` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `eventoId` VARCHAR(191) NOT NULL,
-    `usuarioAdminId` INTEGER NULL,
+    `UsuariosId` INTEGER NULL,
     `usuarioTexto` VARCHAR(191) NULL,
     `rol` VARCHAR(191) NULL,
     `modulo` VARCHAR(191) NOT NULL,
@@ -259,8 +270,6 @@ CREATE TABLE `plan_estudio` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `clave` VARCHAR(191) NOT NULL,
     `nombre` VARCHAR(191) NOT NULL,
-    `acuerdoSep` VARCHAR(191) NOT NULL,
-    `totalCreditos` INTEGER NOT NULL,
     `descripcion` TEXT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -275,10 +284,9 @@ CREATE TABLE `materia` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `planEstudioId` INTEGER NOT NULL,
     `codigo` VARCHAR(191) NOT NULL,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre_completo` VARCHAR(191) NOT NULL,
+    `nombre_corto` VARCHAR(191) NOT NULL,
     `semestre` INTEGER NOT NULL,
-    `modulo` INTEGER NOT NULL DEFAULT 1,
-    `creditos` INTEGER NOT NULL DEFAULT 6,
 
     UNIQUE INDEX `materia_planEstudioId_codigo_key`(`planEstudioId`, `codigo`),
     PRIMARY KEY (`id`)
@@ -321,6 +329,9 @@ CREATE TABLE `materia_inscrita` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
+ALTER TABLE `usuarios` ADD CONSTRAINT `usuarios_id_tipoUsuario_fkey` FOREIGN KEY (`id_tipoUsuario`) REFERENCES `tipo_usuario`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_generoId_fkey` FOREIGN KEY (`generoId`) REFERENCES `genero`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -357,7 +368,7 @@ ALTER TABLE `control_escolar` ADD CONSTRAINT `control_escolar_aspiranteId_fkey` 
 ALTER TABLE `documento` ADD CONSTRAINT `documento_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `auditoria` ADD CONSTRAINT `auditoria_usuarioAdminId_fkey` FOREIGN KEY (`usuarioAdminId`) REFERENCES `usuario_admin`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `auditoria` ADD CONSTRAINT `auditoria_UsuariosId_fkey` FOREIGN KEY (`UsuariosId`) REFERENCES `usuarios`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `pago` ADD CONSTRAINT `pago_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
