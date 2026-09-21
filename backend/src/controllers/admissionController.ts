@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import prisma from "../config/prisma.js";
-import { admissionSchema } from "../middlewares/admissionValidation.js";
+import { admissionSchema } from "../middlewares/admissionMiddleware.js";
 import nodemailer from "nodemailer";
-import crypto from "crypto";
 
-// Configuración del transportador de correos
+// Configuración del transportador de correos institucionales
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT) || 587,
@@ -15,20 +14,22 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Endpoint para verificar duplicados en el Paso 1
+// Endpoint para verificar duplicados en el Paso 1 (Únicamente por CURP)
 export const verificarDuplicado = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
-    const { curp, email } = req.query;
+    const { curp } = req.query;
+
+    if (!curp) {
+      res.status(400).json({ ok: false, mensaje: "La CURP es obligatoria." });
+      return;
+    }
 
     const aspiranteExistente = await prisma.aspirante.findFirst({
       where: {
-        OR: [
-          { curp: String(curp || "").toUpperCase() },
-          { correoElectronico1: String(email || "").toLowerCase() },
-        ],
+        curp: String(curp).toUpperCase(),
       },
     });
 
@@ -37,7 +38,7 @@ export const verificarDuplicado = async (
         ok: true,
         existe: true,
         mensaje:
-          "La CURP o el correo electrónico proporcionado ya se encuentran registrados en el sistema.",
+          "La CURP proporcionada ya se encuentra registrada en el sistema institucional de BELVER.",
       });
       return;
     }
@@ -45,9 +46,10 @@ export const verificarDuplicado = async (
     res.status(200).json({ ok: true, existe: false });
   } catch (error) {
     console.error("Error al verificar duplicado:", error);
-    res
-      .status(500)
-      .json({ ok: false, mensaje: "Error al verificar duplicados." });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error al verificar duplicados en el servidor.",
+    });
   }
 };
 
@@ -74,6 +76,11 @@ export const consultarEstatus = async (
       include: {
         documentos: true,
         controlEscolar: true,
+        discapacidades: {
+          include: {
+            discapacidad: true,
+          },
+        },
       },
     });
 
@@ -95,7 +102,7 @@ export const consultarEstatus = async (
       fechaValidacionFormateada = new Date(
         aspirante.controlEscolar.fechaValidacion,
       ).toLocaleString("es-MX", {
-        dateStyle: "medium",
+        dateStyle: "medium" as any,
         timeStyle: "short",
       });
     }
@@ -110,7 +117,7 @@ export const consultarEstatus = async (
         modalidad:
           aspirante.tipoAdmision === "nuevo_ingreso"
             ? "NUEVO INGRESO (SECUNDARIA REGULAR)"
-            : "REVALIDACIÓN / CON HISTORIAL",
+            : "REVALIDACIÓN / EQUIVALENCIA",
         fechaRegistro: aspirante.creadoEn.toISOString().split("T")[0],
         vigencia: fechaVigenciaObj.toLocaleDateString("es-MX", {
           day: "2-digit",
@@ -120,9 +127,12 @@ export const consultarEstatus = async (
         estatus: aspirante.controlEscolar?.dictamenGeneral || "EN REVISIÓN",
         observaciones: aspirante.controlEscolar?.observaciones || null,
         fechaValidacion: fechaValidacionFormateada,
-        matricula: aspirante.matricula || null, // Se envía la matrícula para mostrarla en pantalla
-        password: aspirante.password || null, // Se envía la contraseña permanente para mostrarla en pantalla
-        documentos: aspirante.documentos.map((doc) => ({
+        matricula: aspirante.matricula || null,
+        password: aspirante.password || null,
+        discapacidades: aspirante.discapacidades.map(
+          (d: any) => d.discapacidad.nombre,
+        ),
+        documentos: aspirante.documentos.map((doc: any) => ({
           id: doc.id,
           tipo: doc.tipoDoc,
           nombreArchivo: doc.nombreArchivo,
@@ -144,7 +154,18 @@ export const registrarAspirante = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const validationResult = admissionSchema.safeParse(req.body);
+    const rawBody = { ...req.body };
+
+    // Procesar el arreglo de discapacidades si viene serializado como cadena JSON
+    if (typeof rawBody.discapacidades === "string") {
+      try {
+        rawBody.discapacidades = JSON.parse(rawBody.discapacidades);
+      } catch {
+        rawBody.discapacidades = [];
+      }
+    }
+
+    const validationResult = admissionSchema.safeParse(rawBody);
 
     if (!validationResult.success) {
       console.error(
@@ -166,96 +187,89 @@ export const registrarAspirante = async (
     const fechaVigencia = new Date();
     fechaVigencia.setDate(fechaVigencia.getDate() + 15);
 
-    const {
-      previousSchoolCct,
-      previousHighSchoolName,
-      previousSchoolState,
-      currentSemester,
-      studyPlan,
-      generoIdentidad,
-      identidadCultural,
-      tieneDiscapacidad,
-      situacionLaboral,
-      medioEnterado,
-      tipoSecundaria,
-      tutorParentesco,
-      tipoEstudiante,
-      ...restoDatos
-    } = datosValidados;
-
-    const [
-      generoRecord,
-      identidadRecord,
-      discapacidadRecord,
-      situacionRecord,
-      medioRecord,
-      tipoSecundariaRecord,
-      parentescoRecord,
-      tipoEstudianteRecord,
-      semestreRecord,
-    ] = await Promise.all([
-      generoIdentidad
-        ? prisma.genero.findUnique({ where: { nombre: generoIdentidad } })
-        : null,
-      identidadCultural
-        ? prisma.identidadCultural.findUnique({
-            where: { nombre: identidadCultural },
-          })
-        : null,
-      tieneDiscapacidad && tieneDiscapacidad !== "NO"
-        ? prisma.discapacidad.findUnique({
-            where: { nombre: tieneDiscapacidad },
-          })
-        : null,
-      situacionLaboral
-        ? prisma.situacionLaboral.findUnique({
-            where: { nombre: situacionLaboral },
-          })
-        : null,
-      medioEnterado
-        ? prisma.medioEnterado.findUnique({ where: { nombre: medioEnterado } })
-        : null,
-      tipoSecundaria
-        ? prisma.tipoSecundaria.findUnique({
-            where: { nombre: tipoSecundaria },
-          })
-        : null,
-      tutorParentesco
-        ? prisma.parentesco.findUnique({ where: { nombre: tutorParentesco } })
-        : null,
-      tipoEstudiante
-        ? prisma.tipoEstudiante.findUnique({
-            where: { nombre: tipoEstudiante },
-          })
-        : null,
-      currentSemester
-        ? prisma.semestre.findUnique({ where: { nombre: currentSemester } })
-        : null,
-    ]);
-
     const nuevoAspirante = await prisma.$transaction(async (tx) => {
+      // 1. Buscar el ID de la identidad cultural si fue proporcionada
+      let identidadCulturalId = null;
+      if (datosValidados.identidadCultural) {
+        const catIdentidad = await tx.identidadCultural.findUnique({
+          where: { nombre: datosValidados.identidadCultural },
+        });
+        if (catIdentidad) {
+          identidadCulturalId = catIdentidad.id;
+        }
+      }
+
+      // 2. Buscar los IDs de las discapacidades seleccionadas en el catálogo
+      const nombresDiscapacidades = datosValidados.discapacidades || [];
+      const registrosDiscapacidades = await tx.discapacidad.findMany({
+        where: {
+          nombre: { in: nombresDiscapacidades },
+        },
+      });
+
+      // 3. Crear el registro del aspirante con la llave foránea correcta
       const aspirante = await tx.aspirante.create({
         data: {
           folio: randomFolio,
           vigenciaFolio: fechaVigencia,
-          ...restoDatos,
-          cctBachilleratoPrevio: previousSchoolCct || null,
-          nombreBachilleratoPrevio: previousHighSchoolName || null,
-          estadoBachilleratoPrevio: previousSchoolState || null,
-          planEstudios: studyPlan || null,
+          apellidoPaterno: datosValidados.apellidoPaterno,
+          apellidoMaterno: datosValidados.apellidoMaterno || null,
+          nombres: datosValidados.nombres,
+          curp: datosValidados.curp,
+          fechaNacimiento: datosValidados.fechaNacimiento
+            ? new Date(datosValidados.fechaNacimiento)
+            : null,
+          genero: datosValidados.genero || null,
+          correoElectronico1: datosValidados.correoElectronico1,
+          correoElectronico2: datosValidados.correoElectronico2 || null,
+          telefonoCelular: datosValidados.telefonoCelular,
+          telefonoParticular: datosValidados.telefonoParticular || null,
 
-          generoId: generoRecord?.id || null,
-          identidadCulturalId: identidadRecord?.id || null,
-          discapacidadId: discapacidadRecord?.id || null,
-          situacionLaboralId: situacionRecord?.id || null,
-          medioEnteradoId: medioRecord?.id || null,
-          tipoSecundariaId: tipoSecundariaRecord?.id || null,
-          parentescoTutorId: parentescoRecord?.id || null,
-          tipoEstudianteId: tipoEstudianteRecord?.id || null,
-          semestreId: semestreRecord?.id || null,
+          identidadCulturalId: identidadCulturalId,
+
+          // Domicilio
+          pais: datosValidados.pais,
+          codigoPostal: datosValidados.codigoPostal || null,
+          estado: datosValidados.estado,
+          municipio: datosValidados.municipio,
+          colonia: datosValidados.colonia,
+          calle: datosValidados.calle,
+          numeroExterior: datosValidados.numeroExterior || null,
+          numeroInterior: datosValidados.numeroInterior || null,
+
+          // Tutor usando el campo de llave foránea escalar directamente
+          tutorApellidoPaterno: datosValidados.tutorApellidoPaterno || null,
+          tutorApellidoMaterno: datosValidados.tutorApellidoMaterno || null,
+          tutorNombres: datosValidados.tutorNombres || null,
+          tutorTelefono: datosValidados.tutorTelefono || null,
+          parentescoTutorId: datosValidados.tutorParentesco
+            ? Number(datosValidados.tutorParentesco)
+            : null,
+
+          // Antecedentes Escolares
+          tipoAdmision: datosValidados.tipoAdmision,
+          cctEscuelaProcedencia: datosValidados.cctEscuelaProcedencia || null,
+          nombreEscuelaProcedencia:
+            datosValidados.nombreEscuelaProcedencia || null,
+          sistemaProcedenciaLetra:
+            datosValidados.sistemaProcedenciaLetra || null,
+          otroSistemaProcedencia: datosValidados.otroSistemaProcedencia || null,
+          cctBachilleratoPrevio: datosValidados.previousSchoolCct || null,
+          nombreBachilleratoPrevio:
+            datosValidados.previousHighSchoolName || null,
+
+          // Conectamos las múltiples discapacidades relacionales
+          discapacidades: {
+            create: registrosDiscapacidades.map((d: any) => ({
+              discapacidad: {
+                connect: { id: d.id },
+              },
+            })),
+          },
         },
       });
 
+      // 4. Registro de archivos en el expediente digital
       if (files) {
         for (const [fieldKey, fileList] of Object.entries(files)) {
           if (fileList && fileList.length > 0) {
@@ -287,23 +301,7 @@ export const registrarAspirante = async (
         from: '"Sistema BELVER" <noreply@belver.gob.mx>',
         to: datosValidados.correoElectronico1,
         subject: "¡Inscripción Exitosa a BELVER - Folio de Seguimiento!",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-            <h2 style="color: #1e3a8a; text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px;">Bachillerato en Línea de Veracruz (BELVER)</h2>
-            <p>Estimado(a) <strong>${datosValidados.nombres} ${datosValidados.apellidoPaterno}</strong>,</p>
-            <p>Tu solicitud de inscripción ha sido registrada de manera exitosa en nuestro sistema institucional.</p>
-
-            <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 11px; color: #64748b; font-weight: bold; text-transform: uppercase; display: block;">Tu Folio de Seguimiento Oficial</span>
-              <h1 style="color: #0f172a; font-family: monospace; font-size: 28px; margin: 10px 0;">${nuevoAspirante.folio}</h1>
-              <p style="font-size: 12px; color: #b45309; margin: 5px 0;">⚠️ Vigencia del trámite: <strong>${fechaFormateada}</strong></p>
-            </div>
-
-            <p style="font-size: 13px; color: #334155;">Conserva este correo y tu folio para consultar el estatus de validación de tus documentos en el portal oficial de BELVER.</p>
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-            <p style="font-size: 10px; color: #94a3b8; text-align: center;">Este correo es informativo, favor de no responder a esta dirección.</p>
-          </div>
-        `,
+        text: `Estimado(a) ${datosValidados.nombres}, tu solicitud ha sido registrada con éxito en el sistema BELVER. Tu folio de seguimiento oficial es: ${nuevoAspirante.folio}. Vigencia del trámite: ${fechaFormateada}.`,
       });
     } catch (emailError) {
       console.error(
@@ -324,7 +322,7 @@ export const registrarAspirante = async (
       res.status(400).json({
         ok: false,
         mensaje:
-          "El registro ya existe en el sistema (Verifique campos únicos como CURP o correo).",
+          "El registro ya existe en el sistema (La CURP ingresada ya cuenta con una solicitud activa).",
       });
       return;
     }
@@ -332,191 +330,6 @@ export const registrarAspirante = async (
     res.status(500).json({
       ok: false,
       mensaje: "Error interno del servidor al procesar la inscripción.",
-    });
-  }
-};
-
-// Endpoint para actualizar documentos en revisión
-export const actualizarDocumentoAspirante = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
-  try {
-    const { folio, curp, tipoDoc } = req.body;
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-
-    if (!folio || !curp || !tipoDoc || !files || !files[tipoDoc]) {
-      res.status(400).json({
-        ok: false,
-        mensaje: "Datos incompletos para la actualización del archivo.",
-      });
-      return;
-    }
-
-    const aspirante = await prisma.aspirante.findFirst({
-      where: {
-        folio: String(folio).trim().toUpperCase(),
-        curp: String(curp).trim().toUpperCase(),
-      },
-      include: { documentos: true },
-    });
-
-    if (!aspirante) {
-      res.status(404).json({ ok: false, mensaje: "Aspirante no encontrado." });
-      return;
-    }
-
-    const archivoNuevo = files[tipoDoc][0];
-    const docExistente = aspirante.documentos.find(
-      (d) => d.tipoDoc === tipoDoc,
-    );
-
-    if (docExistente) {
-      await prisma.documento.update({
-        where: { id: docExistente.id },
-        data: {
-          nombreArchivo: archivoNuevo.originalname,
-          archivoBlob: archivoNuevo.buffer,
-          estatusDoc: "EN REVISIÓN",
-        },
-      });
-    } else {
-      await prisma.documento.create({
-        data: {
-          aspiranteId: aspirante.id,
-          tipoDoc: tipoDoc,
-          nombreArchivo: archivoNuevo.originalname,
-          archivoBlob: archivoNuevo.buffer,
-          estatusDoc: "EN REVISIÓN",
-        },
-      });
-    }
-
-    res.status(200).json({
-      ok: true,
-      mensaje: "Documento actualizado correctamente.",
-    });
-  } catch (error) {
-    console.error("Error al actualizar documento:", error);
-    res
-      .status(500)
-      .json({ ok: false, mensaje: "Error interno al actualizar el archivo." });
-  }
-};
-
-// ENDPOINT PARA APROBAR ASPIRANTE Y GENERAR CREDENCIALES
-export const aprobarYGenerarCredenciales = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      res.status(400).json({
-        ok: false,
-        mensaje: "El ID del aspirante es obligatorio.",
-      });
-      return;
-    }
-
-    const aspiranteId = Number(id);
-    if (isNaN(aspiranteId)) {
-      res.status(400).json({
-        ok: false,
-        mensaje: "El ID proporcionado no es válido.",
-      });
-      return;
-    }
-
-    const resultado = await prisma.$transaction(async (tx) => {
-      const aspirante = await tx.aspirante.findUnique({
-        where: { id: aspiranteId },
-      });
-
-      if (!aspirante) {
-        throw new Error("ASPIRANTE_NO_ENCONTRADO");
-      }
-
-      if (aspirante.matricula) {
-        throw new Error("YA_TIENE_MATRICULA");
-      }
-
-      const anioActual = "26";
-      const prefijo = `B${anioActual}`;
-
-      const ultimoAlumno = await tx.aspirante.findFirst({
-        where: {
-          matricula: {
-            startsWith: prefijo,
-          },
-        },
-        orderBy: {
-          matricula: "desc",
-        },
-      });
-
-      let siguienteNumero = 1;
-      if (ultimoAlumno && ultimoAlumno.matricula) {
-        const partesNumericas = ultimoAlumno.matricula.replace(prefijo, "");
-        const numeroExtraido = parseInt(partesNumericas, 10);
-        if (!isNaN(numeroExtraido)) {
-          siguienteNumero = numeroExtraido + 1;
-        }
-      }
-
-      const consecutivoStr = String(siguienteNumero).padStart(6, "0");
-      const nuevaMatricula = `${prefijo}${consecutivoStr}`;
-
-      const passwordAleatorio = crypto
-        .randomBytes(4)
-        .toString("hex")
-        .toUpperCase();
-
-      const aspiranteActualizado = await tx.aspirante.update({
-        where: { id: aspiranteId },
-        data: {
-          matricula: nuevaMatricula,
-          password: passwordAleatorio,
-          rol: "ALUMNO",
-        },
-      });
-
-      return aspiranteActualizado;
-    });
-
-    res.status(200).json({
-      ok: true,
-      mensaje: "¡Aspirante aprobado y credenciales generadas exitosamente!",
-      data: {
-        id: resultado.id,
-        nombre: `${resultado.nombres} ${resultado.apellidoPaterno}`,
-        folio: resultado.folio,
-        matricula: resultado.matricula,
-        password: resultado.password,
-        rol: resultado.rol,
-      },
-    });
-  } catch (error: any) {
-    console.error("Error al aprobar aspirante y generar credenciales:", error);
-
-    if (error.message === "ASPIRANTE_NO_ENCONTRADO") {
-      res.status(404).json({ ok: false, mensaje: "Aspirante no encontrado." });
-      return;
-    }
-
-    if (error.message === "YA_TIENE_MATRICULA") {
-      res.status(400).json({
-        ok: false,
-        mensaje:
-          "El aspirante ya cuenta con una matrícula asignada previamente.",
-      });
-      return;
-    }
-
-    res.status(500).json({
-      ok: false,
-      mensaje: "Error interno al procesar la aprobación del aspirante.",
     });
   }
 };

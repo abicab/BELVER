@@ -34,8 +34,7 @@ export const obtenerAspirantesControlEscolar = async (
       where: whereClause,
       include: {
         documentos: true,
-        genero: true,
-        tipoSecundariaRel: true,
+        generoRel: true,
         subsistema: true,
         controlEscolar: true,
       },
@@ -245,12 +244,10 @@ export const aprobarYGenerarCredencialesControl = async (
       return;
     }
     if (error.message === "YA_TIENE_MATRICULA") {
-      res
-        .status(400)
-        .json({
-          ok: false,
-          mensaje: "El aspirante ya cuenta con una matrícula asignada.",
-        });
+      res.status(400).json({
+        ok: false,
+        mensaje: "El aspirante ya cuenta con una matrícula asignada.",
+      });
       return;
     }
 

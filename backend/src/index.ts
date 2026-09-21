@@ -1,9 +1,10 @@
 import express from "express";
 import cors from "cors";
-import admissionRoutes from "./routes/admissionRoute";
-import catalogRoute from "./routes/catalogRoute";
+import admissionRoute from "./routes/admissionRoute";
+import catalogoRoute from "./routes/catalogoRoute";
+import controlescolarRoute from "./routes/controlescolarRoute";
 import studyPlanRoutes from "./routes/studyPlanRoutes";
-import controlescolarRoutes from "./routes/controlescolarRoute.js";
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
@@ -11,19 +12,19 @@ app.use(cors());
 app.use(express.json());
 
 // ... dentro de tus middlewares de rutas:
-app.use("/api/controlescolar", controlescolarRoutes);
+app.use("/api/controlescolar", controlescolarRoute);
 
 // Ruta de Catalogos
-app.use("/api/catalogo", catalogRoute);
+app.use("/api/catalogo", catalogoRoute);
 
 // Montar las rutas de inscripción
-app.use("/api/admission", admissionRoutes);
+app.use("/api/admission", admissionRoute);
 
 // ruta de planes
 app.use("/api/planes", studyPlanRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ ok: true, mensaje: "API de BELVER funcionando correctamente 🚀" });
+  res.json({ ok: true, mensaje: "API de BELVER funcionando correctamente" });
 });
 
 app.listen(PORT, () => {

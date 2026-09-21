@@ -1,45 +1,28 @@
 import { Router } from "express";
 import {
   registrarAspirante,
-  consultarEstatus,
   verificarDuplicado,
-  actualizarDocumentoAspirante,
-  aprobarYGenerarCredenciales,
+  consultarEstatus,
 } from "../controllers/admissionController.js";
-import { upload } from "../middlewares/uploadMiddleware.js";
+import { upload } from "../middlewares/uploadMiddleware.js"; // O tu configuración de multer
 
 const router = Router();
 
 router.get("/verificar-duplicado", verificarDuplicado);
 router.get("/consulta", consultarEstatus);
 
-// Ruta de registro con el middleware de Multer para capturar los archivos
+// ESTA ES LA RUTA CRÍTICA QUE DEBE RECIBIR TODOS LOS CAMPOS DE ARCHIVOS:
 router.post(
   "/registro",
   upload.fields([
     { name: "photo", maxCount: 1 },
     { name: "actaNacimiento", maxCount: 1 },
     { name: "curpFile", maxCount: 1 },
+    { name: "ineDocument", maxCount: 1 },
     { name: "studyCert", maxCount: 1 },
     { name: "constanciaEstudios", maxCount: 1 },
   ]),
   registrarAspirante,
 );
-
-// Ruta para actualizar documentos individuales con Multer
-router.put(
-  "/actualizar-documento",
-  upload.fields([
-    { name: "photo", maxCount: 1 },
-    { name: "actaNacimiento", maxCount: 1 },
-    { name: "curpFile", maxCount: 1 },
-    { name: "studyCert", maxCount: 1 },
-    { name: "constanciaEstudios", maxCount: 1 },
-  ]),
-  actualizarDocumentoAspirante,
-);
-
-// Ruta para aprobar aspirante y generar matrícula/contraseña (Protegida para administradores)
-router.patch("/aspirantes/:id/aprobar", aprobarYGenerarCredenciales);
 
 export default router;

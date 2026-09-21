@@ -1,0 +1,48 @@
+import { Request, Response, NextFunction } from "express";
+import prisma from "../config/prisma.js";
+
+export const validarCatalogoExistente = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { nombreTabla } = req.params;
+
+    if (!nombreTabla) {
+      res.status(400).json({
+        ok: false,
+        mensaje: "El parámetro 'nombreTabla' es obligatorio en la ruta.",
+      });
+      return;
+    }
+
+    const catalogoConfig = await prisma.catalogo.findUnique({
+      where: { nombreTabla },
+    });
+
+    if (!catalogoConfig) {
+      res.status(404).json({
+        ok: false,
+        mensaje: `El catálogo '${nombreTabla}' no está registrado en el sistema.`,
+      });
+      return;
+    }
+
+    if (!catalogoConfig.activo) {
+      res.status(403).json({
+        ok: false,
+        mensaje: `El catálogo '${nombreTabla}' se encuentra temporalmente inactivo.`,
+      });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    console.error("Error al validar el catálogo en el middleware:", error);
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno del servidor al validar el catálogo.",
+    });
+  }
+};
