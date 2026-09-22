@@ -3,14 +3,37 @@ import React, { useState, useEffect } from "react";
 const MAX_PDF_SIZE_MB = 5;
 const MAX_IMG_SIZE_MB = 2;
 
+// Listado oficial de discapacidades para selección múltiple con casillas
+const LISTA_DISCAPACIDADES = [
+  "DISCAPACIDAD MOTRIZ",
+  "DISCAPACIDAD VISUAL",
+  "DISCAPACIDAD AUDITIVA",
+  "DISCAPACIDAD INTELECTUAL",
+  "DISCAPACIDAD DEL ESPECTRO AUTISTA",
+  "TRASTORNO POR DÉFICIT DE ATENCIÓN E HIPERACTIVIDAD",
+  "DIFICULTAD SEVERA DE APRENDIZAJE",
+  "DIFICULTAD SEVERA DE CONDUCTA",
+  "DIFICULTAD SEVERA DE COMUNICACIÓN",
+  "NINGUNA",
+];
+
+// Mapeo institucional para equivalencias (excluyendo secundaria)
+const OPCIONES_PROCEDENCIA_EQUIVALENCIA = [
+  { letra: "C", label: "DGB" },
+  { letra: "D", label: "DGB / TEBAEV" },
+  { letra: "E", label: "TEBACOM" },
+  { letra: "F", label: "OTRO" },
+];
+
 // Diccionario institucional para traducir las claves técnicas de los archivos
 const traducirTipoDocumento = (tipo) => {
   const diccionario = {
     photo: "FOTOGRAFÍA INFANTIL",
     actaNacimiento: "ACTA DE NACIMIENTO",
     curpFile: "DOCUMENTO CURP (PDF)",
-    studyCert: "CERTIFICADO DE SECUNDARIA",
-    constanciaEstudios: "CONSTANCIA DE ESTUDIOS",
+    studyCert: "CERTIFICADO DE ESTUDIOS",
+    constanciaEstudios: "CONSTANCIA DE ESTUDIOS / HISTORIAL",
+    ineDocument: "IDENTIFICACIÓN OFICIAL (INE / INE TUTOR)",
   };
   return diccionario[tipo] || tipo.toUpperCase();
 };
@@ -21,6 +44,26 @@ const validarEstructuraCurp = (curp) => {
   return regexCurp.test(curp);
 };
 
+// Función profesional para extraer fecha de nacimiento y sexo desde la CURP
+const analizarCurpAutomatica = (curp) => {
+  if (!curp || curp.length !== 18 || !validarEstructuraCurp(curp)) {
+    return { fechaNacimiento: "", genero: "" };
+  }
+  const anioDigito = parseInt(curp.substring(4, 6), 10);
+  const mes = curp.substring(6, 8);
+  const dia = curp.substring(8, 10);
+
+  const anioCompleto =
+    anioDigito > 26 ? `19${curp.substring(4, 6)}` : `20${curp.substring(4, 6)}`;
+  const fechaNacimiento = `${anioCompleto}-${mes}-${dia}`;
+
+  const letraGenero = curp.charAt(10).toUpperCase();
+  const genero =
+    letraGenero === "H" ? "MASCULINO" : letraGenero === "M" ? "FEMENINO" : "";
+
+  return { fechaNacimiento, genero };
+};
+
 export default function AdmissionPage() {
   const [step, setStep] = useState(1);
   const [submittedData, setSubmittedData] = useState(null);
@@ -28,21 +71,8 @@ export default function AdmissionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estados unificados para los catálogos dinámicos cargados desde el backend
-  const [tiposSecundarias, setTiposSecundarias] = useState([]);
-  const [subsistemasPrepa, setSubsistemasPrepa] = useState([]);
-  const [mediosEnterado, setMediosEnterado] = useState([]);
-  const [generosIdentidad, setGenerosIdentidad] = useState([]);
   const [identidadesCulturales, setIdentidadesCulturales] = useState([]);
-  const [situacionesLaborales, setSituacionesLaborales] = useState([]);
-  const [discapacidadesDisponibles, setDiscapacidadesDisponibles] = useState(
-    [],
-  );
   const [parentescosDisponibles, setParentescosDisponibles] = useState([]);
-  const [semestresDisponibles, setSemestresDisponibles] = useState([]);
-
-  // Estados de carga para autocompletado de CCT
-  const [cargandoCctSecundaria, setCargandoCctSecundaria] = useState(false);
-  const [cargandoCctPrepa, setCargandoCctPrepa] = useState(false);
 
   // Estado para la vista previa de la fotografía
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -54,15 +84,8 @@ export default function AdmissionPage() {
         const response = await fetch("http://localhost:4000/api/catalogo");
         const resultado = await response.json();
         if (response.ok && resultado.ok) {
-          setTiposSecundarias(resultado.data.tipoSecundaria || []);
-          setSubsistemasPrepa(resultado.data.subsistema || []);
-          setMediosEnterado(resultado.data.medioEnterado || []);
-          setGenerosIdentidad(resultado.data.genero || []);
           setIdentidadesCulturales(resultado.data.identidadCultural || []);
-          setSituacionesLaborales(resultado.data.situacionLaboral || []);
-          setDiscapacidadesDisponibles(resultado.data.discapacidad || []);
           setParentescosDisponibles(resultado.data.parentesco || []);
-          setSemestresDisponibles(resultado.data.semestre || []);
         }
       } catch (error) {
         console.error(
@@ -95,6 +118,8 @@ export default function AdmissionPage() {
     apellidoMaterno: "",
     nombres: "",
     curp: "",
+    fechaNacimiento: "",
+    genero: "",
     correoElectronico1: "",
     correoElectronicoConfirmacion: "",
     correoElectronico2: "",
@@ -102,12 +127,7 @@ export default function AdmissionPage() {
     telefonoParticular: "",
     generoIdentidad: "",
     identidadCultural: "",
-    tieneDiscapacidad: "NO",
-    apoyoEducativo: "NO",
-    situacionLaboral: "",
-    cuentaComputadora: "SÍ",
-    cuentaInternet: "SÍ",
-    medioEnterado: "",
+    discapacidades: [],
     pais: "MÉXICO",
     codigoPostal: "",
     estado: "",
@@ -122,24 +142,18 @@ export default function AdmissionPage() {
     tutorParentesco: "",
     tutorTelefono: "",
     tipoAdmision: "nuevo_ingreso",
-    tipoSecundaria: "",
     cctEscuelaProcedencia: "",
     nombreEscuelaProcedencia: "",
-    estadoEscuelaProcedencia: "",
-    promedioSecundaria: "",
-    sistemaBachilleratoPrevio: "A. SECUNDARIA",
+    sistemaProcedenciaLetra: "A",
     otroSistemaProcedencia: "",
     previousSchoolCct: "",
     previousHighSchoolName: "",
-    previousSchoolState: "",
-    tipoEstudiante: "REGULAR",
-    currentSemester: "2° Semestre",
-    studyPlan: "",
     photo: null,
     studyCert: null,
     constanciaEstudios: null,
     curpFile: null,
     actaNacimiento: null,
+    ineDocument: null,
   });
 
   const mostrarAlerta = (mensaje, titulo = "Atención") => {
@@ -147,7 +161,29 @@ export default function AdmissionPage() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, checked } = e.target;
+
+    if (name === "discapacidades") {
+      let nuevasDiscapacidades = [...formData.discapacidades];
+      if (checked) {
+        if (value === "NINGUNA") {
+          nuevasDiscapacidades = ["NINGUNA"];
+        } else {
+          nuevasDiscapacidades = nuevasDiscapacidades.filter(
+            (d) => d !== "NINGUNA",
+          );
+          nuevasDiscapacidades.push(value);
+        }
+      } else {
+        nuevasDiscapacidades = nuevasDiscapacidades.filter((d) => d !== value);
+      }
+      setFormData((prev) => ({
+        ...prev,
+        discapacidades: nuevasDiscapacidades,
+      }));
+      return;
+    }
+
     let processedValue = value;
 
     if (
@@ -167,22 +203,33 @@ export default function AdmissionPage() {
         .replace(/[^A-Za-z0-9]/g, "")
         .toUpperCase()
         .slice(0, 10);
-
-      // --- AUTOCOMPLETADO INTELIGENTE POR CCT ---
-      if (processedValue.length === 10) {
-        if (name === "cctEscuelaProcedencia") {
-          consultarDatosCct(processedValue, "secundaria");
-        } else if (name === "previousSchoolCct") {
-          consultarDatosCct(processedValue, "prepa");
-        }
-      }
     } else if (name === "curp") {
       processedValue = value
         .replace(/[^A-Za-z0-9]/g, "")
         .toUpperCase()
         .slice(0, 18);
-    } else if (name === "promedioSecundaria") {
-      processedValue = value.replace(/[^0-9.]/g, "").slice(0, 4);
+
+      if (
+        processedValue.length === 18 &&
+        validarEstructuraCurp(processedValue)
+      ) {
+        const datosCurp = analizarCurpAutomatica(processedValue);
+        setFormData((prev) => ({
+          ...prev,
+          curp: processedValue,
+          fechaNacimiento: datosCurp.fechaNacimiento,
+          genero: datosCurp.genero,
+        }));
+        return;
+      } else if (processedValue.length === 0) {
+        setFormData((prev) => ({
+          ...prev,
+          curp: "",
+          fechaNacimiento: "",
+          genero: "",
+        }));
+        return;
+      }
     } else {
       processedValue = value.toUpperCase();
     }
@@ -193,60 +240,15 @@ export default function AdmissionPage() {
     }));
   };
 
-  // Función auxiliar para consultar datos de la escuela mediante CCT a través de API pública oficial
-  const consultarDatosCct = async (cct, tipoEscuela) => {
-    if (tipoEscuela === "secundaria") setCargandoCctSecundaria(true);
-    else setCargandoCctPrepa(true);
-
-    try {
-      const response = await fetch(
-        `https://api.siged.sep.gob.mx/ escuelas/${cct}`,
-      ); // O endpoint de respaldo público SEP
-      // Nota: Si usas un servicio alternativo o proxy propio, puedes apuntar aquí. Usaremos una consulta genérica segura:
-      const resAlt = await fetch(
-        `https://api.siged.sep.gob.mx/query?cct=${cct}`,
-      ).catch(() => null);
-
-      // Como respaldo robusto si la API externa varía, simulamos la consulta o conectamos al endpoint institucional:
-      // Realizamos una consulta estándar a un servicio de escuelas abierto en México:
-      const apiRes = await fetch(
-        `https://api.siged.sep.gob.mx/v1/escuelas/${cct}`,
-      ).catch(() => null);
-
-      if (apiRes && apiRes.ok) {
-        const data = await apiRes.json();
-        if (data && data.escuela) {
-          if (tipoEscuela === "secundaria") {
-            setFormData((prev) => ({
-              ...prev,
-              nombreEscuelaProcedencia:
-                data.escuela.nombre?.toUpperCase() ||
-                prev.nombreEscuelaProcedencia,
-              estadoEscuelaProcedencia:
-                data.escuela.entidad?.toUpperCase() ||
-                prev.estadoEscuelaProcedencia,
-            }));
-          } else {
-            setFormData((prev) => ({
-              ...prev,
-              previousHighSchoolName:
-                data.escuela.nombre?.toUpperCase() ||
-                prev.previousHighSchoolName,
-              previousSchoolState:
-                data.escuela.entidad?.toUpperCase() || prev.previousSchoolState,
-            }));
-          }
-        }
-      }
-    } catch (error) {
-      console.error(
-        "Aviso: No se pudo autocompletar la CCT automáticamente, ingrese los datos manuales.",
-        error,
-      );
-    } finally {
-      if (tipoEscuela === "secundaria") setCargandoCctSecundaria(false);
-      else setCargandoCctPrepa(false);
-    }
+  const handlePaisChange = (e) => {
+    const paisVal = e.target.value.toUpperCase();
+    setFormData((prev) => ({
+      ...prev,
+      pais: paisVal,
+      ...(paisVal !== "MÉXICO"
+        ? { codigoPostal: "", estado: "", municipio: "", colonia: "" }
+        : {}),
+    }));
   };
 
   const handleAdmissionTypeChange = (e) => {
@@ -254,8 +256,7 @@ export default function AdmissionPage() {
     setFormData((prev) => ({
       ...prev,
       tipoAdmision: tipo,
-      sistemaBachilleratoPrevio:
-        tipo === "nuevo_ingreso" ? "A. SECUNDARIA" : "",
+      sistemaProcedenciaLetra: tipo === "nuevo_ingreso" ? "A" : "C",
     }));
   };
 
@@ -312,7 +313,7 @@ export default function AdmissionPage() {
       }
       if (file.size > MAX_PDF_SIZE_MB * 1024 * 1024) {
         mostrarAlerta(
-          `El archivo PDF excede el límite de ${MAX_PDF_SIZE_MB} MB permitidos.`,
+          `El archivo PDF excede el límite de ${MAX_PDF_SIZE_MB} MB.`,
           "Archivo Demasiado Grande",
         );
         return;
@@ -349,7 +350,7 @@ export default function AdmissionPage() {
         !formData.correoElectronico1 ||
         !formData.correoElectronicoConfirmacion ||
         !formData.telefonoCelular ||
-        !formData.codigoPostal ||
+        (formData.pais === "MÉXICO" && !formData.codigoPostal) ||
         !formData.municipio ||
         !formData.calle
       ) {
@@ -360,10 +361,9 @@ export default function AdmissionPage() {
         return;
       }
 
-      // Validación estricta con RegEx oficial de la CURP
       if (!validarEstructuraCurp(formData.curp.trim())) {
         mostrarAlerta(
-          "La estructura de la CURP no es válida. Verifique el formato oficial (18 caracteres con estructura correcta).",
+          "La estructura de la CURP no es válida. Verifique el formato oficial.",
           "CURP Inválida",
         );
         return;
@@ -373,31 +373,15 @@ export default function AdmissionPage() {
         formData.correoElectronico1 !== formData.correoElectronicoConfirmacion
       ) {
         mostrarAlerta(
-          "Los correos electrónicos ingresados no coinciden. Por favor verifíquelos.",
-          "Correo Electrónico Divergente",
-        );
-        return;
-      }
-
-      if (formData.curp.length < 18) {
-        mostrarAlerta(
-          "La CURP debe tener exactamente 18 caracteres.",
-          "CURP Incompleta",
-        );
-        return;
-      }
-
-      if (formData.telefonoCelular.length < 10) {
-        mostrarAlerta(
-          "El teléfono celular debe tener exactamente 10 dígitos.",
-          "Teléfono Incompleto",
+          "Los correos electrónicos ingresados no coinciden.",
+          "Correo Divergente",
         );
         return;
       }
 
       try {
         const res = await fetch(
-          `http://localhost:4000/api/admission/verificar-duplicado?curp=${formData.curp.trim()}&email=${formData.correoElectronico1.trim()}`,
+          `http://localhost:4000/api/admission/verificar-duplicado?curp=${formData.curp.trim()}`,
         );
         const data = await res.json();
 
@@ -407,41 +391,30 @@ export default function AdmissionPage() {
         }
       } catch (error) {
         console.error("Error al verificar duplicados en servidor:", error);
-        mostrarAlerta(
-          "No fue posible establecer conexión con el sistema en este momento.",
-          "Error de Comunicación",
-        );
-        return;
       }
     }
 
     if (step === 2) {
       if (
         formData.tipoAdmision === "nuevo_ingreso" &&
-        (!formData.tipoSecundaria ||
-          !formData.cctEscuelaProcedencia ||
-          !formData.nombreEscuelaProcedencia ||
-          !formData.estadoEscuelaProcedencia ||
-          !formData.promedioSecundaria)
+        (!formData.cctEscuelaProcedencia || !formData.nombreEscuelaProcedencia)
       ) {
         mostrarAlerta(
-          "Por favor complete todos los campos obligatorios de la escuela de procedencia.",
+          "Por favor complete la Clave CCT y el Nombre de la secundaria.",
           "Antecedentes Incompletos",
         );
         return;
       }
       if (
         formData.tipoAdmision === "revalidacion" &&
-        (!formData.sistemaBachilleratoPrevio ||
-          !formData.tipoEstudiante ||
+        (!formData.sistemaProcedenciaLetra ||
           !formData.previousSchoolCct ||
           !formData.previousHighSchoolName ||
-          !formData.previousSchoolState ||
-          !formData.currentSemester ||
-          !formData.studyPlan)
+          (formData.sistemaProcedenciaLetra === "F" &&
+            !formData.otroSistemaProcedencia))
       ) {
         mostrarAlerta(
-          "Por favor complete todos los campos obligatorios del historial de bachillerato.",
+          "Por favor complete todos los campos obligatorios del historial previo.",
           "Antecedentes Incompletos",
         );
         return;
@@ -449,41 +422,16 @@ export default function AdmissionPage() {
     }
 
     if (step === 3) {
-      if (!formData.photo) {
-        mostrarAlerta(
-          "Es obligatorio adjuntar la Fotografía del Aspirante.",
-          "Documento Faltante",
-        );
-        return;
-      }
-      if (!formData.actaNacimiento) {
-        mostrarAlerta(
-          "Es obligatorio adjuntar el Acta de Nacimiento.",
-          "Documento Faltante",
-        );
-        return;
-      }
-      if (!formData.curpFile) {
-        mostrarAlerta(
-          "Es obligatorio adjuntar el archivo CURP en formato PDF.",
-          "Documento Faltante",
-        );
-        return;
-      }
-      if (formData.tipoAdmision === "nuevo_ingreso" && !formData.studyCert) {
-        mostrarAlerta(
-          "Es obligatorio adjuntar el Certificado de Secundaria.",
-          "Documento Faltante",
-        );
-        return;
-      }
       if (
-        formData.tipoAdmision === "revalidacion" &&
-        !formData.constanciaEstudios
+        !formData.photo ||
+        !formData.actaNacimiento ||
+        !formData.curpFile ||
+        !formData.ineDocument ||
+        !formData.studyCert
       ) {
         mostrarAlerta(
-          "Es obligatorio adjuntar la Constancia de Estudios o Historial Académico.",
-          "Documento Faltante",
+          "Es obligatorio adjuntar Fotografía, Acta, CURP, INE y el Certificado de Estudios.",
+          "Documentos Faltantes",
         );
         return;
       }
@@ -498,15 +446,96 @@ export default function AdmissionPage() {
     setIsSubmitting(true);
     try {
       const dataToSend = new FormData();
-      Object.keys(formData).forEach((key) => {
-        if (
-          key !== "correoElectronicoConfirmacion" &&
-          formData[key] !== null &&
-          formData[key] !== undefined
-        ) {
-          dataToSend.append(key, formData[key]);
-        }
-      });
+
+      // Mapeo explícito y robusto para evitar campos undefined en el backend
+      dataToSend.append("apellidoPaterno", formData.apellidoPaterno || "");
+      dataToSend.append("apellidoMaterno", formData.apellidoMaterno || "");
+      dataToSend.append("nombres", formData.nombres || "");
+      dataToSend.append("curp", formData.curp || "");
+      dataToSend.append("fechaNacimiento", formData.fechaNacimiento || "");
+      dataToSend.append("genero", formData.genero || "");
+      dataToSend.append(
+        "correoElectronico1",
+        formData.correoElectronico1 || "",
+      );
+      dataToSend.append(
+        "correoElectronico2",
+        formData.correoElectronico2 || "",
+      );
+      dataToSend.append("telefonoCelular", formData.telefonoCelular || "");
+      dataToSend.append(
+        "telefonoParticular",
+        formData.telefonoParticular || "",
+      );
+
+      // Inclusión y Domicilio
+      dataToSend.append("generoIdentidad", formData.generoIdentidad || "");
+      dataToSend.append("identidadCultural", formData.identidadCultural || "");
+      dataToSend.append(
+        "discapacidades",
+        JSON.stringify(formData.discapacidades || []),
+      );
+
+      dataToSend.append("pais", formData.pais || "MÉXICO");
+      dataToSend.append("codigoPostal", formData.codigoPostal || "");
+      dataToSend.append("estado", formData.estado || "");
+      dataToSend.append("municipio", formData.municipio || "");
+      dataToSend.append("colonia", formData.colonia || "");
+      dataToSend.append("calle", formData.calle || "");
+      dataToSend.append("numeroExterior", formData.numeroExterior || "");
+      dataToSend.append("numeroInterior", formData.numeroInterior || "");
+
+      // Tutor
+      dataToSend.append(
+        "tutorApellidoPaterno",
+        formData.tutorApellidoPaterno || "",
+      );
+      dataToSend.append(
+        "tutorApellidoMaterno",
+        formData.tutorApellidoMaterno || "",
+      );
+      dataToSend.append("tutorNombres", formData.tutorNombres || "");
+      dataToSend.append("tutorParentesco", formData.tutorParentesco || "");
+      dataToSend.append("tutorTelefono", formData.tutorTelefono || "");
+
+      // Antecedentes Escolares
+      dataToSend.append(
+        "tipoAdmision",
+        formData.tipoAdmision || "nuevo_ingreso",
+      );
+      dataToSend.append(
+        "cctEscuelaProcedencia",
+        formData.cctEscuelaProcedencia || "",
+      );
+      dataToSend.append(
+        "nombreEscuelaProcedencia",
+        formData.nombreEscuelaProcedencia || "",
+      );
+      dataToSend.append(
+        "sistemaProcedenciaLetra",
+        formData.sistemaProcedenciaLetra || "",
+      );
+      dataToSend.append(
+        "otroSistemaProcedencia",
+        formData.otroSistemaProcedencia || "",
+      );
+      dataToSend.append("previousSchoolCct", formData.previousSchoolCct || "");
+      dataToSend.append(
+        "previousHighSchoolName",
+        formData.previousHighSchoolName || "",
+      );
+
+      // Archivos adjuntos
+      if (formData.photo) dataToSend.append("photo", formData.photo);
+      if (formData.actaNacimiento)
+        dataToSend.append("actaNacimiento", formData.actaNacimiento);
+      if (formData.curpFile) dataToSend.append("curpFile", formData.curpFile);
+      if (formData.ineDocument)
+        dataToSend.append("ineDocument", formData.ineDocument);
+      if (formData.studyCert)
+        dataToSend.append("studyCert", formData.studyCert);
+      if (formData.constanciaEstudios)
+        dataToSend.append("constanciaEstudios", formData.constanciaEstudios);
 
       const response = await fetch(
         "http://localhost:4000/api/admission/registro",
@@ -539,15 +568,14 @@ export default function AdmissionPage() {
         setSubmittedData(nuevoTramite);
       } else {
         mostrarAlerta(
-          resultado.mensaje ||
-            "Verifica los datos proporcionados en el sistema.",
+          resultado.mensaje || "Verifica los datos proporcionados.",
           "Error de Registro",
         );
       }
     } catch (error) {
       console.error("Error de conexión:", error);
       mostrarAlerta(
-        "No fue posible establecer conexión con el sistema en este momento.",
+        "No fue posible establecer conexión con el sistema.",
         "Error de Comunicación",
       );
     } finally {
@@ -578,16 +606,11 @@ export default function AdmissionPage() {
       if (response.ok && resultado.ok) {
         setConsultaResult(resultado.data);
       } else {
-        setConsultaError(
-          resultado.mensaje ||
-            "No se encontró información con los datos proporcionados.",
-        );
+        setConsultaError(resultado.mensaje || "No se encontró información.");
       }
     } catch (error) {
-      console.error("Error de conexión al consultar:", error);
-      setConsultaError(
-        "No se pudo conectar con el servidor para realizar la consulta.",
-      );
+      console.error("Error al consultar:", error);
+      setConsultaError("No se pudo conectar con el servidor.");
     } finally {
       setCargandoConsulta(false);
     }
@@ -701,10 +724,13 @@ export default function AdmissionPage() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
-                1. Datos Personales, Inclusión, Domicilio y Tutor
+                1. Datos Personales, Domicilio, Inclusión y Tutor
               </h2>
 
-              <div className="space-y-3">
+              <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200">
+                <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block border-b border-slate-200 pb-1">
+                  Datos Personales
+                </span>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
@@ -717,7 +743,7 @@ export default function AdmissionPage() {
                       value={formData.apellidoPaterno}
                       onChange={handleChange}
                       placeholder="PRIMER APELLIDO"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -730,7 +756,7 @@ export default function AdmissionPage() {
                       value={formData.apellidoMaterno}
                       onChange={handleChange}
                       placeholder="SEGUNDO APELLIDO"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -744,7 +770,7 @@ export default function AdmissionPage() {
                       value={formData.nombres}
                       onChange={handleChange}
                       placeholder="NOMBRE(S)"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                     />
                   </div>
                 </div>
@@ -763,9 +789,8 @@ export default function AdmissionPage() {
                       value={formData.curp}
                       onChange={handleChange}
                       placeholder="CLAVE ÚNICA DE REGISTRO"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase font-mono"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase font-mono bg-white"
                     />
-                    {/* Asistencia visual en tiempo real para CURP */}
                     {formData.curp.length > 0 && formData.curp.length < 18 && (
                       <span className="text-[10px] text-amber-600 font-medium">
                         Faltan {18 - formData.curp.length} caracteres...
@@ -797,24 +822,34 @@ export default function AdmissionPage() {
                       value={formData.telefonoCelular}
                       onChange={handleChange}
                       placeholder="10 dígitos"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Teléfono Particular
+                    <label className="text-[11px] font-semibold text-slate-600">
+                      Fecha de Nacimiento (Automática por CURP)
                     </label>
                     <input
-                      name="telefonoParticular"
-                      type="tel"
-                      maxLength={10}
-                      value={formData.telefonoParticular}
-                      onChange={handleChange}
-                      placeholder="10 dígitos (opcional)"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none"
+                      type="text"
+                      readOnly
+                      value={formData.fechaNacimiento}
+                      placeholder="Se llenará al ingresar la CURP"
+                      className="w-full px-3 py-1.5 text-xs border border-slate-300 bg-slate-100 rounded-lg font-mono text-slate-700"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-slate-600">
+                      Sexo (Automático por CURP)
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formData.genero}
+                      placeholder="Se llenará al ingresar la CURP"
+                      className="w-full px-3 py-1.5 text-xs border border-slate-300 bg-slate-100 rounded-lg font-medium uppercase text-slate-700"
                     />
                   </div>
                 </div>
@@ -831,7 +866,7 @@ export default function AdmissionPage() {
                       value={formData.correoElectronico1}
                       onChange={handleChange}
                       placeholder="aspirante@ejemplo.com"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none lowercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none lowercase bg-white"
                     />
                   </div>
                   <div className="flex flex-col gap-1">
@@ -846,7 +881,7 @@ export default function AdmissionPage() {
                       value={formData.correoElectronicoConfirmacion}
                       onChange={handleChange}
                       placeholder="Repita su correo electrónico"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none lowercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none lowercase bg-white"
                     />
                   </div>
                 </div>
@@ -861,95 +896,31 @@ export default function AdmissionPage() {
                       value={formData.correoElectronico2}
                       onChange={handleChange}
                       placeholder="alternativo@ejemplo.com"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none lowercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none lowercase bg-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Teléfono Particular
+                    </label>
+                    <input
+                      name="telefonoParticular"
+                      type="tel"
+                      maxLength={10}
+                      value={formData.telefonoParticular}
+                      onChange={handleChange}
+                      placeholder="10 dígitos (opcional)"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* SECCIÓN DE INCLUSIÓN */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block border-b border-slate-200 pb-1">
-                  Identidad, Diversidad Sexual, Capacidades Especiales e
-                  Identidad Cultural
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Género con el que se identifica
-                    </label>
-                    <select
-                      name="generoIdentidad"
-                      value={formData.generoIdentidad}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="">SELECCIONE UNA OPCIÓN...</option>
-                      {generosIdentidad.map((g) => (
-                        <option key={g} value={g}>
-                          {g}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Identidad Cultural
-                    </label>
-                    <select
-                      name="identidadCultural"
-                      value={formData.identidadCultural}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="">SELECCIONE UNA OPCIÓN...</option>
-                      {identidadesCulturales.map((i) => (
-                        <option key={i} value={i}>
-                          {i}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      ¿Presenta alguna discapacidad o capacidad especial?
-                    </label>
-                    <select
-                      name="tieneDiscapacidad"
-                      value={formData.tieneDiscapacidad}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="NO">NINGUNA</option>
-                      {discapacidadesDisponibles.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      ¿Requiere apoyo educativo especial?
-                    </label>
-                    <select
-                      name="apoyoEducativo"
-                      value={formData.apoyoEducativo}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="NO">NO</option>
-                      <option value="SÍ">SÍ</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* DOMICILIO */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <div className="flex items-center justify-between">
+              {/* Domicilio */}
+              <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                   <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                    Domicilio Exacto (Catálogo SEPOMEX México)
+                    Datos de Domicilio
                   </span>
                   {cargandoCp && (
                     <span className="text-[10px] text-blue-600 animate-pulse font-semibold">
@@ -957,35 +928,55 @@ export default function AdmissionPage() {
                     </span>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Código Postal (5 dígitos){" "}
-                      <span className="text-red-500">*</span>
+                      País <span className="text-red-500">*</span>
                     </label>
                     <input
-                      name="codigoPostal"
+                      name="pais"
                       type="text"
-                      maxLength={5}
-                      value={formData.codigoPostal}
-                      onChange={handleCodigoPostalChange}
-                      placeholder="Ej. 91000"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none font-mono bg-white"
+                      required
+                      value={formData.pais}
+                      onChange={handlePaisChange}
+                      placeholder="MÉXICO"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white font-semibold"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Estado <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      name="estado"
-                      type="text"
-                      readOnly
-                      value={formData.estado}
-                      placeholder="Automático por C.P."
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-600 font-medium uppercase"
-                    />
-                  </div>
+
+                  {formData.pais === "MÉXICO" ? (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Código Postal (5 dígitos){" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        name="codigoPostal"
+                        type="text"
+                        maxLength={5}
+                        value={formData.codigoPostal}
+                        onChange={handleCodigoPostalChange}
+                        placeholder="Ej. 91000"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none font-mono bg-white"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Estado / Provincia{" "}
+                        <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        name="estado"
+                        type="text"
+                        value={formData.estado}
+                        onChange={handleChange}
+                        placeholder="Escriba el estado"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
+                      />
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
                       Municipio / Alcaldía{" "}
@@ -994,19 +985,28 @@ export default function AdmissionPage() {
                     <input
                       name="municipio"
                       type="text"
-                      readOnly
+                      readOnly={formData.pais === "MÉXICO"}
                       required
                       value={formData.municipio}
-                      placeholder="Automático por C.P."
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-slate-100 text-slate-600 font-medium uppercase"
+                      onChange={handleChange}
+                      placeholder={
+                        formData.pais === "MÉXICO"
+                          ? "Automático por C.P."
+                          : "Escriba el municipio"
+                      }
+                      className={`w-full px-3 py-2 text-xs border border-slate-300 rounded-lg uppercase ${formData.pais === "MÉXICO" ? "bg-slate-100 text-slate-600 font-medium" : "bg-white"}`}
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
                       Colonia / Asentamiento{" "}
                       <span className="text-red-500">*</span>
                     </label>
-                    {coloniasDisponibles.length > 0 ? (
+                    {formData.pais === "MÉXICO" &&
+                    coloniasDisponibles.length > 0 ? (
                       <select
                         name="colonia"
                         value={formData.colonia}
@@ -1027,11 +1027,11 @@ export default function AdmissionPage() {
                         value={formData.colonia}
                         onChange={handleChange}
                         placeholder="Escribe tu colonia..."
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                       />
                     )}
                   </div>
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 sm:col-span-2">
                     <label className="text-xs font-semibold text-slate-700">
                       Calle <span className="text-red-500">*</span>
                     </label>
@@ -1042,10 +1042,10 @@ export default function AdmissionPage() {
                       value={formData.calle}
                       onChange={handleChange}
                       placeholder="Nombre de la calle"
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:col-span-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-slate-700">
                         Núm. Exterior
@@ -1056,7 +1056,7 @@ export default function AdmissionPage() {
                         value={formData.numeroExterior}
                         onChange={handleChange}
                         placeholder="Ej. S/N"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                       />
                     </div>
                     <div className="flex flex-col gap-1">
@@ -1069,14 +1069,84 @@ export default function AdmissionPage() {
                         value={formData.numeroInterior}
                         onChange={handleChange}
                         placeholder="Ej. INT 4"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase"
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* TUTOR */}
+              {/* Inclusión */}
+              <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 space-y-3">
+                <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block border-b border-slate-200 pb-1">
+                  Datos de Inclusión y Diversidad
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Género con el que se identifica
+                    </label>
+                    <select
+                      name="generoIdentidad"
+                      value={formData.generoIdentidad}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
+                    >
+                      <option value="">SELECCIONE UNA OPCIÓN...</option>
+                      <option value="FEMENINO">FEMENINO</option>
+                      <option value="MASCULINO">MASCULINO</option>
+                      <option value="LGTBIQ+">LGTBIQ+</option>
+                      <option value="OTRO / PREFIERO NO DECIRLO">
+                        OTRO / PREFIERO NO DECIRLO
+                      </option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Identidad Cultural
+                    </label>
+                    <select
+                      name="identidadCultural"
+                      value={formData.identidadCultural}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
+                    >
+                      <option value="">SELECCIONE UNA OPCIÓN...</option>
+                      {identidadesCulturales.map((item) => (
+                        <option key={item.id} value={item.nombre}>
+                          {item.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <label className="text-xs font-semibold text-slate-700 block">
+                    Capacidades especiales (Seleccione una o varias opciones):
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-3 rounded-lg border border-slate-200">
+                    {LISTA_DISCAPACIDADES.map((item) => (
+                      <label
+                        key={item}
+                        className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          name="discapacidades"
+                          value={item}
+                          checked={formData.discapacidades.includes(item)}
+                          onChange={handleChange}
+                          className="rounded border-slate-300 text-slate-900 focus:ring-0"
+                        />
+                        {item}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tutor */}
               <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200 space-y-3">
                 <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider block border-b border-amber-200 pb-1">
                   Datos del Padre, Madre o Tutor
@@ -1119,7 +1189,7 @@ export default function AdmissionPage() {
                         value={formData.tutorNombres}
                         onChange={handleChange}
                         placeholder="NOMBRE(S)"
-                        className="w-full px-2 py-1.5 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
+                        className="w-full px-2 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
                       />
                     </div>
                   </div>
@@ -1136,8 +1206,8 @@ export default function AdmissionPage() {
                       >
                         <option value="">SELECCIONE UNA OPCIÓN...</option>
                         {parentescosDisponibles.map((p) => (
-                          <option key={p} value={p}>
-                            {p}
+                          <option key={p.id} value={p.id}>
+                            {p.nombre}
                           </option>
                         ))}
                       </select>
@@ -1203,10 +1273,10 @@ export default function AdmissionPage() {
                       onChange={handleAdmissionTypeChange}
                     />
                     <span>
-                      Opción 2: Trae Historial
+                      Opción 2: Trae Historial (Equivalencia / Irregular)
                       <br />
                       <span className="text-slate-500 text-[10px]">
-                        Revalidación / Equivalencia
+                        Opciones sin secundaria
                       </span>
                     </span>
                   </label>
@@ -1217,35 +1287,11 @@ export default function AdmissionPage() {
                 <div className="space-y-3 pt-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">
-                      Datos de la Escuela de Procedencia (Secundaria Regular)
+                      Escuela de Procedencia (Secundaria - Llenado Manual)
                     </span>
-                    {cargandoCctSecundaria && (
-                      <span className="text-[10px] text-blue-600 animate-pulse font-semibold">
-                        Buscando escuela por CCT...
-                      </span>
-                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Tipo de Secundaria{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="tipoSecundaria"
-                        value={formData.tipoSecundaria}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                      >
-                        <option value="">SELECCIONE UNA OPCIÓN...</option>
-                        {tiposSecundarias.map((ts) => (
-                          <option key={ts} value={ts}>
-                            {ts}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-slate-700">
                         Clave de la Escuela (CCT){" "}
@@ -1277,50 +1323,15 @@ export default function AdmissionPage() {
                         className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white uppercase"
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Entidad de la Secundaria{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        name="estadoEscuelaProcedencia"
-                        type="text"
-                        required
-                        value={formData.estadoEscuelaProcedencia}
-                        onChange={handleChange}
-                        placeholder="EJ. VERACRUZ"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white uppercase"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Promedio (6-10) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        name="promedioSecundaria"
-                        type="text"
-                        required
-                        maxLength={4}
-                        value={formData.promedioSecundaria}
-                        onChange={handleChange}
-                        placeholder="Ej. 9.1"
-                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none bg-white font-mono"
-                      />
-                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3 bg-amber-50/70 border border-amber-200 p-4 rounded-xl">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider">
-                      Información de Bachillerato Anterior (Revalidación /
-                      Equivalencia)
+                      Escuela de Procedencia (Equivalencia / Historial Previo -
+                      Llenado Manual)
                     </span>
-                    {cargandoCctPrepa && (
-                      <span className="text-[10px] text-blue-600 animate-pulse font-semibold">
-                        Buscando plantel por CCT...
-                      </span>
-                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1330,24 +1341,24 @@ export default function AdmissionPage() {
                         <span className="text-red-500">*</span>
                       </label>
                       <select
-                        name="sistemaBachilleratoPrevio"
-                        value={formData.sistemaBachilleratoPrevio}
+                        name="sistemaProcedenciaLetra"
+                        value={formData.sistemaProcedenciaLetra}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
+                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase font-semibold"
                       >
                         <option value="">SELECCIONE UNA OPCIÓN...</option>
-                        {subsistemasPrepa.map((sub) => (
-                          <option key={sub} value={sub}>
-                            {sub}
+                        {OPCIONES_PROCEDENCIA_EQUIVALENCIA.map((op) => (
+                          <option key={op.letra} value={op.letra}>
+                            {op.label}
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    {formData.sistemaBachilleratoPrevio === "F. OTRO" && (
+                    {formData.sistemaProcedenciaLetra === "F" && (
                       <div className="flex flex-col gap-1 sm:col-span-2">
                         <label className="text-xs font-semibold text-amber-950">
-                          Especifique cuál subsistema u otro:{" "}
+                          Especifique cuál (Otro sistema):{" "}
                           <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -1356,26 +1367,12 @@ export default function AdmissionPage() {
                           required
                           value={formData.otroSistemaProcedencia}
                           onChange={handleChange}
-                          placeholder="ESCRIBA EL SUBSISTEMA"
+                          placeholder="ESCRIBA EL SUBSISTEMA U OTRO"
                           className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white uppercase outline-none"
                         />
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-amber-950">
-                        Tipo de Alumno <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="tipoEstudiante"
-                        value={formData.tipoEstudiante}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
-                      >
-                        <option value="REGULAR">REGULAR</option>
-                        <option value="REPETIDOR">REPETIDOR</option>
-                      </select>
-                    </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-amber-950">
                         Clave de la Escuela (CCT){" "}
@@ -1392,7 +1389,7 @@ export default function AdmissionPage() {
                         className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase font-mono"
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 sm:col-span-2">
                       <label className="text-xs font-semibold text-amber-950">
                         Nombre del Plantel / Escuela{" "}
                         <span className="text-red-500">*</span>
@@ -1407,117 +1404,9 @@ export default function AdmissionPage() {
                         className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-amber-950">
-                        Entidad del Bachillerato{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        name="previousSchoolState"
-                        type="text"
-                        required
-                        value={formData.previousSchoolState}
-                        onChange={handleChange}
-                        placeholder="EJ. VERACRUZ"
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-semibold text-amber-950">
-                        ¿Hasta qué semestre cursaste?{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="currentSemester"
-                        value={formData.currentSemester}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
-                      >
-                        <option value="">SELECCIONE UNA OPCIÓN...</option>
-                        {semestresDisponibles.map((sem) => (
-                          <option key={sem} value={sem}>
-                            {sem}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1 sm:col-span-2">
-                      <label className="text-xs font-semibold text-amber-950">
-                        Plan de Estudios Cursado{" "}
-                        <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        name="studyPlan"
-                        type="text"
-                        required
-                        value={formData.studyPlan}
-                        onChange={handleChange}
-                        placeholder="EJ. BACHILLERATO GENERAL / TÉCNICO"
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
-                      />
-                    </div>
                   </div>
                 </div>
               )}
-
-              {/* Perfil Tecnológico */}
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block">
-                  Perfil Tecnológico y Estadística Institucional
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Situación Laboral
-                    </label>
-                    <select
-                      name="situacionLaboral"
-                      value={formData.situacionLaboral}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="">SELECCIONE...</option>
-                      {situacionesLaborales.map((l) => (
-                        <option key={l} value={l}>
-                          {l}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      ¿Cuenta con computadora e internet?
-                    </label>
-                    <select
-                      name="cuentaComputadora"
-                      value={formData.cuentaComputadora}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="SÍ">SÍ</option>
-                      <option value="NO">NO</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-slate-700">
-                      ¿Cómo se enteró de BELVER?
-                    </label>
-                    <select
-                      name="medioEnterado"
-                      value={formData.medioEnterado}
-                      onChange={handleChange}
-                      className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
-                    >
-                      <option value="">SELECCIONE...</option>
-                      {mediosEnterado.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -1592,6 +1481,7 @@ export default function AdmissionPage() {
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
                 />
               </div>
+
               <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
                 <label className="text-xs font-semibold text-slate-800 flex justify-between">
                   <span>
@@ -1612,28 +1502,50 @@ export default function AdmissionPage() {
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
                 />
               </div>
-              {formData.tipoAdmision === "nuevo_ingreso" ? (
-                <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <label className="text-xs font-semibold text-slate-800 flex justify-between">
-                    <span>
-                      Certificado de Secundaria Original y Completo (PDF){" "}
-                      <span className="text-red-500">*</span>
+
+              <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <label className="text-xs font-semibold text-slate-800 flex justify-between">
+                  <span>
+                    INE (Si es menor de edad, colocar el INE del tutor) (PDF){" "}
+                    <span className="text-red-500">*</span>
+                  </span>
+                  {formData.ineDocument && (
+                    <span className="text-[10px] text-emerald-700 font-mono">
+                      ✓ Cargado
                     </span>
-                    {formData.studyCert && (
-                      <span className="text-[10px] text-emerald-700 font-mono">
-                        ✓ Cargado
-                      </span>
-                    )}
-                  </label>
-                  <input
-                    name="studyCert"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => handleFileChange(e, "pdf")}
-                    className="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
-                  />
-                </div>
-              ) : (
+                  )}
+                </label>
+                <input
+                  name="ineDocument"
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => handleFileChange(e, "pdf")}
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <label className="text-xs font-semibold text-slate-800 flex justify-between">
+                  <span>
+                    Certificado de Estudios Original y Completo (PDF){" "}
+                    <span className="text-red-500">*</span>
+                  </span>
+                  {formData.studyCert && (
+                    <span className="text-[10px] text-emerald-700 font-mono">
+                      ✓ Cargado
+                    </span>
+                  )}
+                </label>
+                <input
+                  name="studyCert"
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => handleFileChange(e, "pdf")}
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
+                />
+              </div>
+
+              {formData.tipoAdmision === "revalidacion" && (
                 <div className="flex flex-col gap-1 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
                   <label className="text-xs font-semibold text-amber-950 flex justify-between">
                     <span>
@@ -1658,7 +1570,7 @@ export default function AdmissionPage() {
             </div>
           )}
 
-          {/* PASO 4: REVISIÓN DETALLADA */}
+          {/* PASO 4 */}
           {step === 4 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
@@ -1709,9 +1621,9 @@ export default function AdmissionPage() {
                   </span>
                   <div className="bg-white p-3 rounded-lg border border-slate-200">
                     <span className="text-slate-800">
-                      {formData.calle}, Núm. Ext:{" "}
+                      País: {formData.pais}, {formData.calle}, Núm. Ext:{" "}
                       {formData.numeroExterior || "S/N"}, Col.{" "}
-                      {formData.colonia}, C.P. {formData.codigoPostal},{" "}
+                      {formData.colonia}, C.P. {formData.codigoPostal || "N/A"},{" "}
                       {formData.municipio}, {formData.estado}
                     </span>
                   </div>
@@ -1722,42 +1634,22 @@ export default function AdmissionPage() {
                     Antecedentes Escolares (
                     {formData.tipoAdmision === "nuevo_ingreso"
                       ? "Secundaria"
-                      : "Revalidación"}
+                      : "Equivalencia"}
                     )
                   </span>
                   <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
                     {formData.tipoAdmision === "nuevo_ingreso" ? (
-                      <>
-                        <div>
-                          <span className="font-semibold">Escuela:</span>{" "}
-                          {formData.nombreEscuelaProcedencia} (CCT:{" "}
-                          {formData.cctEscuelaProcedencia})
-                        </div>
-                        <div>
-                          <span className="font-semibold">Entidad:</span>{" "}
-                          {formData.estadoEscuelaProcedencia} |{" "}
-                          <span className="font-semibold">Promedio:</span>{" "}
-                          {formData.promedioSecundaria}
-                        </div>
-                      </>
+                      <div>
+                        <span className="font-semibold">Secundaria:</span>{" "}
+                        {formData.nombreEscuelaProcedencia} (CCT:{" "}
+                        {formData.cctEscuelaProcedencia})
+                      </div>
                     ) : (
-                      <>
-                        <div>
-                          <span className="font-semibold">
-                            Plantel Anterior:
-                          </span>{" "}
-                          {formData.previousHighSchoolName} (CCT:{" "}
-                          {formData.previousSchoolCct})
-                        </div>
-                        <div>
-                          <span className="font-semibold">
-                            Semestre Cursado:
-                          </span>{" "}
-                          {formData.currentSemester} |{" "}
-                          <span className="font-semibold">Plan:</span>{" "}
-                          {formData.studyPlan}
-                        </div>
-                      </>
+                      <div>
+                        <span className="font-semibold">Plantel Anterior:</span>{" "}
+                        {formData.previousHighSchoolName} (CCT:{" "}
+                        {formData.previousSchoolCct})
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1777,8 +1669,16 @@ export default function AdmissionPage() {
                       ✓ CURP PDF
                     </span>
                     <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
-                      ✓ Certificado / Constancia
+                      ✓ INE / INE Tutor
                     </span>
+                    <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
+                      ✓ Certificado de Estudios
+                    </span>
+                    {formData.tipoAdmision === "revalidacion" && (
+                      <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
+                        ✓ Constancia / Historial
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1844,7 +1744,7 @@ export default function AdmissionPage() {
           </div>
         </form>
 
-        {/* MODAL DE ALERTAS PERSONALIZADO */}
+        {/* Modal de Alertas */}
         {modalAlerta.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 text-center space-y-4">
@@ -1871,11 +1771,10 @@ export default function AdmissionPage() {
           </div>
         )}
 
-        {/* MODAL DE CONSULTA FORMAL E INSTITUCIONAL */}
+        {/* Modal de Consulta */}
         {isConsultaOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 transform transition-all">
-              {/* Encabezado Obscuro Institucional */}
               <div className="px-6 py-4 bg-slate-950 text-white flex justify-between items-center border-b border-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-sm shadow-inner">
@@ -1902,9 +1801,7 @@ export default function AdmissionPage() {
                 </button>
               </div>
 
-              {/* Cuerpo del Modal */}
               <div className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto text-xs bg-slate-50/60">
-                {/* Formulario de Consulta Limpio */}
                 <form
                   onSubmit={handleConsultar}
                   className="space-y-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs"
@@ -1980,7 +1877,6 @@ export default function AdmissionPage() {
                   </div>
                 )}
 
-                {/* Tarjeta de Resultados Híbrida */}
                 {consultaResult && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-5 shadow-2xs animate-fadeIn">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-3">
@@ -1997,7 +1893,6 @@ export default function AdmissionPage() {
                       </span>
                     </div>
 
-                    {/* BLOQUE DE CREDENCIALES SI YA ESTÁ APROBADO */}
                     {consultaResult.estatus === "APROBADO" && (
                       <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-2 text-center my-3">
                         <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider block">
@@ -2027,7 +1922,6 @@ export default function AdmissionPage() {
                       </div>
                     )}
 
-                    {/* OBSERVACIONES DE CONTROL ESCOLAR (SI NO ESTÁ APROBADO) */}
                     {consultaResult.observaciones &&
                       consultaResult.estatus !== "APROBADO" && (
                         <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-1.5">
@@ -2064,36 +1958,14 @@ export default function AdmissionPage() {
                           {consultaResult.curp}
                         </span>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 font-bold uppercase text-[9px]">
-                          Modalidad de Ingreso:
-                        </span>
-                        <span className="text-slate-700 font-semibold mt-0.5">
-                          {consultaResult.modalidad}
-                        </span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-slate-400 font-bold uppercase text-[9px]">
-                          Vigencia de Trámite:
-                        </span>
-                        <span className="text-amber-800 font-bold mt-0.5">
-                          {consultaResult.vigencia}
-                        </span>
-                      </div>
                     </div>
 
-                    {/* Sección de Expediente de Documentos */}
                     <div className="space-y-3 pt-1">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                         <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                           Expediente de Documentos
                         </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          💡 Puedes actualizar los documentos si aun no se han
-                          revisado
-                        </span>
                       </div>
-
                       <div className="space-y-2.5">
                         {consultaResult.documentos &&
                         consultaResult.documentos.length > 0 ? (
@@ -2115,88 +1987,6 @@ export default function AdmissionPage() {
                                   </span>
                                 </div>
                               </div>
-
-                              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                                {doc.estatusDoc === "VALIDADO" ? (
-                                  <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                    ✓ Documento Aprobado
-                                  </span>
-                                ) : (
-                                  <>
-                                    <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-bold uppercase">
-                                      {doc.estatusDoc}
-                                    </span>
-                                    <label className="cursor-pointer px-3.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-[10px] font-semibold transition shadow-xs flex items-center gap-1.5 shrink-0">
-                                      🔄 Reemplazar
-                                      <input
-                                        type="file"
-                                        accept={
-                                          doc.tipo === "photo"
-                                            ? "image/*"
-                                            : ".pdf"
-                                        }
-                                        className="hidden"
-                                        onChange={async (e) => {
-                                          const nuevoArchivo =
-                                            e.target.files[0];
-                                          if (!nuevoArchivo) return;
-
-                                          const formDataUpdate = new FormData();
-                                          formDataUpdate.append(
-                                            "folio",
-                                            consultaResult.folio,
-                                          );
-                                          formDataUpdate.append(
-                                            "curp",
-                                            consultaResult.curp,
-                                          );
-                                          formDataUpdate.append(
-                                            "tipoDoc",
-                                            doc.tipo,
-                                          );
-                                          formDataUpdate.append(
-                                            doc.tipo,
-                                            nuevoArchivo,
-                                          );
-
-                                          try {
-                                            const res = await fetch(
-                                              "http://localhost:4000/api/admission/actualizar-documento",
-                                              {
-                                                method: "PUT",
-                                                body: formDataUpdate,
-                                              },
-                                            );
-                                            const data = await res.json();
-                                            if (res.ok && data.ok) {
-                                              mostrarAlerta(
-                                                "¡El archivo digital se ha actualizado con éxito en el sistema!",
-                                                "Actualización Exitosa",
-                                              );
-                                              handleConsultar();
-                                            } else {
-                                              mostrarAlerta(
-                                                data.mensaje ||
-                                                  "No se pudo actualizar el archivo.",
-                                                "Error",
-                                              );
-                                            }
-                                          } catch (err) {
-                                            console.error(
-                                              "Error al actualizar archivo:",
-                                              err,
-                                            );
-                                            mostrarAlerta(
-                                              "Error de conexión al intentar actualizar el documento.",
-                                              "Error de Red",
-                                            );
-                                          }
-                                        }}
-                                      />
-                                    </label>
-                                  </>
-                                )}
-                              </div>
                             </div>
                           ))
                         ) : (
@@ -2211,7 +2001,6 @@ export default function AdmissionPage() {
                 )}
               </div>
 
-              {/* Pie del Modal */}
               <div className="px-6 py-4 bg-white border-t border-slate-200 flex justify-end">
                 <button
                   type="button"
