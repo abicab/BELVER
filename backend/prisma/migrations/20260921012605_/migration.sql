@@ -1,8 +1,8 @@
 -- CreateTable
 CREATE TABLE `catalogo` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombreTabla` VARCHAR(191) NOT NULL,
-    `tituloVisible` VARCHAR(191) NOT NULL,
+    `nombreTabla` VARCHAR(50) NOT NULL,
+    `tituloVisible` VARCHAR(50) NOT NULL,
     `orden` INTEGER NOT NULL DEFAULT 0,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
@@ -13,7 +13,7 @@ CREATE TABLE `catalogo` (
 -- CreateTable
 CREATE TABLE `subsistema` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `subsistema_nombre_key`(`nombre`),
@@ -23,7 +23,7 @@ CREATE TABLE `subsistema` (
 -- CreateTable
 CREATE TABLE `genero` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `genero_nombre_key`(`nombre`),
@@ -33,7 +33,7 @@ CREATE TABLE `genero` (
 -- CreateTable
 CREATE TABLE `identidad_cultural` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `identidad_cultural_nombre_key`(`nombre`),
@@ -43,7 +43,7 @@ CREATE TABLE `identidad_cultural` (
 -- CreateTable
 CREATE TABLE `discapacidad` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `discapacidad_nombre_key`(`nombre`),
@@ -63,7 +63,7 @@ CREATE TABLE `aspirante_discapacidad` (
 -- CreateTable
 CREATE TABLE `parentesco` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `parentesco_nombre_key`(`nombre`),
@@ -73,7 +73,7 @@ CREATE TABLE `parentesco` (
 -- CreateTable
 CREATE TABLE `tipo_estudiante` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `tipo_estudiante_nombre_key`(`nombre`),
@@ -83,7 +83,7 @@ CREATE TABLE `tipo_estudiante` (
 -- CreateTable
 CREATE TABLE `semestre` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(191) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `semestre_nombre_key`(`nombre`),
@@ -93,7 +93,7 @@ CREATE TABLE `semestre` (
 -- CreateTable
 CREATE TABLE `tipo_usuario` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `tipo_usuario` VARCHAR(191) NOT NULL,
+    `tipo_usuario` VARCHAR(50) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     PRIMARY KEY (`id`)
@@ -103,11 +103,11 @@ CREATE TABLE `tipo_usuario` (
 CREATE TABLE `usuarios` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `id_tipoUsuario` INTEGER NOT NULL,
-    `correo` VARCHAR(191) NOT NULL,
-    `contrasena` VARCHAR(191) NOT NULL,
-    `nombres` VARCHAR(191) NOT NULL,
-    `apellidoPaterno` VARCHAR(191) NOT NULL,
-    `apellidoMaterno` VARCHAR(191) NULL,
+    `correo` VARCHAR(50) NOT NULL,
+    `contrasena` VARCHAR(255) NOT NULL,
+    `nombres` VARCHAR(50) NOT NULL,
+    `apellidoPaterno` VARCHAR(50) NOT NULL,
+    `apellidoMaterno` VARCHAR(50) NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updateAt` DATETIME(3) NOT NULL,
@@ -119,54 +119,54 @@ CREATE TABLE `usuarios` (
 -- CreateTable
 CREATE TABLE `aspirante` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `folio` VARCHAR(191) NOT NULL,
+    `folio` VARCHAR(50) NOT NULL,
     `vigenciaFolio` DATETIME(3) NULL,
-    `matricula` VARCHAR(191) NULL,
-    `password` VARCHAR(191) NULL,
-    `rol` VARCHAR(191) NOT NULL DEFAULT 'ASPIRANTE',
-    `apellidoPaterno` VARCHAR(191) NOT NULL,
-    `apellidoMaterno` VARCHAR(191) NULL,
-    `nombres` VARCHAR(191) NOT NULL,
-    `curp` VARCHAR(191) NOT NULL,
+    `matricula` VARCHAR(50) NULL,
+    `password` VARCHAR(255) NULL,
+    `tipo_usuario_id` INTEGER NOT NULL DEFAULT 2,
+    `apellidoPaterno` VARCHAR(50) NOT NULL,
+    `apellidoMaterno` VARCHAR(50) NULL,
+    `nombres` VARCHAR(50) NOT NULL,
+    `curp` VARCHAR(50) NOT NULL,
     `fechaNacimiento` DATETIME(3) NULL,
-    `genero` VARCHAR(191) NULL,
-    `correoElectronico1` VARCHAR(191) NOT NULL,
-    `correoElectronico2` VARCHAR(191) NULL,
-    `telefonoCelular` VARCHAR(191) NOT NULL,
-    `telefonoParticular` VARCHAR(191) NULL,
+    `genero` VARCHAR(50) NULL,
+    `correoElectronico1` VARCHAR(50) NOT NULL,
+    `correoElectronico2` VARCHAR(50) NULL,
+    `telefonoCelular` VARCHAR(50) NOT NULL,
+    `telefonoParticular` VARCHAR(50) NULL,
     `generoId` INTEGER NULL,
     `identidadCulturalId` INTEGER NULL,
-    `pais` VARCHAR(191) NOT NULL DEFAULT 'MÉXICO',
-    `codigoPostal` VARCHAR(191) NULL,
-    `estado` VARCHAR(191) NOT NULL,
-    `municipio` VARCHAR(191) NOT NULL,
-    `colonia` VARCHAR(191) NOT NULL,
-    `calle` VARCHAR(191) NOT NULL,
-    `numeroExterior` VARCHAR(191) NULL,
-    `numeroInterior` VARCHAR(191) NULL,
-    `tutorApellidoPaterno` VARCHAR(191) NULL,
-    `tutorApellidoMaterno` VARCHAR(191) NULL,
-    `tutorNombres` VARCHAR(191) NULL,
+    `pais` VARCHAR(50) NOT NULL DEFAULT 'MÉXICO',
+    `codigoPostal` VARCHAR(50) NULL,
+    `estado` VARCHAR(50) NOT NULL,
+    `municipio` VARCHAR(50) NOT NULL,
+    `colonia` VARCHAR(50) NOT NULL,
+    `calle` VARCHAR(50) NOT NULL,
+    `numeroExterior` VARCHAR(50) NULL,
+    `numeroInterior` VARCHAR(50) NULL,
+    `tutorApellidoPaterno` VARCHAR(50) NULL,
+    `tutorApellidoMaterno` VARCHAR(50) NULL,
+    `tutorNombres` VARCHAR(50) NULL,
     `parentescoTutorId` INTEGER NULL,
-    `tutorTelefono` VARCHAR(191) NULL,
-    `tipoAdmision` VARCHAR(191) NOT NULL,
+    `tutorTelefono` VARCHAR(50) NULL,
+    `tipoAdmision` VARCHAR(50) NOT NULL,
     `subsistemaId` INTEGER NULL,
-    `cctEscuelaProcedencia` VARCHAR(191) NULL,
-    `nombreEscuelaProcedencia` VARCHAR(191) NULL,
-    `estadoEscuelaProcedencia` VARCHAR(191) NULL,
-    `promedioSecundaria` VARCHAR(191) NULL,
-    `sistemaBachilleratoPrevio` VARCHAR(191) NULL,
-    `sistemaProcedenciaLetra` VARCHAR(191) NULL,
-    `otroSistemaProcedencia` VARCHAR(191) NULL,
-    `cctBachilleratoPrevio` VARCHAR(191) NULL,
-    `nombreBachilleratoPrevio` VARCHAR(191) NULL,
-    `estadoBachilleratoPrevio` VARCHAR(191) NULL,
+    `cctEscuelaProcedencia` VARCHAR(50) NULL,
+    `nombreEscuelaProcedencia` VARCHAR(50) NULL,
+    `estadoEscuelaProcedencia` VARCHAR(50) NULL,
+    `promedioSecundaria` VARCHAR(50) NULL,
+    `sistemaBachilleratoPrevio` VARCHAR(50) NULL,
+    `sistemaProcedenciaLetra` VARCHAR(50) NULL,
+    `otroSistemaProcedencia` VARCHAR(50) NULL,
+    `cctBachilleratoPrevio` VARCHAR(50) NULL,
+    `nombreBachilleratoPrevio` VARCHAR(50) NULL,
+    `estadoBachilleratoPrevio` VARCHAR(50) NULL,
     `tipoEstudianteId` INTEGER NULL,
     `semestreId` INTEGER NULL,
-    `planEstudios` VARCHAR(191) NULL,
-    `estatusAcademico` VARCHAR(191) NOT NULL DEFAULT 'ACTIVO_REGULAR',
-    `emergenciaContacto` VARCHAR(191) NULL,
-    `emergenciaTelefono` VARCHAR(191) NULL,
+    `planEstudios` VARCHAR(50) NULL,
+    `estatusAcademico` VARCHAR(50) NOT NULL DEFAULT 'ACTIVO_REGULAR',
+    `emergenciaContacto` VARCHAR(50) NULL,
+    `emergenciaTelefono` VARCHAR(50) NULL,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
@@ -181,9 +181,9 @@ CREATE TABLE `aspirante` (
 CREATE TABLE `control_escolar` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
-    `dictamenGeneral` VARCHAR(191) NOT NULL DEFAULT 'PENDIENTE',
+    `dictamenGeneral` VARCHAR(50) NOT NULL DEFAULT 'PENDIENTE',
     `observaciones` TEXT NULL,
-    `validadoPor` VARCHAR(191) NULL,
+    `validadoPor` VARCHAR(50) NULL,
     `fechaValidacion` DATETIME(3) NULL,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
@@ -196,10 +196,10 @@ CREATE TABLE `control_escolar` (
 CREATE TABLE `documento` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
-    `tipoDoc` VARCHAR(191) NOT NULL,
-    `nombreArchivo` VARCHAR(191) NOT NULL,
+    `tipoDoc` VARCHAR(50) NOT NULL,
+    `nombreArchivo` VARCHAR(50) NOT NULL,
     `archivoBlob` LONGBLOB NOT NULL,
-    `estatusDoc` VARCHAR(191) NOT NULL DEFAULT 'EN REVISIÓN',
+    `estatusDoc` VARCHAR(50) NOT NULL DEFAULT 'EN REVISIÓN',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
@@ -208,15 +208,15 @@ CREATE TABLE `documento` (
 -- CreateTable
 CREATE TABLE `auditoria` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `eventoId` VARCHAR(191) NOT NULL,
+    `eventoId` VARCHAR(50) NOT NULL,
     `UsuariosId` INTEGER NULL,
-    `usuarioTexto` VARCHAR(191) NULL,
-    `rol` VARCHAR(191) NULL,
-    `modulo` VARCHAR(191) NOT NULL,
-    `accion` VARCHAR(191) NOT NULL,
+    `usuarioTexto` VARCHAR(50) NULL,
+    `rol` VARCHAR(50) NULL,
+    `modulo` VARCHAR(50) NOT NULL,
+    `accion` VARCHAR(50) NOT NULL,
     `detalle` TEXT NOT NULL,
-    `ip` VARCHAR(191) NULL,
-    `nivel` VARCHAR(191) NOT NULL DEFAULT 'Informativo',
+    `ip` VARCHAR(50) NULL,
+    `nivel` VARCHAR(50) NOT NULL DEFAULT 'Informativo',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `auditoria_eventoId_key`(`eventoId`),
@@ -227,12 +227,12 @@ CREATE TABLE `auditoria` (
 CREATE TABLE `pago` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
-    `concepto` VARCHAR(191) NOT NULL,
+    `concepto` VARCHAR(50) NOT NULL,
     `monto` DOUBLE NOT NULL,
-    `referenciaBancaria` VARCHAR(191) NOT NULL,
+    `referenciaBancaria` VARCHAR(50) NOT NULL,
     `fechaPago` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `metodo` VARCHAR(191) NOT NULL DEFAULT 'Captura Manual (Ventanilla)',
-    `estatus` VARCHAR(191) NOT NULL DEFAULT 'CONCILIADO',
+    `metodo` VARCHAR(50) NOT NULL DEFAULT 'Captura Manual (Ventanilla)',
+    `estatus` VARCHAR(50) NOT NULL DEFAULT 'CONCILIADO',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
@@ -243,8 +243,8 @@ CREATE TABLE `pago` (
 -- CreateTable
 CREATE TABLE `plan_estudio` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `clave` VARCHAR(191) NOT NULL,
-    `nombre` VARCHAR(191) NOT NULL,
+    `clave` VARCHAR(50) NOT NULL,
+    `nombre` VARCHAR(50) NOT NULL,
     `descripcion` TEXT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -258,9 +258,9 @@ CREATE TABLE `plan_estudio` (
 CREATE TABLE `materia` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `planEstudioId` INTEGER NOT NULL,
-    `codigo` VARCHAR(191) NOT NULL,
-    `nombre_completo` VARCHAR(191) NOT NULL,
-    `nombre_corto` VARCHAR(191) NOT NULL,
+    `codigo` VARCHAR(50) NOT NULL,
+    `nombre_completo` VARCHAR(50) NOT NULL,
+    `nombre_corto` VARCHAR(50) NOT NULL,
     `semestre` INTEGER NOT NULL,
 
     UNIQUE INDEX `materia_planEstudioId_codigo_key`(`planEstudioId`, `codigo`),
@@ -283,9 +283,9 @@ CREATE TABLE `historial_academico` (
     `aspiranteId` INTEGER NOT NULL,
     `materiaId` INTEGER NOT NULL,
     `calificacion` DOUBLE NULL,
-    `tipoExamen` VARCHAR(191) NULL DEFAULT 'F',
-    `estatus` VARCHAR(191) NOT NULL DEFAULT 'CURSANDO',
-    `periodo` VARCHAR(191) NULL,
+    `tipoExamen` VARCHAR(50) NULL DEFAULT 'F',
+    `estatus` VARCHAR(50) NOT NULL DEFAULT 'CURSANDO',
+    `periodo` VARCHAR(50) NULL,
 
     UNIQUE INDEX `historial_academico_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
     PRIMARY KEY (`id`)
@@ -296,7 +296,7 @@ CREATE TABLE `materia_inscrita` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
     `materiaId` INTEGER NOT NULL,
-    `estatus` VARCHAR(191) NOT NULL DEFAULT 'Cursando',
+    `estatus` VARCHAR(50) NOT NULL DEFAULT 'Cursando',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `materia_inscrita_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
@@ -311,6 +311,9 @@ ALTER TABLE `aspirante_discapacidad` ADD CONSTRAINT `aspirante_discapacidad_disc
 
 -- AddForeignKey
 ALTER TABLE `usuarios` ADD CONSTRAINT `usuarios_id_tipoUsuario_fkey` FOREIGN KEY (`id_tipoUsuario`) REFERENCES `tipo_usuario`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_tipo_usuario_id_fkey` FOREIGN KEY (`tipo_usuario_id`) REFERENCES `tipo_usuario`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_generoId_fkey` FOREIGN KEY (`generoId`) REFERENCES `genero`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
