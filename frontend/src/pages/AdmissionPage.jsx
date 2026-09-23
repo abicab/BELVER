@@ -71,6 +71,7 @@ export default function AdmissionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Estados unificados para los catálogos dinámicos cargados desde el backend
+  const [generos, setGeneros] = useState([]);
   const [identidadesCulturales, setIdentidadesCulturales] = useState([]);
   const [parentescosDisponibles, setParentescosDisponibles] = useState([]);
 
@@ -84,6 +85,7 @@ export default function AdmissionPage() {
         const response = await fetch("http://localhost:4000/api/catalogo");
         const resultado = await response.json();
         if (response.ok && resultado.ok) {
+          setGeneros(resultado.data.genero || []);
           setIdentidadesCulturales(resultado.data.identidadCultural || []);
           setParentescosDisponibles(resultado.data.parentesco || []);
         }
@@ -374,7 +376,7 @@ export default function AdmissionPage() {
       ) {
         mostrarAlerta(
           "Los correos electrónicos ingresados no coinciden.",
-          "Correo Divergente",
+          "Correo Incorrecto",
         );
         return;
       }
@@ -724,7 +726,7 @@ export default function AdmissionPage() {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
-                1. Datos Personales, Domicilio, Inclusión y Tutor
+                1. Datos Personales del Aspirante
               </h2>
 
               <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-200">
@@ -799,8 +801,7 @@ export default function AdmissionPage() {
                     {formData.curp.length === 18 &&
                       !validarEstructuraCurp(formData.curp) && (
                         <span className="text-[10px] text-red-600 font-medium">
-                          ⚠️ Estructura de CURP incorrecta según formato
-                          oficial.
+                          Estructura de CURP incorrecta según formato oficial.
                         </span>
                       )}
                     {formData.curp.length === 18 &&
@@ -830,7 +831,7 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3 rounded-xl border border-slate-200">
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-slate-600">
-                      Fecha de Nacimiento (Automática por CURP)
+                      Fecha de Nacimiento
                     </label>
                     <input
                       type="text"
@@ -842,7 +843,7 @@ export default function AdmissionPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-slate-600">
-                      Sexo (Automático por CURP)
+                      Sexo
                     </label>
                     <input
                       type="text"
@@ -857,7 +858,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Correo Electrónico <span className="text-red-500">*</span>
+                      Correo Electrónico 1{" "}
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       name="correoElectronico1"
@@ -888,7 +890,7 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Correo Electrónico Alternativo (Opcional)
+                      Correo Electrónico 2
                     </label>
                     <input
                       name="correoElectronico2"
@@ -1079,7 +1081,7 @@ export default function AdmissionPage() {
               {/* Inclusión */}
               <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 space-y-3">
                 <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block border-b border-slate-200 pb-1">
-                  Datos de Inclusión y Diversidad
+                  Datos de Inclusión
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
@@ -1092,13 +1094,14 @@ export default function AdmissionPage() {
                       onChange={handleChange}
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
                     >
-                      <option value="">SELECCIONE UNA OPCIÓN...</option>
-                      <option value="FEMENINO">FEMENINO</option>
-                      <option value="MASCULINO">MASCULINO</option>
-                      <option value="LGTBIQ+">LGTBIQ+</option>
-                      <option value="OTRO / PREFIERO NO DECIRLO">
-                        OTRO / PREFIERO NO DECIRLO
+                      <option value="" key="default-genero">
+                        SELECCIONE UNA OPCIÓN...
                       </option>
+                      {generos.map((item) => (
+                        <option key={item.id} value={item.nombre}>
+                          {item.nombre}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
@@ -1111,7 +1114,9 @@ export default function AdmissionPage() {
                       onChange={handleChange}
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white outline-none uppercase"
                     >
-                      <option value="">SELECCIONE UNA OPCIÓN...</option>
+                      <option value="" key="default-identidad">
+                        SELECCIONE UNA OPCIÓN...
+                      </option>
                       {identidadesCulturales.map((item) => (
                         <option key={item.id} value={item.nombre}>
                           {item.nombre}
@@ -1598,7 +1603,7 @@ export default function AdmissionPage() {
                     </div>
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase block">
-                        Correo Electrónico
+                        Correo Electrónico 1
                       </span>
                       <span className="text-slate-800">
                         {formData.correoElectronico1}
@@ -1748,9 +1753,7 @@ export default function AdmissionPage() {
         {modalAlerta.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 text-center space-y-4">
-              <div className="w-12 h-12 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center mx-auto text-xl font-bold">
-                ⚠️
-              </div>
+              <div className="w-12 h-12 bg-amber-100 text-amber-800 rounded-full flex items-center justify-center mx-auto text-xl font-bold"></div>
               <div>
                 <h3 className="text-base font-bold text-slate-900">
                   {modalAlerta.titulo}
@@ -1777,9 +1780,7 @@ export default function AdmissionPage() {
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 transform transition-all">
               <div className="px-6 py-4 bg-slate-950 text-white flex justify-between items-center border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-sm shadow-inner">
-                    📋
-                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-sm shadow-inner"></div>
                   <div>
                     <h2 className="text-xs font-bold tracking-widest uppercase text-slate-100 flex items-center gap-2">
                       Consulta Pública de Solicitud y Estatus
@@ -1873,7 +1874,7 @@ export default function AdmissionPage() {
 
                 {consultaError && (
                   <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-center font-medium shadow-2xs flex items-center justify-center gap-2">
-                    <span>⚠️</span> {consultaError}
+                    <span></span> {consultaError}
                   </div>
                 )}
 
@@ -1889,7 +1890,7 @@ export default function AdmissionPage() {
                         </h3>
                       </div>
                       <span className="px-3 py-1.5 bg-blue-50 text-blue-800 border border-blue-200 font-extrabold rounded-xl text-[10px] tracking-wider uppercase flex items-center gap-1.5 shadow-2xs">
-                        🔄 {consultaResult.estatus}
+                        {consultaResult.estatus}
                       </span>
                     </div>
 
@@ -1927,11 +1928,11 @@ export default function AdmissionPage() {
                         <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-1.5">
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">
-                              ⚠️ Observaciones y Correcciones Requeridas
+                              Observaciones y Correcciones Requeridas
                             </span>
                             {consultaResult.fechaValidacion && (
                               <span className="text-[10px] font-mono text-amber-700 font-semibold">
-                                🕒 {consultaResult.fechaValidacion}
+                                {consultaResult.fechaValidacion}
                               </span>
                             )}
                           </div>

@@ -12,9 +12,9 @@ export const obtenerAspirantesControlEscolar = async (
 
     const whereClause: any = {};
 
-    if (estatus && estatus !== "TODOS") {
-      whereClause.rol = String(estatus).toUpperCase();
-    }
+    //if (estatus && estatus !== "TODOS") {
+    //  whereClause.rol = String(estatus).toUpperCase();
+    //}
 
     if (modalidad && modalidad !== "TODOS") {
       whereClause.tipoAdmision = String(modalidad);

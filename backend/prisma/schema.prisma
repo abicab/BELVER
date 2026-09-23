@@ -61,7 +61,6 @@ model Discapacidad {
   @@map("discapacidad")
 }
 
-// Tabla intermedia para soportar múltiples discapacidades por aspirante
 model AspiranteDiscapacidad {
   id              Int          @id @default(autoincrement())
   aspiranteId     Int
@@ -101,12 +100,12 @@ model Semestre {
 }
 
 // ==========================================
-// CONTROL DE TIPOS DE USUARIO Y USUARIOS
+// CONTROL DE TIPOS DE USUARIO Y ROLES
 // ==========================================
 
 model TipoUsuario {
   id          Int     @id @default(autoincrement())
-  tipoUsuario String  @map("tipo_usuario") @db.VarChar(50)
+  tipoUsuario String  @map("tipo_usuario") @db.VarChar(50) // Ej: ASPIRANTE, ALUMNO, CONTROL_ESCOLAR, ADMIN
   activo      Boolean @default(true)
 
   usuarios    Usuario[]
@@ -120,7 +119,7 @@ model Usuario {
   id_tipoUsuario  Int
   tipoUsuario     TipoUsuario @relation(fields: [id_tipoUsuario], references: [id], onDelete: Restrict)
   correo          String      @unique @db.VarChar(50)
-  contrasena      String      @db.VarChar(255) // Ampliado a 255 para soportar contraseñas encriptadas (ej. bcrypt/argon2)
+  contrasena      String      @db.VarChar(255)
   nombres         String      @db.VarChar(50)
   apellidoPaterno String      @db.VarChar(50)
   apellidoMaterno String?     @db.VarChar(50)
@@ -142,9 +141,9 @@ model Aspirante {
   folio         String    @unique @db.VarChar(50)
   vigenciaFolio DateTime?
 
-  // CREDENCIALES DE ACCESO INSTITUCIONAL
+  // CREDENCIALES Y ROL ASOCIADO
   matricula       String?     @unique @db.VarChar(50)
-  password        String?     @db.VarChar(255) // Ampliado a 255 para contraseñas encriptadas
+  password        String?     @db.VarChar(255)
   tipoUsuarioId   Int         @default(2) @map("tipo_usuario_id")
   tipoUsuarioRel  TipoUsuario @relation(fields: [tipoUsuarioId], references: [id], onDelete: Restrict)
 
@@ -154,22 +153,19 @@ model Aspirante {
   nombres            String   @db.VarChar(50)
   curp               String   @unique @db.VarChar(50)
   fechaNacimiento    DateTime?
-  genero             String?  @db.VarChar(50)
-  correoElectronico1 String   @unique @db.VarChar(50)
+  correoElectronico1 String   @db.VarChar(50)
   correoElectronico2 String?  @db.VarChar(50)
   telefonoCelular    String   @db.VarChar(50)
   telefonoParticular String?  @db.VarChar(50)
 
-  // Inclusión y Diversidad (Relaciones con Catálogos)
-  generoId Int?
-  generoRel Genero? @relation("GeneroRel", fields: [generoId], references: [id])
-
+  // Inclusión y Diversidad
+  generoId            Int?
+  generoRel           Genero?            @relation("GeneroRel", fields: [generoId], references: [id])
   identidadCulturalId Int?
   identidadCultural   IdentidadCultural? @relation("IdentidadCulturalRel", fields: [identidadCulturalId], references: [id])
-
   discapacidades      AspiranteDiscapacidad[]
 
-  // Domicilio (SEPOMEX con código postal opcional para extranjeros)
+  // Domicilio
   pais           String   @default("MÉXICO") @db.VarChar(50)
   codigoPostal   String?  @db.VarChar(50)
   estado         String   @db.VarChar(50)
@@ -180,65 +176,57 @@ model Aspirante {
   numeroInterior String?  @db.VarChar(50)
 
   // Datos del Tutor
-  tutorApellidoPaterno String? @db.VarChar(50)
-  tutorApellidoMaterno String? @db.VarChar(50)
-  tutorNombres         String? @db.VarChar(50)
-
+  tutorApellidoPaterno String?     @db.VarChar(50)
+  tutorApellidoMaterno String?     @db.VarChar(50)
+  tutorNombres         String?     @db.VarChar(50)
   parentescoTutorId    Int?
   tutorParentescoRel   Parentesco? @relation("ParentescoRel", fields: [parentescoTutorId], references: [id])
+  tutorTelefono        String?     @db.VarChar(50)
 
-  tutorTelefono        String? @db.VarChar(50)
+  // Antecedentes Académicos
+  tipoAdmision              String      @db.VarChar(50)
+  subsistemaId              Int?
+  subsistema                Subsistema? @relation("SubsistemaRel", fields: [subsistemaId], references: [id])
+  cctEscuelaProcedencia     String?     @db.VarChar(50)
+  nombreEscuelaProcedencia  String?     @db.VarChar(50)
+  estadoEscuelaProcedencia  String?     @db.VarChar(50)
+  promedioSecundaria        String?     @db.VarChar(50)
 
-  // Modalidad y Antecedentes Académicos
-  tipoAdmision         String  @db.VarChar(50)
+  sistemaBachilleratoPrevio String?     @db.VarChar(50)
+  sistemaProcedenciaLetra   String?     @db.VarChar(50)
+  otroSistemaProcedencia    String?     @db.VarChar(50)
+  cctBachilleratoPrevio     String?     @db.VarChar(50)
+  nombreBachilleratoPrevio  String?     @db.VarChar(50)
+  estadoBachilleratoPrevio  String?     @db.VarChar(50)
 
-  subsistemaId         Int?
-  subsistema           Subsistema? @relation("SubsistemaRel", fields: [subsistemaId], references: [id])
+  tipoEstudianteId          Int?
+  tipoEstudianteRel         TipoEstudiante? @relation("TipoEstudianteRel", fields: [tipoEstudianteId], references: [id])
+  semestreId                Int?
+  semestreRel               Semestre?       @relation("SemestreRel", fields: [semestreId], references: [id])
+  planEstudios              String?         @db.VarChar(50)
 
-  cctEscuelaProcedencia      String? @db.VarChar(50)
-  nombreEscuelaProcedencia   String? @db.VarChar(50)
-  estadoEscuelaProcedencia   String? @db.VarChar(50)
-  promedioSecundaria         String? @db.VarChar(50)
+  estatusAcademico          String          @default("ACTIVO_REGULAR") @db.VarChar(50)
+  emergenciaContacto        String?         @db.VarChar(50)
+  emergenciaTelefono        String?         @db.VarChar(50)
 
-  // Historial de Bachillerato (Revalidación)
-  sistemaBachilleratoPrevio  String? @db.VarChar(50)
-  sistemaProcedenciaLetra    String? @db.VarChar(50)
-  otroSistemaProcedencia     String? @db.VarChar(50)
-  cctBachilleratoPrevio      String? @db.VarChar(50)
-  nombreBachilleratoPrevio   String? @db.VarChar(50)
-  estadoBachilleratoPrevio   String? @db.VarChar(50)
+  creadoEn                  DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
 
-  tipoEstudianteId     Int?
-  tipoEstudianteRel    TipoEstudiante? @relation("TipoEstudianteRel", fields: [tipoEstudianteId], references: [id])
-
-  semestreId           Int?
-  semestreRel          Semestre? @relation("SemestreRel", fields: [semestreId], references: [id])
-
-  planEstudios         String? @db.VarChar(50)
-
-  estatusAcademico     String  @default("ACTIVO_REGULAR") @db.VarChar(50)
-  emergenciaContacto   String? @db.VarChar(50)
-  emergenciaTelefono   String? @db.VarChar(50)
-
-  // Fechas del Sistema
-  creadoEn             DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-
-  // Relaciones Operativas
-  documentos         Documento[]
-  historiales        HistorialAcademico[]
-  controlEscolar     ControlEscolar?
-  pagos              Pago[]
-  materiasInscritas  MateriaInscrita[]
+  // Relaciones Operativas Actualizadas
+  documentos               Documento[]
+  historiales              HistorialAcademico[]
+  validacionExpedientes    ValidacionExpediente?
+  pagos                    Pago[]
+  materiasInscritas        MateriaInscrita[]
 
   @@map("aspirante")
 }
 
 // ==========================================
-// MÓDULO DE CONTROL ESCOLAR (Expediente Administrativo)
+// SUBMÓDULO DE VALIDACIÓN DE EXPEDIENTES
 // ==========================================
 
-model ControlEscolar {
+model ValidacionExpediente {
   id              Int       @id @default(autoincrement())
   aspiranteId     Int       @unique
   aspirante       Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
@@ -251,11 +239,11 @@ model ControlEscolar {
   creadoEn        DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  @@map("control_escolar")
+  @@map("validacion_expedientes")
 }
 
 // ==========================================
-// MODELO DE DOCUMENTOS (Expediente Digital)
+// MODELO DE DOCUMENTOS
 // ==========================================
 
 model Documento {
@@ -271,10 +259,6 @@ model Documento {
   @@map("documento")
 }
 
-// ==========================================
-// MÓDULO DE AUDITORÍA Y LOGS
-// ==========================================
-
 model Auditoria {
   id           Int      @id @default(autoincrement())
   eventoId     String   @unique @db.VarChar(50)
@@ -286,35 +270,27 @@ model Auditoria {
   accion       String   @db.VarChar(50)
   detalle      String   @db.Text
   ip           String?  @db.VarChar(50)
-  nivel        String   @default("Informativo") @db.VarChar(50)
+  level        String   @default("Informativo") @db.VarChar(50)
   creadoEn     DateTime @default(now())
 
   @@map("auditoria")
 }
 
-// ==========================================
-// MÓDULO DE PAGOS Y CAJA
-// ==========================================
-
 model Pago {
-  id                 Int       @id @default(autoincrement())
+  id                 Int      @id @default(autoincrement())
   aspiranteId        Int
   aspirante          Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  concepto           String    @db.VarChar(50)
+  concepto           String   @db.VarChar(50)
   monto              Float
-  referenciaBancaria String    @unique @db.VarChar(50)
-  fechaPago          DateTime  @default(now())
-  metodo             String    @default("Captura Manual (Ventanilla)") @db.VarChar(50)
-  estatus            String    @default("CONCILIADO") @db.VarChar(50)
-  creadoEn           DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  referenciaBancaria String   @unique @db.VarChar(50)
+  fechaPago          DateTime @default(now())
+  metodo             String   @default("Captura Manual (Ventanilla)") @db.VarChar(50)
+  estatus            String   @default("CONCILIADO") @db.VarChar(50)
+  creadoEn           DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("pago")
 }
-
-// ==========================================
-// PLANES DE ESTUDIO Y ESTRUCTURA CURRICULAR
-// ==========================================
 
 model PlanEstudio {
   id          Int      @id @default(autoincrement())
@@ -324,7 +300,6 @@ model PlanEstudio {
   activo      Boolean  @default(true)
   creadoEn    DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
   materias    Materia[]
 
   @@map("plan_estudio")
@@ -341,7 +316,6 @@ model Materia {
 
   prerrequisitos    Seriacion[] @relation("MateriaPrerrequisito")
   esPrerrequisitoDe Seriacion[] @relation("MateriaSiguiente")
-
   historiales       HistorialAcademico[]
   materiasInscritas MateriaInscrita[]
 
@@ -361,32 +335,28 @@ model Seriacion {
 }
 
 model HistorialAcademico {
-  id           Int       @id @default(autoincrement())
-  aspiranteId  Int
-  aspirante    Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  materiaId    Int
-  materia      Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
-  calificacion Float?
-  tipoExamen   String?   @default("F") @db.VarChar(50)
-  estatus      String    @default("CURSANDO") @db.VarChar(50)
-  periodo      String?   @db.VarChar(50)
+  id            Int       @id @default(autoincrement())
+  aspiranteId   Int
+  aspirante     Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+  materiaId     Int
+  materia       Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  calificacion  Float?
+  tipoExamen    String?   @default("F") @db.VarChar(50)
+  estatus       String    @default("CURSANDO") @db.VarChar(50)
+  periodo       String?   @db.VarChar(50)
 
   @@unique([aspiranteId, materiaId])
   @@map("historial_academico")
 }
 
-// ==========================================
-// MÓDULO CAE
-// ==========================================
-
 model MateriaInscrita {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   aspiranteId Int
   aspirante   Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   materiaId   Int
   materia     Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
-  estatus     String    @default("Cursando") @db.VarChar(50)
-  creadoEn    DateTime  @default(now())
+  estatus     String   @default("Cursando") @db.VarChar(50)
+  creadoEn    DateTime @default(now())
 
   @@unique([aspiranteId, materiaId])
   @@map("materia_inscrita")

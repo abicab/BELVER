@@ -3,7 +3,7 @@ import prisma from "../config/prisma.js";
 import { admissionSchema } from "../middlewares/admissionMiddleware.js";
 import nodemailer from "nodemailer";
 
-// Configuración del transportador de correos institucionales
+// Configuración del transportador de correos
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT) || 587,
@@ -219,7 +219,9 @@ export const registrarAspirante = async (
           fechaNacimiento: datosValidados.fechaNacimiento
             ? new Date(datosValidados.fechaNacimiento)
             : null,
-          genero: datosValidados.genero || null,
+          generoId: datosValidados.generoId
+            ? Number(datosValidados.generoId)
+            : null,
           correoElectronico1: datosValidados.correoElectronico1,
           correoElectronico2: datosValidados.correoElectronico2 || null,
           telefonoCelular: datosValidados.telefonoCelular,
@@ -269,16 +271,21 @@ export const registrarAspirante = async (
         },
       });
 
-      // 4. Registro de archivos en el expediente digital
+      // 4. Registro de archivos en el expediente digital con nombre seguro (truncado a 190 chars)
       if (files) {
         for (const [fieldKey, fileList] of Object.entries(files)) {
           if (fileList && fileList.length > 0) {
             const file = fileList[0];
+            const nombreSeguro =
+              file.originalname.length > 190
+                ? file.originalname.substring(0, 190)
+                : file.originalname;
+
             await tx.documento.create({
               data: {
                 aspiranteId: aspirante.id,
                 tipoDoc: fieldKey,
-                nombreArchivo: file.originalname,
+                nombreArchivo: nombreSeguro,
                 archivoBlob: file.buffer,
                 estatusDoc: "EN REVISIÓN",
               },
@@ -297,10 +304,54 @@ export const registrarAspirante = async (
         year: "numeric",
       });
 
+      // Plantilla HTML estructurada y profesional
+      const htmlContent = `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px; color: #333333;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+
+            <!-- Cabecera institucional -->
+            <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
+              <h2 style="margin: 0; font-size: 20px;">Sistema BELVER</h2>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #94a3b8;">Control Interno y Servicios Escolares</p>
+            </div>
+
+            <!-- Cuerpo del mensaje -->
+            <div style="padding: 30px;">
+              <p style="font-size: 16px; margin-top: 0;">Estimado(a) <strong>${datosValidados.nombres}</strong>,</p>
+
+              <p style="font-size: 14px; line-height: 1.5; color: #475569;">
+                Tu solicitud de inscripción ha sido registrada con éxito en el sistema institucional. A continuación, te compartimos los detalles de tu registro y seguimiento oficial:
+              </p>
+
+              <!-- Tarjeta de Folio -->
+              <div style="background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                <p style="margin: 0 0 5px 0; font-size: 12px; color: #64748b; text-transform: uppercase; font-weight: bold;">Folio de Seguimiento Oficial:</p>
+                <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1e293b;">${nuevoAspirante.folio}</p>
+              </div>
+
+              <p style="font-size: 14px; line-height: 1.5; color: #475569;">
+                📅 <strong>Vigencia del trámite:</strong> ${fechaFormateada}
+              </p>
+
+              <p style="font-size: 13px; line-height: 1.5; color: #64748b; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                Por favor, conserve este folio para futuras consultas sobre el estatus de validación de sus documentos en el departamento de Control Escolar.
+              </p>
+            </div>
+
+            <!-- Pie de página -->
+            <div style="background-color: #f8fafc; padding: 15px; text-align: center; font-size: 11px; color: #94a3b8;">
+              Este correo fue generado automáticamente por el sistema BELVER. No responda a este mensaje.
+            </div>
+
+          </div>
+        </div>
+      `;
+
       await transporter.sendMail({
-        from: '"Sistema BELVER" <noreply@belver.gob.mx>',
+        from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
         to: datosValidados.correoElectronico1,
         subject: "¡Inscripción Exitosa a BELVER - Folio de Seguimiento!",
+        html: htmlContent,
         text: `Estimado(a) ${datosValidados.nombres}, tu solicitud ha sido registrada con éxito en el sistema BELVER. Tu folio de seguimiento oficial es: ${nuevoAspirante.folio}. Vigencia del trámite: ${fechaFormateada}.`,
       });
     } catch (emailError) {
