@@ -129,7 +129,6 @@ CREATE TABLE `aspirante` (
     `nombres` VARCHAR(50) NOT NULL,
     `curp` VARCHAR(50) NOT NULL,
     `fechaNacimiento` DATETIME(3) NULL,
-    `genero` VARCHAR(50) NULL,
     `correoElectronico1` VARCHAR(50) NOT NULL,
     `correoElectronico2` VARCHAR(50) NULL,
     `telefonoCelular` VARCHAR(50) NOT NULL,
@@ -153,32 +152,23 @@ CREATE TABLE `aspirante` (
     `subsistemaId` INTEGER NULL,
     `cctEscuelaProcedencia` VARCHAR(50) NULL,
     `nombreEscuelaProcedencia` VARCHAR(50) NULL,
-    `estadoEscuelaProcedencia` VARCHAR(50) NULL,
-    `promedioSecundaria` VARCHAR(50) NULL,
-    `sistemaBachilleratoPrevio` VARCHAR(50) NULL,
     `sistemaProcedenciaLetra` VARCHAR(50) NULL,
     `otroSistemaProcedencia` VARCHAR(50) NULL,
-    `cctBachilleratoPrevio` VARCHAR(50) NULL,
-    `nombreBachilleratoPrevio` VARCHAR(50) NULL,
-    `estadoBachilleratoPrevio` VARCHAR(50) NULL,
     `tipoEstudianteId` INTEGER NULL,
     `semestreId` INTEGER NULL,
     `planEstudios` VARCHAR(50) NULL,
     `estatusAcademico` VARCHAR(50) NOT NULL DEFAULT 'ACTIVO_REGULAR',
-    `emergenciaContacto` VARCHAR(50) NULL,
-    `emergenciaTelefono` VARCHAR(50) NULL,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
     UNIQUE INDEX `aspirante_folio_key`(`folio`),
     UNIQUE INDEX `aspirante_matricula_key`(`matricula`),
     UNIQUE INDEX `aspirante_curp_key`(`curp`),
-    UNIQUE INDEX `aspirante_correoElectronico1_key`(`correoElectronico1`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `control_escolar` (
+CREATE TABLE `validacion_expedientes` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
     `dictamenGeneral` VARCHAR(50) NOT NULL DEFAULT 'PENDIENTE',
@@ -188,7 +178,7 @@ CREATE TABLE `control_escolar` (
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 
-    UNIQUE INDEX `control_escolar_aspiranteId_key`(`aspiranteId`),
+    UNIQUE INDEX `validacion_expedientes_aspiranteId_key`(`aspiranteId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -216,7 +206,7 @@ CREATE TABLE `auditoria` (
     `accion` VARCHAR(50) NOT NULL,
     `detalle` TEXT NOT NULL,
     `ip` VARCHAR(50) NULL,
-    `nivel` VARCHAR(50) NOT NULL DEFAULT 'Informativo',
+    `level` VARCHAR(50) NOT NULL DEFAULT 'Informativo',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `auditoria_eventoId_key`(`eventoId`),
@@ -334,7 +324,7 @@ ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_tipoEstudianteId_fkey` FOREIGN
 ALTER TABLE `aspirante` ADD CONSTRAINT `aspirante_semestreId_fkey` FOREIGN KEY (`semestreId`) REFERENCES `semestre`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `control_escolar` ADD CONSTRAINT `control_escolar_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `validacion_expedientes` ADD CONSTRAINT `validacion_expedientes_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `documento` ADD CONSTRAINT `documento_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

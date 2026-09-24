@@ -117,7 +117,7 @@ export default function ControlEscolarPage() {
       selectedSolicitud.documentosTemp.some((d) => d.estatusDoc !== "VALIDADO");
     if (documentosPendientesORechazados) {
       alert(
-        '⚠️ Acción no permitida: Todos los documentos del expediente deben estar explícitamente marcados como "Validado ✓" antes de aprobar al alumno.',
+        'Acción no permitida: Todos los documentos del expediente deben estar explícitamente marcados como "Validado ✓" antes de aprobar al alumno.',
       );
       return;
     }
@@ -219,8 +219,9 @@ export default function ControlEscolarPage() {
                   <th className="p-4">Aspirante / CURP</th>
                   <th className="p-4">Modalidad</th>
                   <th className="p-4">Procedencia</th>
-                  <th className="p-4 text-center">Rol</th>
-                  <th className="p-4">Matrícula</th>
+                  <th className="p-4 py-2 text-center text-xs font-semibold text-slate-600 uppercase">
+                    Matrícula
+                  </th>
                   <th className="p-4 text-right">Acción</th>
                 </tr>
               </thead>
@@ -268,18 +269,7 @@ export default function ControlEscolarPage() {
                       <td className="p-4 text-slate-600">
                         {sol.nombreEscuelaProcedencia || "N/A"}
                       </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            sol.rol === "ALUMNO"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-blue-50 text-blue-700 border border-blue-200"
-                          }`}
-                        >
-                          {sol.rol}
-                        </span>
-                      </td>
-                      <td className="p-4 font-mono font-bold text-slate-900">
+                      <td className="px-4 py-2 text-center text-xs text-slate-700">
                         {sol.matricula || "—"}
                       </td>
                       <td className="p-4 text-right">

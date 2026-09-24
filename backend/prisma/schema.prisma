@@ -137,15 +137,15 @@ model Usuario {
 // ==========================================
 
 model Aspirante {
-  id            Int       @id @default(autoincrement())
-  folio         String    @unique @db.VarChar(50)
-  vigenciaFolio DateTime?
+  id              Int       @id @default(autoincrement())
+  folio           String    @unique @db.VarChar(50)
+  vigenciaFolio   DateTime?
 
   // CREDENCIALES Y ROL ASOCIADO
-  matricula       String?     @unique @db.VarChar(50)
-  password        String?     @db.VarChar(255)
-  tipoUsuarioId   Int         @default(2) @map("tipo_usuario_id")
-  tipoUsuarioRel  TipoUsuario @relation(fields: [tipoUsuarioId], references: [id], onDelete: Restrict)
+  matricula         String?     @unique @db.VarChar(50)
+  password          String?     @db.VarChar(255)
+  tipoUsuarioId     Int         @default(2) @map("tipo_usuario_id")
+  tipoUsuarioRel    TipoUsuario @relation(fields: [tipoUsuarioId], references: [id], onDelete: Restrict)
 
   // Datos Personales y de Contacto
   apellidoPaterno    String   @db.VarChar(50)
@@ -183,34 +183,28 @@ model Aspirante {
   tutorParentescoRel   Parentesco? @relation("ParentescoRel", fields: [parentescoTutorId], references: [id])
   tutorTelefono        String?     @db.VarChar(50)
 
-  // Antecedentes Académicos
-  tipoAdmision              String      @db.VarChar(50)
-  subsistemaId              Int?
-  subsistema                Subsistema? @relation("SubsistemaRel", fields: [subsistemaId], references: [id])
-  cctEscuelaProcedencia     String?     @db.VarChar(50)
-  nombreEscuelaProcedencia  String?     @db.VarChar(50)
-  estadoEscuelaProcedencia  String?     @db.VarChar(50)
-  promedioSecundaria        String?     @db.VarChar(50)
+  // Antecedentes Académicos Unificados y Simplificados
+  tipoAdmision             String      @db.VarChar(50) // "nuevo_ingreso" o "revalidacion"
+  subsistemaId             Int?
+  subsistema               Subsistema? @relation("SubsistemaRel", fields: [subsistemaId], references: [id])
+  cctEscuelaProcedencia    String?     @db.VarChar(50)
+  nombreEscuelaProcedencia String?     @db.VarChar(50)
 
-  sistemaBachilleratoPrevio String?     @db.VarChar(50)
-  sistemaProcedenciaLetra   String?     @db.VarChar(50)
-  otroSistemaProcedencia    String?     @db.VarChar(50)
-  cctBachilleratoPrevio     String?     @db.VarChar(50)
-  nombreBachilleratoPrevio  String?     @db.VarChar(50)
-  estadoBachilleratoPrevio  String?     @db.VarChar(50)
+  // Campos específicos de equivalencias
+  sistemaProcedenciaLetra  String?     @db.VarChar(50)
+  otroSistemaProcedencia   String?     @db.VarChar(50)
 
-  tipoEstudianteId          Int?
-  tipoEstudianteRel         TipoEstudiante? @relation("TipoEstudianteRel", fields: [tipoEstudianteId], references: [id])
-  semestreId                Int?
-  semestreRel               Semestre?       @relation("SemestreRel", fields: [semestreId], references: [id])
-  planEstudios              String?         @db.VarChar(50)
+  // Control Escolar Interno
+  tipoEstudianteId         Int?
+  tipoEstudianteRel        TipoEstudiante? @relation("TipoEstudianteRel", fields: [tipoEstudianteId], references: [id])
+  semestreId               Int?
+  semestreRel              Semestre?       @relation("SemestreRel", fields: [semestreId], references: [id])
+  planEstudios             String?         @db.VarChar(50)
 
-  estatusAcademico          String          @default("ACTIVO_REGULAR") @db.VarChar(50)
-  emergenciaContacto        String?         @db.VarChar(50)
-  emergenciaTelefono        String?         @db.VarChar(50)
+  estatusAcademico         String          @default("ACTIVO_REGULAR") @db.VarChar(50)
 
-  creadoEn                  DateTime        @default(now())
-  updatedAt                 DateTime        @updatedAt
+  creadoEn                 DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
 
   // Relaciones Operativas Actualizadas
   documentos               Documento[]

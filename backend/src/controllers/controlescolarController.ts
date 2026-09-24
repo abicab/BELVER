@@ -36,7 +36,8 @@ export const obtenerAspirantesControlEscolar = async (
         documentos: true,
         generoRel: true,
         subsistema: true,
-        controlEscolar: true,
+        validacionExpedientes: true,
+        identidadCultural: true,
       },
       orderBy: { creadoEn: "desc" },
     });
@@ -201,7 +202,7 @@ export const aprobarYGenerarCredencialesControl = async (
         },
       });
 
-      await tx.controlEscolar.upsert({
+      await tx.validacionExpediente.upsert({
         where: { aspiranteId: Number(id) },
         update: { dictamenGeneral: "APROBADO" },
         create: {
@@ -222,7 +223,6 @@ export const aprobarYGenerarCredencialesControl = async (
         id: resultado.id,
         matricula: resultado.matricula,
         password: resultado.password,
-        rol: resultado.rol,
       },
     });
   } catch (error: any) {
@@ -276,8 +276,8 @@ export const emitirObservacionesControl = async (
 
     const fechaActual = new Date();
 
-    // Guardar o actualizar en la tabla ControlEscolar
-    const controlActualizado = await prisma.controlEscolar.upsert({
+    // Guardar o actualizar en la tabla ValidacionExpedientes
+    const controlActualizado = await prisma.validacionExpediente.upsert({
       where: { aspiranteId: Number(id) },
       update: {
         dictamenGeneral: "CON_OBSERVACIONES",

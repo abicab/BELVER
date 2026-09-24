@@ -35,10 +35,7 @@ export const admissionSchema = z.object({
   telefonoParticular: z.string().optional().nullable().or(z.literal("")),
 
   // Inclusión y Diversidad
-  generoId: z.preprocess(
-    (val) => (val ? Number(val) : null),
-    z.number().optional().nullable(),
-  ),
+  generoIdentidad: z.string().optional().nullable(), // <--- Agregado para capturar el texto del catálogo de inclusión
   identidadCultural: z.string().optional().nullable(),
 
   // Discapacidades múltiples
@@ -55,7 +52,7 @@ export const admissionSchema = z.object({
     }, z.array(z.string()))
     .default([]),
 
-  // Domicilio (Corregido el error de .default().toUpperCase())
+  // Domicilio
   pais: z
     .string()
     .transform((val) => (val ? val.toUpperCase() : "MÉXICO"))
@@ -81,6 +78,4 @@ export const admissionSchema = z.object({
   nombreEscuelaProcedencia: z.string().optional().nullable(),
   sistemaProcedenciaLetra: z.string().optional().nullable(),
   otroSistemaProcedencia: z.string().optional().nullable(),
-  previousSchoolCct: z.string().optional().nullable(),
-  previousHighSchoolName: z.string().optional().nullable(),
 });

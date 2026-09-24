@@ -146,10 +146,8 @@ export default function AdmissionPage() {
     tipoAdmision: "nuevo_ingreso",
     cctEscuelaProcedencia: "",
     nombreEscuelaProcedencia: "",
-    sistemaProcedenciaLetra: "A",
+    sistemaProcedenciaLetra: "",
     otroSistemaProcedencia: "",
-    previousSchoolCct: "",
-    previousHighSchoolName: "",
     photo: null,
     studyCert: null,
     constanciaEstudios: null,
@@ -200,7 +198,7 @@ export default function AdmissionPage() {
       processedValue = value.replace(/\D/g, "").slice(0, 10);
     } else if (name === "codigoPostal") {
       processedValue = value.replace(/\D/g, "").slice(0, 5);
-    } else if (["cctEscuelaProcedencia", "previousSchoolCct"].includes(name)) {
+    } else if (name === "cctEscuelaProcedencia") {
       processedValue = value
         .replace(/[^A-Za-z0-9]/g, "")
         .toUpperCase()
@@ -258,7 +256,9 @@ export default function AdmissionPage() {
     setFormData((prev) => ({
       ...prev,
       tipoAdmision: tipo,
-      sistemaProcedenciaLetra: tipo === "nuevo_ingreso" ? "A" : "C",
+      sistemaProcedenciaLetra: "",
+      cctEscuelaProcedencia: "",
+      nombreEscuelaProcedencia: "",
     }));
   };
 
@@ -365,7 +365,7 @@ export default function AdmissionPage() {
 
       if (!validarEstructuraCurp(formData.curp.trim())) {
         mostrarAlerta(
-          "La estructura de la CURP no es válida. Verifique el formato oficial.",
+          "La estructura de la CURP não es válida. Verifique el formato oficial.",
           "CURP Inválida",
         );
         return;
@@ -410,8 +410,8 @@ export default function AdmissionPage() {
       if (
         formData.tipoAdmision === "revalidacion" &&
         (!formData.sistemaProcedenciaLetra ||
-          !formData.previousSchoolCct ||
-          !formData.previousHighSchoolName ||
+          !formData.cctEscuelaProcedencia ||
+          !formData.nombreEscuelaProcedencia ||
           (formData.sistemaProcedenciaLetra === "F" &&
             !formData.otroSistemaProcedencia))
       ) {
@@ -449,7 +449,6 @@ export default function AdmissionPage() {
     try {
       const dataToSend = new FormData();
 
-      // Mapeo explícito y robusto para evitar campos undefined en el backend
       dataToSend.append("apellidoPaterno", formData.apellidoPaterno || "");
       dataToSend.append("apellidoMaterno", formData.apellidoMaterno || "");
       dataToSend.append("nombres", formData.nombres || "");
@@ -470,7 +469,6 @@ export default function AdmissionPage() {
         formData.telefonoParticular || "",
       );
 
-      // Inclusión y Domicilio
       dataToSend.append("generoIdentidad", formData.generoIdentidad || "");
       dataToSend.append("identidadCultural", formData.identidadCultural || "");
       dataToSend.append(
@@ -487,7 +485,6 @@ export default function AdmissionPage() {
       dataToSend.append("numeroExterior", formData.numeroExterior || "");
       dataToSend.append("numeroInterior", formData.numeroInterior || "");
 
-      // Tutor
       dataToSend.append(
         "tutorApellidoPaterno",
         formData.tutorApellidoPaterno || "",
@@ -500,7 +497,6 @@ export default function AdmissionPage() {
       dataToSend.append("tutorParentesco", formData.tutorParentesco || "");
       dataToSend.append("tutorTelefono", formData.tutorTelefono || "");
 
-      // Antecedentes Escolares
       dataToSend.append(
         "tipoAdmision",
         formData.tipoAdmision || "nuevo_ingreso",
@@ -521,13 +517,7 @@ export default function AdmissionPage() {
         "otroSistemaProcedencia",
         formData.otroSistemaProcedencia || "",
       );
-      dataToSend.append("previousSchoolCct", formData.previousSchoolCct || "");
-      dataToSend.append(
-        "previousHighSchoolName",
-        formData.previousHighSchoolName || "",
-      );
 
-      // Archivos adjuntos
       if (formData.photo) dataToSend.append("photo", formData.photo);
       if (formData.actaNacimiento)
         dataToSend.append("actaNacimiento", formData.actaNacimiento);
@@ -1384,11 +1374,11 @@ export default function AdmissionPage() {
                         <span className="text-red-500">*</span>
                       </label>
                       <input
-                        name="previousSchoolCct"
+                        name="cctEscuelaProcedencia"
                         type="text"
                         maxLength={10}
                         required
-                        value={formData.previousSchoolCct}
+                        value={formData.cctEscuelaProcedencia}
                         onChange={handleChange}
                         placeholder="EJ. 30EBH0100Y"
                         className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase font-mono"
@@ -1400,13 +1390,13 @@ export default function AdmissionPage() {
                         <span className="text-red-500">*</span>
                       </label>
                       <input
-                        name="previousHighSchoolName"
+                        name="nombreEscuelaProcedencia"
                         type="text"
                         required
-                        value={formData.previousHighSchoolName}
+                        value={formData.nombreEscuelaProcedencia}
                         onChange={handleChange}
                         placeholder="EJ. CBTIS 13 / COBAEV 35"
-                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white outline-none uppercase"
+                        className="w-full px-3 py-2 text-xs border border-amber-300 rounded-lg bg-white uppercase"
                       />
                     </div>
                   </div>
@@ -1643,19 +1633,11 @@ export default function AdmissionPage() {
                     )
                   </span>
                   <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
-                    {formData.tipoAdmision === "nuevo_ingreso" ? (
-                      <div>
-                        <span className="font-semibold">Secundaria:</span>{" "}
-                        {formData.nombreEscuelaProcedencia} (CCT:{" "}
-                        {formData.cctEscuelaProcedencia})
-                      </div>
-                    ) : (
-                      <div>
-                        <span className="font-semibold">Plantel Anterior:</span>{" "}
-                        {formData.previousHighSchoolName} (CCT:{" "}
-                        {formData.previousSchoolCct})
-                      </div>
-                    )}
+                    <div>
+                      <span className="font-semibold">Plantel / Escuela:</span>{" "}
+                      {formData.nombreEscuelaProcedencia || "N/A"} (CCT:{" "}
+                      {formData.cctEscuelaProcedencia || "N/A"})
+                    </div>
                   </div>
                 </div>
 
