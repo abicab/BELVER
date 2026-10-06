@@ -13,8 +13,18 @@ export default function Navbar({
 
   const ALL_MODULES = [
     {
-      id: "ControlEscolarPage",
-      label: "Control Escolar",
+      id: "ValidacionAspirantesPage",
+      label: "Aspirantes",
+      roles: ["ADMIN", "CONTROL_ESCOLAR"],
+    },
+    {
+      id: "AlumnosCEPage",
+      label: "Alumnos",
+      roles: ["ADMIN", "CONTROL_ESCOLAR"],
+    },
+    {
+      id: "ReportesPage",
+      label: "Reportes",
       roles: ["ADMIN", "CONTROL_ESCOLAR"],
     },
     { id: "CaePage", label: "Panel CAE", roles: ["ADMIN", "CAE"] },

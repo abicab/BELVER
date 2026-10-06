@@ -3,9 +3,11 @@ import Navbar from "./components/Navbar";
 
 // Módulos bajo responsabilidad de Abi
 import AdmissionPage from "./pages/AdmissionPage";
-import ControlEscolarPage from "./pages/ControlEscolarPage";
 import CaePage from "./pages/CaePage";
 import PagosPage from "./pages/PagosPage";
+import ValidacionAspirantesPage from "./pages/ValidacionAspirantesPage";
+import AlumnosCEPage from "./pages/AlumnosCEPage";
+import ReportesPage from "./pages/ReportesPage";
 
 // Bitácora bajo la responsabilidad de ambos
 import BitacoraPage from "./pages/BitacoraPage";
@@ -38,12 +40,12 @@ const ROLE_MAPPING = {
   ADMIN: {
     name: "Administrador TI",
     role: "Super Administrador",
-    defaultModule: "ControlEscolarPage",
+    defaultModule: "ValidacionAspirantesPage",
   },
   CONTROL_ESCOLAR: {
     name: "Coordinación Escolar",
     role: "Control Escolar",
-    defaultModule: "ControlEscolarPage",
+    defaultModule: "ValidacionAspirantesPage",
   },
   CAE: { name: "Atención CAE", role: "Personal CAE", defaultModule: "CaePage" },
   ALUMNO: {
@@ -229,7 +231,11 @@ export default function App() {
 
         {isAuthenticated && (
           <>
-            {currentModule === "ControlEscolarPage" && <ControlEscolarPage />}
+            {currentModule === "ValidacionAspirantesPage" && (
+              <ValidacionAspirantesPage />
+            )}
+            {currentModule === "AlumnosCEPage" && <AlumnosCEPage />}
+            {currentModule === "ReportesPage" && <ReportesPage />}
             {currentModule === "CaePage" && <CaePage />}
             {currentModule === "PagosPage" && <PagosPage />}
             {currentModule === "BitacoraPage" && <BitacoraPage />}
@@ -238,7 +244,7 @@ export default function App() {
               <UsersPage onNavigateToPortal={handleNavigateToPortal} />
             )}
 
-            {currentModule === "PlanEstudiosPage" && ( 
+            {currentModule === "PlanEstudiosPage" && (
               <PlanEstudiosPage userRole={userProfile?.roleCode} />
             )}
 
