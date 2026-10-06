@@ -1,8 +1,19 @@
 import { Request, Response } from "express";
 import prisma from "../config/prisma.js";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 
-// Obtener lista de aspirantes con filtros para Control Escolar
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.gmail.com",
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// Obtener lista de aspirantes con filtros para Control Escolar (Incluyendo Discapacidades y Catálogos)
 export const obtenerAspirantesControlEscolar = async (
   req: Request,
   res: Response,
@@ -11,10 +22,6 @@ export const obtenerAspirantesControlEscolar = async (
     const { estatus, modalidad, busqueda } = req.query;
 
     const whereClause: any = {};
-
-    //if (estatus && estatus !== "TODOS") {
-    //  whereClause.rol = String(estatus).toUpperCase();
-    //}
 
     if (modalidad && modalidad !== "TODOS") {
       whereClause.tipoAdmision = String(modalidad);
@@ -38,6 +45,12 @@ export const obtenerAspirantesControlEscolar = async (
         subsistema: true,
         validacionExpedientes: true,
         identidadCultural: true,
+        tutorParentescoRel: true,
+        discapacidades: {
+          include: {
+            discapacidad: true, // Esto carga correctamente los nombres de las discapacidades
+          },
+        },
       },
       orderBy: { creadoEn: "desc" },
     });
@@ -110,7 +123,6 @@ export const verDocumentoControl = async (
       return;
     }
 
-    // Detectar el tipo MIME basándose en la extensión o tipo de documento
     let contentType = "application/pdf";
     if (
       documento.tipoDoc === "photo" ||
@@ -133,13 +145,16 @@ export const verDocumentoControl = async (
   }
 };
 
-// Aprobar aspirante, generar matrícula B26000001 y contraseña segura
+// Aprobar aspirante, cambiar tipo de usuario a Alumno (ID 5), generar matrícula y credenciales
 export const aprobarYGenerarCredencialesControl = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
+
+    // ID 5 corresponde inequívocamente a "Alumno" en tu catálogo tipo_usuario
+    const tipoUsuarioAlumnoId = 5;
 
     const resultado = await prisma.$transaction(async (tx) => {
       const aspirante = await tx.aspirante.findUnique({
@@ -155,20 +170,17 @@ export const aprobarYGenerarCredencialesControl = async (
         throw new Error("YA_TIENE_MATRICULA");
       }
 
-      // --- VALIDACIÓN ESTRICTA DE DOCUMENTOS ---
       if (!aspirante.documentos || aspirante.documentos.length === 0) {
         throw new Error("SIN_DOCUMENTOS");
       }
 
-      // Verificamos si hay algún documento que NO esté validado (es decir, esté en "EN REVISIÓN" o "RECHAZADO")
       const documentosNoValidados = aspirante.documentos.some(
-        (d) => d.estatusDoc !== "VALIDADO",
+        (d) => d.estatusDoc !== "APROBADO",
       );
 
       if (documentosNoValidados) {
         throw new Error("DOCUMENTOS_PENDIENTES_O_RECHAZADOS");
       }
-      // ----------------------------------------
 
       const anioActual = "26";
       const prefijo = `B${anioActual}`;
@@ -198,15 +210,21 @@ export const aprobarYGenerarCredencialesControl = async (
         data: {
           matricula: nuevaMatricula,
           password: passwordAleatorio,
+          tipoUsuarioId: tipoUsuarioAlumnoId, // Actualización formal a Alumno (ID 5)
+          estatusAcademico: "ACTIVO_REGULAR",
         },
       });
 
       await tx.validacionExpediente.upsert({
         where: { aspiranteId: Number(id) },
-        update: { dictamenGeneral: "APROBADO" },
+        update: {
+          dictamenGeneral: "APROBADO",
+          observaciones: null,
+        },
         create: {
           aspiranteId: Number(id),
           dictamenGeneral: "APROBADO",
+          observaciones: null,
           validadoPor: "Control Escolar",
           fechaValidacion: new Date(),
         },
@@ -214,6 +232,39 @@ export const aprobarYGenerarCredencialesControl = async (
 
       return aspiranteActualizado;
     });
+
+    // Envío del correo institucional en segundo plano (No bloqueante)
+    transporter
+      .sendMail({
+        from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
+        to: resultado.correoElectronico1,
+        subject: "¡Documentos Validados y Asignación de Matrícula - BELVER!",
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px; color: #333333;">
+          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
+              <h2 style="margin: 0; font-size: 20px;">¡Documentos Validados y Expediente Aprobado - Sistema BELVER!</h2>
+            </div>
+            <div style="padding: 30px;">
+              <p>Estimado(a) <strong>${resultado.nombres}</strong>,</p>
+              <p>Tus documentos han sido validados con éxito y tu expediente ha sido <strong>APROBADO</strong> por el departamento de Control Escolar.</p>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin: 20px 0;">
+                <p style="margin: 5px 0;"><strong>Matrícula Asignada:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px;">${resultado.matricula}</span></p>
+                <p style="margin: 5px 0;"><strong>Contraseña Única:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px;">${resultado.password}</span></p>
+              </div>
+              <p>Guarda estos datos en un lugar seguro; los necesitarás para acceder a tu portal escolar.</p>
+            </div>
+          </div>
+        </div>
+      `,
+        text: `Tus documentos fueron validados con éxito. Matrícula: ${resultado.matricula}, Contraseña: ${resultado.password}`,
+      })
+      .catch((emailError) => {
+        console.error(
+          "Advertencia: No se pudo enviar el correo de aprobación:",
+          emailError,
+        );
+      });
 
     res.status(200).json({
       ok: true,
@@ -238,7 +289,7 @@ export const aprobarYGenerarCredencialesControl = async (
       res.status(400).json({
         ok: false,
         mensaje:
-          "No se puede aprobar el expediente. Todos los documentos deben estar marcados explícitamente como 'Validado ✓'.",
+          "No se puede aprobar el expediente. Todos los documentos deben estar marcados explícitamente como 'Aprobado'.",
       });
       return;
     }
@@ -275,7 +326,6 @@ export const emitirObservacionesControl = async (
 
     const fechaActual = new Date();
 
-    // Guardar o actualizar en la tabla ValidacionExpedientes
     const controlActualizado = await prisma.validacionExpediente.upsert({
       where: { aspiranteId: Number(id) },
       update: {
