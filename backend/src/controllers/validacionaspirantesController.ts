@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Obtener lista de aspirantes con filtros para Control Escolar (Incluyendo Discapacidades y Catálogos)
+// Obtener lista de aspirantes con filtros para Control Escolar (Excluye aprobados con matrícula)
 export const obtenerAspirantesControlEscolar = async (
   req: Request,
   res: Response,
@@ -21,7 +21,10 @@ export const obtenerAspirantesControlEscolar = async (
   try {
     const { estatus, modalidad, busqueda } = req.query;
 
-    const whereClause: any = {};
+    // Filtro base: Solo mostrar expedientes que aún NO tienen matrícula asignada
+    const whereClause: any = {
+      matricula: null,
+    };
 
     if (modalidad && modalidad !== "TODOS") {
       whereClause.tipoAdmision = String(modalidad);
@@ -37,7 +40,7 @@ export const obtenerAspirantesControlEscolar = async (
       ];
     }
 
-    const aspirantes = await prisma.aspirante.findMany({
+    const aspirantesCrudos = await prisma.aspirante.findMany({
       where: whereClause,
       include: {
         documentos: true,
@@ -48,11 +51,26 @@ export const obtenerAspirantesControlEscolar = async (
         tutorParentescoRel: true,
         discapacidades: {
           include: {
-            discapacidad: true, // Esto carga correctamente los nombres de las discapacidades
+            discapacidad: true,
           },
         },
       },
       orderBy: { creadoEn: "desc" },
+    });
+
+    const aspirantes = aspirantesCrudos.map((aspirante) => {
+      const listaDiscapacidades =
+        aspirante.discapacidades?.map((d) => d.discapacidad?.nombre) || [];
+
+      return {
+        ...aspirante,
+        identidadCulturalTexto:
+          aspirante.identidadCultural?.nombre || "NINGUNO",
+        discapacidadesTexto:
+          listaDiscapacidades.length > 0
+            ? listaDiscapacidades.join(", ")
+            : "Ninguna",
+      };
     });
 
     res.status(200).json({
@@ -153,7 +171,7 @@ export const aprobarYGenerarCredencialesControl = async (
   try {
     const { id } = req.params;
 
-    // ID 5 corresponde inequívocamente a "Alumno" en tu catálogo tipo_usuario
+    // ID 5 corresponde a "Alumno" en tu catálogo tipo_usuario
     const tipoUsuarioAlumnoId = 5;
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -210,7 +228,7 @@ export const aprobarYGenerarCredencialesControl = async (
         data: {
           matricula: nuevaMatricula,
           password: passwordAleatorio,
-          tipoUsuarioId: tipoUsuarioAlumnoId, // Actualización formal a Alumno (ID 5)
+          tipoUsuarioId: tipoUsuarioAlumnoId,
           estatusAcademico: "ACTIVO_REGULAR",
         },
       });
@@ -233,7 +251,7 @@ export const aprobarYGenerarCredencialesControl = async (
       return aspiranteActualizado;
     });
 
-    // Envío del correo institucional en segundo plano (No bloqueante)
+    // Envío del correo institucional en segundo plano
     transporter
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,

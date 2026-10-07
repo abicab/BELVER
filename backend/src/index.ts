@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import admissionRoute from "./routes/admissionRoute";
 import catalogoRoute from "./routes/catalogoRoute";
-import controlescolarRoute from "./routes/controlescolarRoute";
 import studyPlanRoutes from "./routes/studyPlanRoutes";
+import validacionaspirantesRoute from "./routes/validacionaspirantesRoute.ts";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -11,8 +11,8 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// ... dentro de tus middlewares de rutas:
-app.use("/api/controlescolar", controlescolarRoute);
+// CAMBIAMOS ESTA LÍNEA para que coincida exactamente con el frontend (/api/controlescolar)
+app.use("/api/controlescolar", validacionaspirantesRoute);
 
 // Ruta de Catalogos
 app.use("/api/catalogo", catalogoRoute);

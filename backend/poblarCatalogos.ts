@@ -1,47 +1,13 @@
-import prisma from "./src/config/prisma.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 async function poblar() {
   console.log(
-    "Iniciando inserción y actualización de catálogos normalizados...",
+    "Iniciando inserción y actualización de catálogos institucionales...",
   );
 
-  // 1. Directorio Maestro de Catálogos (Para el panel de administración)
-  const metadataCatalogos = [
-    {
-      nombreTabla: "subsistema",
-      tituloVisible: "Subsistemas de Bachillerato",
-      orden: 1,
-    },
-    { nombreTabla: "genero", tituloVisible: "Género e Identidad", orden: 2 },
-    {
-      nombreTabla: "identidadCultural",
-      tituloVisible: "Identidad Cultural",
-      orden: 3,
-    },
-    { nombreTabla: "discapacidad", tituloVisible: "Discapacidades", orden: 4 },
-    {
-      nombreTabla: "parentesco",
-      tituloVisible: "Parentesco del Tutor",
-      orden: 5,
-    },
-    {
-      nombreTabla: "tipoEstudiante",
-      tituloVisible: "Tipos de Estudiante",
-      orden: 6,
-    },
-    { nombreTabla: "semestre", tituloVisible: "Semestres", orden: 7 },
-    { nombreTabla: "tipoUsuario", tituloVisible: "Tipos de Usuario", orden: 8 },
-  ];
-
-  for (const cat of metadataCatalogos) {
-    await prisma.catalogo.upsert({
-      where: { nombreTabla: cat.nombreTabla },
-      update: { tituloVisible: cat.tituloVisible, orden: cat.orden },
-      create: cat,
-    });
-  }
-
-  // 2. Tipos de Usuario
+  // 1. Tipos de Usuario
   const tiposUsuarios = [
     { id: 1, tipoUsuario: "Admin", activo: true },
     { id: 2, tipoUsuario: "Aspirante", activo: true },
@@ -66,7 +32,7 @@ async function poblar() {
     });
   }
 
-  // 3. Subsistemas de Bachillerato / Prepa (Mapeo por letras institucionales)
+  // 2. Subsistemas de Bachillerato / Prepa (Mapeo por letras institucionales)
   const subsistemas = [
     "A. SECUNDARIA",
     "C. DGB",
@@ -82,13 +48,8 @@ async function poblar() {
     });
   }
 
-  // 4. Género / Identidad
-  const generos = [
-    "FEMENINO",
-    "MASCULINO",
-    "LGTBIQ+",
-    "OTRO / PREFIERO NO DECIRLO",
-  ];
+  // 3. Género / Identidad
+  const generos = ["FEMENINO", "MASCULINO", "LGBTQ+", "PREFIERO NO DECIRLO"];
   for (const nombre of generos) {
     await prisma.genero.upsert({
       where: { nombre },
@@ -97,7 +58,7 @@ async function poblar() {
     });
   }
 
-  // 5. Identidad Cultural
+  // 4. Identidad Cultural
   const culturales = ["AFRODESCENDIENTE", "POBLACIÓN INDÍGENA", "NINGUNO"];
   for (const nombre of culturales) {
     await prisma.identidadCultural.upsert({
@@ -107,7 +68,7 @@ async function poblar() {
     });
   }
 
-  // 6. Discapacidades (Catálogo completo para selección múltiple)
+  // 5. Discapacidades (Catálogo completo para selección múltiple)
   const discapacidades = [
     "DISCAPACIDAD MOTRIZ",
     "DISCAPACIDAD VISUAL",
@@ -128,7 +89,7 @@ async function poblar() {
     });
   }
 
-  // 7. Parentesco del Tutor
+  // 6. Parentesco del Tutor
   const parentescos = ["MAMÁ", "PAPÁ", "SOY YO", "OTRO"];
   for (const nombre of parentescos) {
     await prisma.parentesco.upsert({
@@ -138,7 +99,7 @@ async function poblar() {
     });
   }
 
-  // 8. Tipo de Estudiante
+  // 7. Tipo de Estudiante
   const tiposEstudiante = ["REGULAR", "REPETIDOR"];
   for (const nombre of tiposEstudiante) {
     await prisma.tipoEstudiante.upsert({
@@ -148,8 +109,9 @@ async function poblar() {
     });
   }
 
-  // 9. Semestres
+  // 8. Semestres
   const semestres = [
+    "1° Semestre",
     "2° Semestre",
     "3° Semestre",
     "4° Semestre",
@@ -164,7 +126,7 @@ async function poblar() {
     });
   }
 
-  // 10. Plan de Estudios Principal
+  // 9. Plan de Estudios Principal
   const plan = await prisma.planEstudio.upsert({
     where: { clave: "BG-BELVER-2026" },
     update: {},
@@ -177,7 +139,7 @@ async function poblar() {
     },
   });
 
-  // 11. Catálogo de Materias Integradas
+  // 10. Catálogo de Materias Integradas
   const materiasData = [
     // Primer Semestre
     {
@@ -468,7 +430,7 @@ async function poblar() {
   }
 
   console.log(
-    "¡Los catálogos vigentes, tipos de usuario, plan de estudios y materias se han poblado exitosamente!",
+    "¡Los catálogos institucionales, tipos de usuario, plan de estudios y materias se han poblado exitosamente!",
   );
 }
 

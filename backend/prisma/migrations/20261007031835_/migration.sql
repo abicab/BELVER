@@ -1,19 +1,7 @@
 -- CreateTable
-CREATE TABLE `catalogo` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombreTabla` VARCHAR(50) NOT NULL,
-    `tituloVisible` VARCHAR(50) NOT NULL,
-    `orden` INTEGER NOT NULL DEFAULT 0,
-    `activo` BOOLEAN NOT NULL DEFAULT true,
-
-    UNIQUE INDEX `catalogo_nombreTabla_key`(`nombreTabla`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `subsistema` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
+    `nombre` VARCHAR(100) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `subsistema_nombre_key`(`nombre`),
@@ -23,7 +11,7 @@ CREATE TABLE `subsistema` (
 -- CreateTable
 CREATE TABLE `genero` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
+    `nombre` VARCHAR(100) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `genero_nombre_key`(`nombre`),
@@ -33,7 +21,7 @@ CREATE TABLE `genero` (
 -- CreateTable
 CREATE TABLE `identidad_cultural` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
+    `nombre` VARCHAR(100) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `identidad_cultural_nombre_key`(`nombre`),
@@ -43,10 +31,40 @@ CREATE TABLE `identidad_cultural` (
 -- CreateTable
 CREATE TABLE `discapacidad` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
+    `nombre` VARCHAR(100) NOT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
 
     UNIQUE INDEX `discapacidad_nombre_key`(`nombre`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `parentesco` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `nombre` VARCHAR(100) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+
+    UNIQUE INDEX `parentesco_nombre_key`(`nombre`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `tipo_estudiante` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `nombre` VARCHAR(100) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+
+    UNIQUE INDEX `tipo_estudiante_nombre_key`(`nombre`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `semestre` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `nombre` VARCHAR(100) NOT NULL,
+    `activo` BOOLEAN NOT NULL DEFAULT true,
+
+    UNIQUE INDEX `semestre_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -57,36 +75,6 @@ CREATE TABLE `aspirante_discapacidad` (
     `discapacidadId` INTEGER NOT NULL,
 
     UNIQUE INDEX `aspirante_discapacidad_aspiranteId_discapacidadId_key`(`aspiranteId`, `discapacidadId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `parentesco` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
-    `activo` BOOLEAN NOT NULL DEFAULT true,
-
-    UNIQUE INDEX `parentesco_nombre_key`(`nombre`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `tipo_estudiante` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
-    `activo` BOOLEAN NOT NULL DEFAULT true,
-
-    UNIQUE INDEX `tipo_estudiante_nombre_key`(`nombre`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `semestre` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `nombre` VARCHAR(50) NOT NULL,
-    `activo` BOOLEAN NOT NULL DEFAULT true,
-
-    UNIQUE INDEX `semestre_nombre_key`(`nombre`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -154,6 +142,7 @@ CREATE TABLE `aspirante` (
     `nombreEscuelaProcedencia` VARCHAR(50) NULL,
     `sistemaProcedenciaLetra` VARCHAR(50) NULL,
     `otroSistemaProcedencia` VARCHAR(50) NULL,
+    `semestresSeleccionados` JSON NULL,
     `tipoEstudianteId` INTEGER NULL,
     `semestreId` INTEGER NULL,
     `planEstudios` VARCHAR(50) NULL,
@@ -187,9 +176,10 @@ CREATE TABLE `documento` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
     `tipoDoc` VARCHAR(50) NOT NULL,
-    `nombreArchivo` VARCHAR(50) NOT NULL,
+    `nombreArchivo` VARCHAR(255) NOT NULL,
     `archivoBlob` LONGBLOB NOT NULL,
-    `estatusDoc` VARCHAR(50) NOT NULL DEFAULT 'EN REVISIÓN',
+    `estatusDoc` VARCHAR(50) NOT NULL DEFAULT 'PENDIENTE',
+    `comentario` TEXT NULL,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
@@ -202,11 +192,11 @@ CREATE TABLE `auditoria` (
     `UsuariosId` INTEGER NULL,
     `usuarioTexto` VARCHAR(50) NULL,
     `rol` VARCHAR(50) NULL,
-    `modulo` VARCHAR(50) NOT NULL,
-    `accion` VARCHAR(50) NOT NULL,
-    `detalle` TEXT NOT NULL,
+    `modulo` VARCHAR(50) NULL,
+    `accion` VARCHAR(50) NULL,
+    `detalle` TEXT NULL,
     `ip` VARCHAR(50) NULL,
-    `level` VARCHAR(50) NOT NULL DEFAULT 'Informativo',
+    `level` VARCHAR(50) NULL DEFAULT 'Informativo',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `auditoria_eventoId_key`(`eventoId`),

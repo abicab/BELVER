@@ -126,7 +126,6 @@ export default function ValidacionAspirantesPage() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            estatusDocumentos: selectedSolicitud.documentosTemp,
             observaciones: textoObservaciones,
           }),
         },
@@ -384,19 +383,13 @@ export default function ValidacionAspirantesPage() {
                         <strong className="text-slate-500">
                           Identidad Cultural:
                         </strong>{" "}
-                        {selectedSolicitud.identidadCultural?.nombre ||
-                          "No especificado"}
+                        {selectedSolicitud.identidadCulturalTexto || "NINGUNO"}
                       </p>
                       <p>
                         <strong className="text-slate-500">
                           Discapacidades:
                         </strong>{" "}
-                        {selectedSolicitud.discapacidades &&
-                        selectedSolicitud.discapacidades.length > 0
-                          ? selectedSolicitud.discapacidades
-                              .map((d) => d.discapacidad?.nombre)
-                              .join(", ")
-                          : "Ninguna"}
+                        {selectedSolicitud.discapacidadesTexto || "Ninguna"}
                       </p>
                     </div>
 

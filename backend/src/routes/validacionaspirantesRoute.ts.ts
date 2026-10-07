@@ -5,18 +5,22 @@ import {
   aprobarYGenerarCredencialesControl,
   verDocumentoControl,
   emitirObservacionesControl,
-} from "../controllers/controlescolarController.js";
+} from "../controllers/validacionaspirantesController.js";
+import { obtenerAlumnosActivos } from "../controllers/alumnosCEController.js";
 
 const router = Router();
 
+// 1. IMPORTANTE: Las rutas estáticas (/alumnos) van siempre PRIMERO que las dinámicas (/:id)
+router.get("/alumnos", obtenerAlumnosActivos);
+
+// 2. Rutas de aspirantes y validación
 router.get("/aspirantes", obtenerAspirantesControlEscolar);
 router.patch(
   "/documentos/:documentoId/estatus",
   actualizarEstatusDocumentoControl,
 );
-router.patch("/aspirantes/:id/aprobar", aprobarYGenerarCredencialesControl);
 router.get("/documentos/:documentoId/ver", verDocumentoControl);
-// Ruta para enviar observaciones de corrección
+router.patch("/aspirantes/:id/aprobar", aprobarYGenerarCredencialesControl);
 router.patch("/aspirantes/:id/observaciones", emitirObservacionesControl);
 
 export default router;

@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from "react";
 
+const traducirTipoDocumento = (tipo) => {
+  const diccionario = {
+    photo: "FOTOGRAFÍA",
+    actaNacimiento: "ACTA DE NACIMIENTO",
+    curpFile: "CURP (PDF)",
+    studyCert: "CERTIFICADO DE SECUNDARIA",
+    constanciaEstudios: "CONSTANCIA DE ESTUDIOS",
+    ineDocument: "IDENTIFICACIÓN OFICIAL (INE / TUTOR)",
+  };
+  return diccionario[tipo] || tipo.toUpperCase();
+};
+
 export default function AlumnosCEPage() {
   const [alumnos, setAlumnos] = useState([]);
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
@@ -9,16 +21,13 @@ export default function AlumnosCEPage() {
   const cargarAlumnos = async () => {
     setCargando(true);
     try {
+      // CORREGIDO: Apuntando correctamente a la ruta en minúsculas "/api/controlescolar/alumnos"
       const res = await fetch(
-        `http://localhost:4000/api/controlescolar/aspirantes?estatus=APROBADO`,
+        "http://localhost:4000/api/controlescolar/alumnos",
       );
       const resultado = await res.json();
       if (res.ok && resultado.ok) {
-        // Filtramos únicamente los registros que ya cuentan con matrícula asignada
-        const soloAlumnos = (resultado.data || []).filter(
-          (item) => item.matricula,
-        );
-        setAlumnos(soloAlumnos);
+        setAlumnos(resultado.data || []);
       }
     } catch (error) {
       console.error("Error al cargar la lista de alumnos:", error);
@@ -138,9 +147,9 @@ export default function AlumnosCEPage() {
                       <td className="p-4 text-right">
                         <button
                           onClick={() => setAlumnoSeleccionado(alumn)}
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition shadow-sm"
+                          className="px-3.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-lg font-semibold text-xs transition shadow-sm"
                         >
-                          Ver Expediente / Perfil
+                          Ver Perfil / Expediente
                         </button>
                       </td>
                     </tr>
@@ -151,50 +160,179 @@ export default function AlumnosCEPage() {
           </div>
         </div>
 
-        {/* Modal de Ficha Rápida del Alumno */}
+        {/* Modal de Perfil de Alumno */}
         {alumnoSeleccionado && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[90vh]">
-              <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
+            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[92vh]">
+              <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
                 <div>
-                  <h3 className="font-bold text-sm">
-                    Ficha del Alumno: {alumnoSeleccionado.nombres}{" "}
-                    {alumnoSeleccionado.apellidoPaterno}
+                  <h3 className="font-extrabold text-base tracking-tight text-white">
+                    Expediente e Historial del Alumno:{" "}
+                    {alumnoSeleccionado.folio}
                   </h3>
-                  <span className="font-mono text-xs text-emerald-400">
-                    Matrícula: {alumnoSeleccionado.matricula}
-                  </span>
+                  <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
+                    <span className="text-white text-sm">
+                      👤{" "}
+                      {`${alumnoSeleccionado.apellidoPaterno} ${alumnoSeleccionado.apellidoMaterno || ""} ${alumnoSeleccionado.nombres}`}
+                    </span>
+                    <span className="font-mono text-cyan-300">
+                      CURP: {alumnoSeleccionado.curp}
+                    </span>
+                    <span className="font-mono bg-emerald-800/80 text-emerald-200 px-2 py-0.5 rounded text-[11px]">
+                      Matrícula: {alumnoSeleccionado.matricula}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setAlumnoSeleccionado(null)}
-                  className="w-7 h-7 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6 space-y-4 overflow-y-auto text-xs bg-slate-50">
-                <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
-                  <h4 className="font-bold text-slate-900 border-b pb-1">
-                    Datos Generales del Alumno
+              <div className="p-6 space-y-6 overflow-y-auto text-xs text-slate-700 bg-slate-50/50">
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b pb-1">
+                    1. Información General y Sociodemográfica del Estudiante
                   </h4>
-                  <p>
-                    <strong>CURP:</strong> {alumnoSeleccionado.curp}
-                  </p>
-                  <p>
-                    <strong>Correo Electrónico:</strong>{" "}
-                    {alumnoSeleccionado.correoElectronico1}
-                  </p>
-                  <p>
-                    <strong>Teléfono Celular:</strong>{" "}
-                    {alumnoSeleccionado.telefonoCelular}
-                  </p>
-                  <p>
-                    <strong>Dirección:</strong> {alumnoSeleccionado.calle} #
-                    {alumnoSeleccionado.numeroExterior || "S/N"}, Col.{" "}
-                    {alumnoSeleccionado.colonia}, {alumnoSeleccionado.municipio}
-                    , {alumnoSeleccionado.estado}
-                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
+                        📍 Domicilio y Contacto
+                      </span>
+                      <p>
+                        <strong className="text-slate-500">Celular:</strong>{" "}
+                        {alumnoSeleccionado.telefonoCelular}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Tel. Particular:
+                        </strong>{" "}
+                        {alumnoSeleccionado.telefonoParticular || "N/A"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Correo Principal:
+                        </strong>{" "}
+                        {alumnoSeleccionado.correoElectronico1}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Correo Alternativo:
+                        </strong>{" "}
+                        {alumnoSeleccionado.correoElectronico2 || "N/A"}
+                      </p>
+                      <p className="pt-1">
+                        <strong className="text-slate-500">Dirección:</strong>{" "}
+                        {alumnoSeleccionado.calle} #
+                        {alumnoSeleccionado.numeroExterior || "S/N"}{" "}
+                        {alumnoSeleccionado.numeroInterior
+                          ? `Int. ${alumnoSeleccionado.numeroInterior}`
+                          : ""}
+                        , Col. {alumnoSeleccionado.colonia}, C.P.{" "}
+                        {alumnoSeleccionado.codigoPostal},{" "}
+                        {alumnoSeleccionado.municipio},{" "}
+                        {alumnoSeleccionado.estado}, {alumnoSeleccionado.pais}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
+                        🧬 Perfil e Inclusión
+                      </span>
+                      <p>
+                        <strong className="text-slate-500">
+                          F. Nacimiento:
+                        </strong>{" "}
+                        {alumnoSeleccionado.fechaNacimiento
+                          ? new Date(
+                              alumnoSeleccionado.fechaNacimiento,
+                            ).toLocaleDateString()
+                          : "N/A"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">Género:</strong>{" "}
+                        {alumnoSeleccionado.generoRel?.nombre ||
+                          "No especificado"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Identidad Cultural:
+                        </strong>{" "}
+                        {alumnoSeleccionado.identidadCulturalTexto || "NINGUNO"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Discapacidades:
+                        </strong>{" "}
+                        {alumnoSeleccionado.discapacidadesTexto || "Ninguna"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
+                        🎓 Académico y Tutor
+                      </span>
+                      <p>
+                        <strong className="text-slate-500">Modalidad:</strong>{" "}
+                        <span className="font-bold uppercase text-blue-900">
+                          {alumnoSeleccionado.tipoAdmision}
+                        </span>
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Escuela Procedencia:
+                        </strong>{" "}
+                        {alumnoSeleccionado.nombreEscuelaProcedencia || "N/A"}{" "}
+                        (CCT:{" "}
+                        {alumnoSeleccionado.cctEscuelaProcedencia || "N/A"})
+                      </p>
+                      <p className="pt-1">
+                        <strong className="text-slate-500">Tutor:</strong>{" "}
+                        {alumnoSeleccionado.tutorNombres
+                          ? `${alumnoSeleccionado.tutorApellidoPaterno || ""} ${alumnoSeleccionado.tutorNombres} (${alumnoSeleccionado.tutorTelefono})`
+                          : "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b pb-1">
+                    2. Expediente Digital Validado (Solo Lectura)
+                  </h4>
+                  <div className="space-y-2">
+                    {alumnoSeleccionado.documentos?.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs"
+                      >
+                        <div>
+                          <span className="font-bold text-slate-900 block uppercase">
+                            {traducirTipoDocumento(doc.tipoDoc)}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            Archivo: {doc.nombreArchivo}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={`http://localhost:4000/api/controlescolar/documentos/${doc.id}/ver`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                          >
+                            👁️ Ver Archivo
+                          </a>
+                          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold">
+                            {doc.estatusDoc || "APROBADO"} ✓
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -202,7 +340,7 @@ export default function AlumnosCEPage() {
                 <button
                   type="button"
                   onClick={() => setAlumnoSeleccionado(null)}
-                  className="px-4 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition shadow-2xs"
                 >
                   Cerrar Ficha
                 </button>

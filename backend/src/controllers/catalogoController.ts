@@ -6,74 +6,64 @@ export const obtenerCatalogos = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const configuracionCatalogos = await prisma.catalogo.findMany({
-      where: { activo: true },
-      orderBy: { orden: "asc" },
+    const [
+      subsistemas,
+      generos,
+      identidadesCulturales,
+      discapacidades,
+      parentescos,
+      tiposEstudiante,
+      semestres,
+    ] = await Promise.all([
+      prisma.subsistema.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+      prisma.genero.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+      prisma.identidadCultural.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+      prisma.discapacidad.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+      prisma.parentesco.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+      prisma.tipoEstudiante.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+      prisma.semestre.findMany({
+        where: { activo: true },
+        select: { id: true, nombre: true },
+        orderBy: { id: "asc" },
+      }),
+    ]);
+
+    res.status(200).json({
+      ok: true,
+      data: {
+        subsistema: subsistemas,
+        genero: generos,
+        identidadCultural: identidadesCulturales,
+        discapacidad: discapacidades,
+        parentesco: parentescos,
+        tipoEstudiante: tiposEstudiante,
+        semestre: semestres,
+      },
     });
-
-    const catalogosData: Record<string, { id: number; nombre: string }[]> = {};
-
-    for (const cat of configuracionCatalogos) {
-      let registros: { id: number; nombre: string }[] = [];
-
-      switch (cat.nombreTabla) {
-        case "subsistema":
-          registros = await prisma.subsistema.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-        case "genero":
-          registros = await prisma.genero.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-        case "identidadCultural":
-          registros = await prisma.identidadCultural.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-        case "discapacidad":
-          registros = await prisma.discapacidad.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-        case "parentesco":
-          registros = await prisma.parentesco.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-        case "tipoEstudiante":
-          registros = await prisma.tipoEstudiante.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-        case "semestre":
-          registros = await prisma.semestre.findMany({
-            where: { activo: true },
-            select: { id: true, nombre: true },
-            orderBy: { id: "asc" },
-          });
-          break;
-      }
-
-      if (registros.length > 0) {
-        catalogosData[cat.nombreTabla] = registros;
-      }
-    }
-
-    res.status(200).json({ ok: true, data: catalogosData });
   } catch (error) {
     console.error("Error al obtener los catálogos:", error);
     res
@@ -88,20 +78,6 @@ export const obtenerCatalogoPorNombre = async (
 ): Promise<void> => {
   try {
     const { nombreTabla } = req.params;
-
-    // Validación directa en BD para asegurar que el catálogo existe y está activo
-    const catalogoConfig = await prisma.catalogo.findUnique({
-      where: { nombreTabla },
-    });
-
-    if (!catalogoConfig || !catalogoConfig.activo) {
-      res.status(404).json({
-        ok: false,
-        mensaje: `El catálogo '${nombreTabla}' no existe o no está activo.`,
-      });
-      return;
-    }
-
     const modelosPermitidos: Record<string, any> = {
       subsistema: prisma.subsistema,
       genero: prisma.genero,
@@ -113,7 +89,6 @@ export const obtenerCatalogoPorNombre = async (
     };
 
     const modeloActual = modelosPermitidos[nombreTabla];
-
     if (!modeloActual) {
       res
         .status(400)
