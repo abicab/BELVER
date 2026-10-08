@@ -23,6 +23,11 @@ export default function Navbar({
       roles: ["ADMIN", "CONTROL_ESCOLAR"],
     },
     {
+      id: "HistorialAca",
+      label: "Historial Academico",
+      roles: ["ADMIN", "CONTROL_ESCOLAR"],
+    },
+    {
       id: "ReportesPage",
       label: "Reportes",
       roles: ["ADMIN", "CONTROL_ESCOLAR"],
