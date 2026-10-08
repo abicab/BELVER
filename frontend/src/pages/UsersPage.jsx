@@ -1,21 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const INITIAL_USERS = [
-  // --- Usuarios originales preservados ---
-  { id: 1, name: 'Administrador TI', username: 'admin_sys', roleCode: 'ADMIN', role: 'Super Administrador', estatus: 'Activo', email: 'admin_sys@belver.edu.mx', telefono: 'Sin registrar', fechaRegistro: '2026-01-01' },
-  { id: 2, name: 'Coordinación Escolar', username: 'control_esc', roleCode: 'CONTROL_ESCOLAR', role: 'Control Escolar', estatus: 'Activo', email: 'control_esc@belver.edu.mx', telefono: 'Sin registrar', fechaRegistro: '2026-01-01' },
-  { id: 3, name: 'Atención CAE', username: 'cae_atencion', roleCode: 'CAE', role: 'Personal CAE', estatus: 'Activo', email: 'cae_atencion@belver.edu.mx', telefono: 'Sin registrar', fechaRegistro: '2026-01-01' },
-  { id: 4, name: 'Juan Pérez', username: '227000510', roleCode: 'ALUMNO', role: 'Alumno', estatus: 'Activo', email: 'juan.perez@belver.edu.mx', telefono: 'Sin registrar', fechaRegistro: '2026-01-01' },
-  { id: 5, name: 'María Gómez', username: '207000112', roleCode: 'ALUMNO_UNICO', role: 'Alumno Único', estatus: 'Activo', email: 'maria.gomez@belver.edu.mx', telefono: 'Sin registrar', fechaRegistro: '2026-01-01' },
-  
-  // --- Usuarios adicionales para pruebas de funcionalidad ---
-  { id: 6, name: 'Carlos Mendoza', username: '227000888', roleCode: 'ALUMNO', role: 'Alumno', estatus: 'Baja', email: 'carlos.mendoza@belver.edu.mx', telefono: '2281112233', fechaRegistro: '2026-02-10' },
-  { id: 7, name: 'Ana Beatriz Ramos', username: 'control_esc2', roleCode: 'CONTROL_ESCOLAR', role: 'Control Escolar', estatus: 'Activo', email: 'ana.ramos@belver.edu.mx', telefono: '2284445566', fechaRegistro: '2026-03-01' },
-  { id: 8, name: 'Luis Fernando Torres', username: '207000334', roleCode: 'ALUMNO_UNICO', role: 'Alumno Único', estatus: 'Baja', email: 'luis.torres@belver.edu.mx', telefono: '2287778899', fechaRegistro: '2026-03-15' },
-];
+const API_BASE_URL = "http://localhost:4000/api/usuarios";
 
 const ROLES_MAP = {
   ADMIN: 'Super Administrador',
+  ASPIRANTE: 'Aspirante',
   CONTROL_ESCOLAR: 'Control Escolar',
   CAE: 'Personal CAE',
   ALUMNO: 'Alumno',
@@ -23,7 +12,11 @@ const ROLES_MAP = {
 };
 
 export default function UsersPage({ onNavigateToPortal }) {
-  const [users, setUsers] = useState(INITIAL_USERS);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Filtros
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstatus, setFiltroEstatus] = useState('TODOS');
   const [filtroRol, setFiltroRol] = useState('TODOS');
@@ -42,43 +35,127 @@ export default function UsersPage({ onNavigateToPortal }) {
     estatus: 'Activo',
   });
 
-  const handleRoleChange = (userId, newRoleCode) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? { ...u, roleCode: newRoleCode, role: ROLES_MAP[newRoleCode] }
-          : u
-      )
-    );
+  // 1. Cargar usuarios desde el servidor backend
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setErrorMsg('');
+      const res = await fetch(API_BASE_URL);
+
+      if (!res.ok) {
+        throw new Error('Error al conectar con el servidor de usuarios');
+      }
+
+      const json = await res.json();
+      const listaUsuarios = Array.isArray(json) ? json : json.data || [];
+      setUsers(listaUsuarios);
+    } catch (err) {
+      console.error('Error al cargar la lista de usuarios:', err);
+      setErrorMsg('No se pudo conectar con el servidor de usuarios en http://localhost:4000.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleToggleEstatus = (userId) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId
-          ? { ...u, estatus: u.estatus === 'Activo' ? 'Baja' : 'Activo' }
-          : u
-      )
-    );
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // 2. Cambiar rol de usuario
+  const handleRoleChange = async (userId, newRoleCode) => {
+    const targetUser = users.find((u) => u.id === userId);
+    if (!targetUser) return;
+
+    try {
+      setErrorMsg('');
+      const endpoint = `${API_BASE_URL}/${targetUser.tipoTabla}/${targetUser.rawId}/rol`;
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roleCode: newRoleCode }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.mensaje || 'Error al actualizar el rol');
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, roleCode: newRoleCode, role: ROLES_MAP[newRoleCode] || newRoleCode }
+            : u
+        )
+      );
+    } catch (err) {
+      console.error('Error al cambiar rol:', err);
+      setErrorMsg(err.message);
+    }
   };
 
-  const handleCreateUser = (e) => {
+  // 3. Cambiar estatus (Activo / Baja)
+  const handleToggleEstatus = async (userId) => {
+    const targetUser = users.find((u) => u.id === userId);
+    if (!targetUser) return;
+
+    const nuevoEstatus = targetUser.estatus === 'Activo' ? 'Baja' : 'Activo';
+
+    try {
+      setErrorMsg('');
+      const endpoint = `${API_BASE_URL}/${targetUser.tipoTabla}/${targetUser.rawId}/estatus`;
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estatus: nuevoEstatus }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.mensaje || 'Error al actualizar el estatus');
+      }
+
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, estatus: nuevoEstatus } : u
+        )
+      );
+    } catch (err) {
+      console.error('Error al cambiar estatus:', err);
+      setErrorMsg(err.message);
+    }
+  };
+
+  // 4. Crear usuario manual
+  const handleCreateUser = async (e) => {
     e.preventDefault();
-    const createdUser = {
-      id: Date.now(),
-      name: newUser.name,
-      username: newUser.username,
-      roleCode: newUser.roleCode,
-      role: ROLES_MAP[newUser.roleCode],
-      email: newUser.email,
-      telefono: newUser.telefono || 'Sin registrar',
-      estatus: newUser.estatus,
-      fechaRegistro: new Date().toISOString().split('T')[0],
-    };
+    setErrorMsg('');
 
-    setUsers([createdUser, ...users]);
-    setIsAddModalOpen(false);
-    setNewUser({ name: '', username: '', roleCode: 'ALUMNO', email: '', telefono: '', estatus: 'Activo' });
+    try {
+      const res = await fetch(API_BASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.mensaje || 'Error al registrar el usuario');
+      }
+
+      await fetchUsers();
+      setIsAddModalOpen(false);
+      setNewUser({
+        name: '',
+        username: '',
+        roleCode: 'ALUMNO',
+        email: '',
+        telefono: '',
+        estatus: 'Activo',
+      });
+    } catch (err) {
+      console.error('Error al registrar usuario:', err);
+      setErrorMsg(err.message);
+    }
   };
 
   const handleGoToStudentPortal = (user) => {
@@ -95,7 +172,7 @@ export default function UsersPage({ onNavigateToPortal }) {
       u.name.toLowerCase().includes(query) ||
       u.username.toLowerCase().includes(query) ||
       u.roleCode.toLowerCase().includes(query) ||
-      u.role.toLowerCase().includes(query) ||
+      (u.role && u.role.toLowerCase().includes(query)) ||
       u.email.toLowerCase().includes(query);
 
     const coincideEstatus =
@@ -132,6 +209,13 @@ export default function UsersPage({ onNavigateToPortal }) {
             + Registrar Nuevo Usuario
           </button>
         </div>
+
+        {/* Mensaje de error general si falla la API */}
+        {errorMsg && !isAddModalOpen && (
+          <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-medium">
+            {errorMsg}
+          </div>
+        )}
 
         {/* Filtros de Búsqueda, Rol y Estatus */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-3">
@@ -177,94 +261,101 @@ export default function UsersPage({ onNavigateToPortal }) {
           </div>
         </div>
 
-        {/* Tabla de Usuarios */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
-                <tr>
-                  <th className="p-4">Usuario / Nombre</th>
-                  <th className="p-4">Matrícula / Username</th>
-                  <th className="p-4">Rol Asignado</th>
-                  <th className="p-4 text-center">Estatus</th>
-                  <th className="p-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {usuariosFiltrados.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="p-8 text-center text-slate-400 text-xs">
-                      No se encontraron usuarios registrados.
-                    </td>
-                  </tr>
-                ) : (
-                  usuariosFiltrados.map((u) => {
-                    const esEstudiante = u.roleCode === 'ALUMNO' || u.roleCode === 'ALUMNO_UNICO';
-
-                    return (
-                      <tr key={u.id} className="hover:bg-slate-50 transition">
-                        <td className="p-4">
-                          <span className="font-semibold text-slate-900 block">{u.name}</span>
-                          <span className="text-[10px] text-slate-400">{u.email}</span>
-                        </td>
-                        <td className="p-4 font-mono font-bold text-blue-950">{u.username}</td>
-                        <td className="p-4">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                            {u.roleCode}
-                          </span>
-                        </td>
-                        <td className="p-4 text-center">
-                          <button
-                            onClick={() => handleToggleEstatus(u.id)}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition ${
-                              u.estatus === 'Activo'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                            }`}
-                          >
-                            {u.estatus === 'Activo' ? '● Activo' : '○ Dado de Baja'}
-                          </button>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {esEstudiante && (
-                              <button
-                                onClick={() => handleGoToStudentPortal(u)}
-                                title="Ver Portal del Alumno"
-                                className="px-2.5 py-1 bg-blue-950 hover:bg-blue-900 text-white font-bold text-[11px] rounded-lg transition shadow-xs flex items-center gap-1"
-                              >
-                                🎓 Portal
-                              </button>
-                            )}
-
-                            <button
-                              onClick={() => setSelectedUserDetail(u)}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] rounded-lg transition"
-                            >
-                              👁 Detalle
-                            </button>
-
-                            <select
-                              value={u.roleCode}
-                              onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                              className="px-2.5 py-1 border border-slate-300 rounded-lg text-[11px] bg-white focus:outline-none font-semibold shadow-xs"
-                            >
-                              <option value="ADMIN">ADMIN</option>
-                              <option value="CONTROL_ESCOLAR">Control Escolar</option>
-                              <option value="CAE">CAE</option>
-                              <option value="ALUMNO">Alumno</option>
-                              <option value="ALUMNO_UNICO">Alumno Único</option>
-                            </select>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+        {/* Tabla de Usuarios / Estado de Carga */}
+        {loading ? (
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm text-center text-xs text-slate-500 font-semibold">
+            Cargando usuarios desde el servidor...
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
+                  <tr>
+                    <th className="p-4">Usuario / Nombre</th>
+                    <th className="p-4">Matrícula / Username</th>
+                    <th className="p-4">Rol Asignado</th>
+                    <th className="p-4 text-center">Estatus</th>
+                    <th className="p-4 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {usuariosFiltrados.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="p-8 text-center text-slate-400 text-xs">
+                        No se encontraron usuarios registrados.
+                      </td>
+                    </tr>
+                  ) : (
+                    usuariosFiltrados.map((u) => {
+                      const esEstudiante = u.roleCode === 'ALUMNO' || u.roleCode === 'ALUMNO_UNICO';
+
+                      return (
+                        <tr key={u.id} className="hover:bg-slate-50 transition">
+                          <td className="p-4">
+                            <span className="font-semibold text-slate-900 block">{u.name}</span>
+                            <span className="text-[10px] text-slate-400">{u.email}</span>
+                          </td>
+                          <td className="p-4 font-mono font-bold text-blue-950">{u.username}</td>
+                          <td className="p-4">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                              {u.roleCode}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <button
+                              onClick={() => handleToggleEstatus(u.id)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition ${
+                                u.estatus === 'Activo'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                  : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                              }`}
+                            >
+                              {u.estatus === 'Activo' ? '● Activo' : '○ Dado de Baja'}
+                            </button>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {esEstudiante && (
+                                <button
+                                  onClick={() => handleGoToStudentPortal(u)}
+                                  title="Ver Portal del Alumno"
+                                  className="px-2.5 py-1 bg-blue-950 hover:bg-blue-900 text-white font-bold text-[11px] rounded-lg transition shadow-xs flex items-center gap-1"
+                                >
+                                  🎓 Portal
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => setSelectedUserDetail(u)}
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] rounded-lg transition"
+                              >
+                                👁 Detalle
+                              </button>
+
+                              <select
+                                value={u.roleCode}
+                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                className="px-2.5 py-1 border border-slate-300 rounded-lg text-[11px] bg-white focus:outline-none font-semibold shadow-xs"
+                              >
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="ASPIRANTE">Aspirante</option>
+                                <option value="CONTROL_ESCOLAR">Control Escolar</option>
+                                <option value="CAE">CAE</option>
+                                <option value="ALUMNO">Alumno</option>
+                                <option value="ALUMNO_UNICO">Alumno Único</option>
+                              </select>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* MODAL: Registrar Nuevo Usuario */}
         {isAddModalOpen && (
@@ -276,6 +367,12 @@ export default function UsersPage({ onNavigateToPortal }) {
               </div>
 
               <form onSubmit={handleCreateUser} className="p-6 space-y-4 text-xs">
+                {errorMsg && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-lg">
+                    {errorMsg}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="font-semibold text-slate-800">Nombre Completo</label>
