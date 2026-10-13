@@ -224,7 +224,7 @@ CREATE TABLE `pago` (
 CREATE TABLE `plan_estudio` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `clave` VARCHAR(50) NOT NULL,
-    `nombre` VARCHAR(50) NOT NULL,
+    `nombre` VARCHAR(100) NOT NULL,
     `descripcion` TEXT NULL,
     `activo` BOOLEAN NOT NULL DEFAULT true,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -239,8 +239,8 @@ CREATE TABLE `materia` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `planEstudioId` INTEGER NOT NULL,
     `codigo` VARCHAR(50) NOT NULL,
-    `nombre_completo` VARCHAR(50) NOT NULL,
-    `nombre_corto` VARCHAR(50) NOT NULL,
+    `nombre_completo` VARCHAR(150) NOT NULL,
+    `nombre_corto` VARCHAR(100) NOT NULL,
     `semestre` INTEGER NOT NULL,
 
     UNIQUE INDEX `materia_planEstudioId_codigo_key`(`planEstudioId`, `codigo`),
@@ -258,6 +258,35 @@ CREATE TABLE `seriacion` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `materia_inscrita` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `aspiranteId` INTEGER NOT NULL,
+    `materiaId` INTEGER NOT NULL,
+    `estatus` VARCHAR(50) NOT NULL DEFAULT 'Cursando',
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `materia_inscrita_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `calificacion` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `aspiranteId` INTEGER NOT NULL,
+    `materiaId` INTEGER NOT NULL,
+    `materiaInscritaId` INTEGER NULL,
+    `parcial` INTEGER NOT NULL DEFAULT 1,
+    `calificacion` DOUBLE NOT NULL,
+    `periodo` VARCHAR(50) NOT NULL,
+    `observaciones` TEXT NULL,
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `calificacion_aspiranteId_materiaId_parcial_periodo_key`(`aspiranteId`, `materiaId`, `parcial`, `periodo`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `historial_academico` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
@@ -268,18 +297,6 @@ CREATE TABLE `historial_academico` (
     `periodo` VARCHAR(50) NULL,
 
     UNIQUE INDEX `historial_academico_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `materia_inscrita` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `aspiranteId` INTEGER NOT NULL,
-    `materiaId` INTEGER NOT NULL,
-    `estatus` VARCHAR(50) NOT NULL DEFAULT 'Cursando',
-    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    UNIQUE INDEX `materia_inscrita_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -335,13 +352,22 @@ ALTER TABLE `seriacion` ADD CONSTRAINT `seriacion_materiaId_fkey` FOREIGN KEY (`
 ALTER TABLE `seriacion` ADD CONSTRAINT `seriacion_prerrequisitoMateriaId_fkey` FOREIGN KEY (`prerrequisitoMateriaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_materiaInscritaId_fkey` FOREIGN KEY (`materiaInscritaId`) REFERENCES `materia_inscrita`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

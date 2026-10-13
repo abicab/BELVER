@@ -18,6 +18,7 @@ import UsersPage from "./pages/UsersPage";
 import PlanEstudiosPage from "./pages/PlanEstudiosPage";
 import AlumnoPage from "./pages/AlumnoPage";
 import AlumnoUnicoPage from "./pages/AlumnoUnicoPage";
+import HistorialAca from "./pages/HistorialAca";
 
 // Valores iniciales / por defecto del sistema
 const DEFAULT_BRANDING = {
@@ -247,6 +248,9 @@ export default function App() {
             {currentModule === "PlanEstudiosPage" && (
               <PlanEstudiosPage userRole={userProfile?.roleCode} />
             )}
+
+            {/* 👈 2. IMPORTANTE: Vista de Historial Académico */}
+            {currentModule === "HistorialAca" && <HistorialAca />}
 
             {currentModule === "AlumnoPage" && (
               <AlumnoPage alumno={selectedStudent || undefined} />

@@ -5,6 +5,7 @@ import catalogoRoute from "./routes/catalogoRoute";
 import studyPlanRoutes from "./routes/studyPlanRoutes";
 import validacionaspirantesRoute from "./routes/validacionaspirantesRoute.ts";
 import userRoutes from "./routes/userRoutes.js"; // 1. IMPORTAR LA RUTA DE USUARIOS
+import historialRoutes from "./routes/historialRoute.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -26,6 +27,10 @@ app.use("/api/planes", studyPlanRoutes);
 
 // 2. MONTAR LA RUTA DE GESTIÓN DE USUARIOS Y ACCESOS RBAC
 app.use("/api/usuarios", userRoutes);
+
+// Ruta Historial
+app.use("/api/historial", historialRoutes);
+
 
 app.get("/", (req, res) => {
   res.json({ ok: true, mensaje: "API de BELVER funcionando correctamente" });
