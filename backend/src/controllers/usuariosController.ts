@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import bcrypt from "bcrypt";
 import prisma from "../config/prisma.js";
 
 // Mapeo inverso para IDs de TipoUsuario
@@ -166,35 +167,38 @@ export const cambiarEstatusUsuario = async (
   }
 };
 
-// 4. CREAR NUEVO USUARIO ADMINISTRATIVO O ALUMNO MANUAL
+// 4. CREAR NUEVO USUARIO ADMINISTRATIVO O ALUMNO MANUAL (Campos atomizados y contraseña encriptada)
 export const crearUsuarioManual = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { name, username, roleCode, email, telefono, estatus } = req.body;
+    const { nombres, apellidoPaterno, apellidoMaterno, correo, contrasena, roleCode, estatus } = req.body;
 
     const tipoUsuarioId = ROLE_CODE_TO_ID[roleCode] || 1;
     const esEstudiante = roleCode === "ALUMNO" || roleCode === "ALUMNO_UNICO";
-
-    const partesNombre = name.trim().split(" ");
-    const nombres = partesNombre[0] || name;
-    const apellidoPaterno = partesNombre[1] || "Sin Apellido";
-    const apellidoMaterno = partesNombre.slice(2).join(" ") || null;
+    
+    // Contraseña por defecto si viene vacía
+    const passwordPlano = contrasena || "PasswordInicial123!";
+    
+    // Encriptar contraseña de manera segura
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(passwordPlano, saltRounds);
 
     if (esEstudiante) {
+      const matriculaTemp = `ALU-${Date.now().toString().slice(-6)}`;
       const nuevoAlumno = await prisma.aspirante.create({
         data: {
           folio: `BEL-MANUAL-${Date.now()}`,
-          matricula: username,
-          password: "PasswordInicial123!",
+          matricula: matriculaTemp,
+          password: hashedPassword,
           tipoUsuarioId: tipoUsuarioId,
           nombres,
           apellidoPaterno,
-          apellidoMaterno,
+          apellidoMaterno: apellidoMaterno || null,
           curp: `CURP${Date.now()}`,
-          correoElectronico1: email,
-          telefonoCelular: telefono || "2280000000",
+          correoElectronico1: correo,
+          telefonoCelular: "2280000000",
           tipoAdmision: "nuevo_ingreso",
           estado: "Veracruz",
           municipio: "Xalapa",
@@ -208,11 +212,11 @@ export const crearUsuarioManual = async (
       const nuevoUsuario = await prisma.usuario.create({
         data: {
           id_tipoUsuario: tipoUsuarioId,
-          correo: email,
-          contrasena: "PasswordInicial123!",
+          correo,
+          contrasena: hashedPassword,
           nombres,
           apellidoPaterno,
-          apellidoMaterno,
+          apellidoMaterno: apellidoMaterno || null,
           activo: estatus === "Activo",
         },
       });

@@ -25,13 +25,14 @@ export default function UsersPage({ onNavigateToPortal }) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedUserDetail, setSelectedUserDetail] = useState(null);
 
-  // Formulario Nuevo Usuario
+  // Formulario Nuevo Usuario (Atomizado según esquema Prisma)
   const [newUser, setNewUser] = useState({
-    name: '',
-    username: '',
+    nombres: '',
+    apellidoPaterno: '',
+    apellidoMaterno: '',
+    correo: '',
+    contrasena: '',
     roleCode: 'ALUMNO',
-    email: '',
-    telefono: '',
     estatus: 'Activo',
   });
 
@@ -61,44 +62,15 @@ export default function UsersPage({ onNavigateToPortal }) {
     fetchUsers();
   }, []);
 
-  // 2. Cambiar rol de usuario
-  const handleRoleChange = async (userId, newRoleCode) => {
-    const targetUser = users.find((u) => u.id === userId);
-    if (!targetUser) return;
-
-    try {
-      setErrorMsg('');
-      const endpoint = `${API_BASE_URL}/${targetUser.tipoTabla}/${targetUser.rawId}/rol`;
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roleCode: newRoleCode }),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.mensaje || 'Error al actualizar el rol');
-      }
-
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId
-            ? { ...u, roleCode: newRoleCode, role: ROLES_MAP[newRoleCode] || newRoleCode }
-            : u
-        )
-      );
-    } catch (err) {
-      console.error('Error al cambiar rol:', err);
-      setErrorMsg(err.message);
-    }
-  };
-
-  // 3. Cambiar estatus (Activo / Baja)
+  // 2. Cambiar estatus (Activo / Baja) con confirmación
   const handleToggleEstatus = async (userId) => {
     const targetUser = users.find((u) => u.id === userId);
     if (!targetUser) return;
 
     const nuevoEstatus = targetUser.estatus === 'Activo' ? 'Baja' : 'Activo';
+    const confirmacion = window.confirm(`¿Estás seguro de cambiar el estatus de "${targetUser.name}" a [ ${nuevoEstatus} ]? Esto se reflejará directamente en la base de datos.`);
+    
+    if (!confirmacion) return;
 
     try {
       setErrorMsg('');
@@ -125,7 +97,7 @@ export default function UsersPage({ onNavigateToPortal }) {
     }
   };
 
-  // 4. Crear usuario manual
+  // 3. Crear usuario manual
   const handleCreateUser = async (e) => {
     e.preventDefault();
     setErrorMsg('');
@@ -145,11 +117,12 @@ export default function UsersPage({ onNavigateToPortal }) {
       await fetchUsers();
       setIsAddModalOpen(false);
       setNewUser({
-        name: '',
-        username: '',
+        nombres: '',
+        apellidoPaterno: '',
+        apellidoMaterno: '',
+        correo: '',
+        contrasena: '',
         roleCode: 'ALUMNO',
-        email: '',
-        telefono: '',
         estatus: 'Activo',
       });
     } catch (err) {
@@ -228,7 +201,6 @@ export default function UsersPage({ onNavigateToPortal }) {
           />
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full md:w-auto justify-end">
-            {/* Filtro por Rol */}
             <select
               value={filtroRol}
               onChange={(e) => setFiltroRol(e.target.value)}
@@ -242,7 +214,6 @@ export default function UsersPage({ onNavigateToPortal }) {
               ))}
             </select>
 
-            {/* Filtro por Estatus */}
             <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
               {['TODOS', 'Activo', 'Baja'].map((est) => (
                 <button
@@ -272,11 +243,11 @@ export default function UsersPage({ onNavigateToPortal }) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
                   <tr>
-                    <th className="p-4">Usuario / Nombre</th>
+                    <th className="p-4">Usuario / Nombre Completo</th>
                     <th className="p-4">Matrícula / Username</th>
                     <th className="p-4">Rol Asignado</th>
                     <th className="p-4 text-center">Estatus</th>
-                    <th className="p-4 text-right">Acciones</th>
+                    <th className="p-4 text-right">Opciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -297,15 +268,19 @@ export default function UsersPage({ onNavigateToPortal }) {
                             <span className="text-[10px] text-slate-400">{u.email}</span>
                           </td>
                           <td className="p-4 font-mono font-bold text-blue-950">{u.username}</td>
+                          
+                          {/* Rol como etiqueta estática limpia */}
                           <td className="p-4">
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                              {u.roleCode}
+                            <span className="px-3 py-1 rounded-lg text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 inline-block">
+                              {ROLES_MAP[u.roleCode] || u.roleCode}
                             </span>
                           </td>
+
                           <td className="p-4 text-center">
                             <button
                               onClick={() => handleToggleEstatus(u.id)}
-                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition ${
+                              title="Haz clic para alternar estatus con confirmación"
+                              className={`px-3 py-1 rounded-full text-[10px] font-bold border transition ${
                                 u.estatus === 'Activo'
                                   ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                                   : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
@@ -320,7 +295,7 @@ export default function UsersPage({ onNavigateToPortal }) {
                                 <button
                                   onClick={() => handleGoToStudentPortal(u)}
                                   title="Ver Portal del Alumno"
-                                  className="px-2.5 py-1 bg-blue-950 hover:bg-blue-900 text-white font-bold text-[11px] rounded-lg transition shadow-xs flex items-center gap-1"
+                                  className="px-2.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white font-bold text-[11px] rounded-lg transition shadow-xs flex items-center gap-1"
                                 >
                                   🎓 Portal
                                 </button>
@@ -328,23 +303,10 @@ export default function UsersPage({ onNavigateToPortal }) {
 
                               <button
                                 onClick={() => setSelectedUserDetail(u)}
-                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] rounded-lg transition"
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] rounded-lg transition"
                               >
-                                👁 Detalle
+                                👁 Detalle Completo
                               </button>
-
-                              <select
-                                value={u.roleCode}
-                                onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                                className="px-2.5 py-1 border border-slate-300 rounded-lg text-[11px] bg-white focus:outline-none font-semibold shadow-xs"
-                              >
-                                <option value="ADMIN">ADMIN</option>
-                                <option value="ASPIRANTE">Aspirante</option>
-                                <option value="CONTROL_ESCOLAR">Control Escolar</option>
-                                <option value="CAE">CAE</option>
-                                <option value="ALUMNO">Alumno</option>
-                                <option value="ALUMNO_UNICO">Alumno Único</option>
-                              </select>
                             </div>
                           </td>
                         </tr>
@@ -357,12 +319,12 @@ export default function UsersPage({ onNavigateToPortal }) {
           </div>
         )}
 
-        {/* MODAL: Registrar Nuevo Usuario */}
+        {/* MODAL: Registrar Nuevo Usuario (Atomizado) */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+            <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
               <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 className="font-bold text-xs">Alta de Nuevo Usuario del Sistema</h3>
+                <h3 className="font-bold text-xs">Alta de Nuevo Usuario / Alumno del Sistema</h3>
                 <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
               </div>
 
@@ -373,28 +335,39 @@ export default function UsersPage({ onNavigateToPortal }) {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Nombre Completo</label>
+                    <label className="font-semibold text-slate-800">Nombre(s)</label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej. Roberto Gómez"
-                      value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                      placeholder="Ej. Roberto"
+                      value={newUser.nombres}
+                      onChange={(e) => setNewUser({ ...newUser, nombres: e.target.value })}
                       className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
                     />
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Matrícula / Username</label>
+                    <label className="font-semibold text-slate-800">Apellido Paterno</label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej. 227000999"
-                      value={newUser.username}
-                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none font-mono"
+                      placeholder="Ej. Gómez"
+                      value={newUser.apellidoPaterno}
+                      onChange={(e) => setNewUser({ ...newUser, apellidoPaterno: e.target.value })}
+                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="font-semibold text-slate-800">Apellido Materno</label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Pérez"
+                      value={newUser.apellidoMaterno}
+                      onChange={(e) => setNewUser({ ...newUser, apellidoMaterno: e.target.value })}
+                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
                     />
                   </div>
                 </div>
@@ -406,27 +379,28 @@ export default function UsersPage({ onNavigateToPortal }) {
                       type="email"
                       required
                       placeholder="usuario@dominio.com"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      value={newUser.correo}
+                      onChange={(e) => setNewUser({ ...newUser, correo: e.target.value })}
                       className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
                     />
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Teléfono</label>
+                    <label className="font-semibold text-slate-800">Contraseña Temporal</label>
                     <input
-                      type="text"
-                      placeholder="2281234567"
-                      value={newUser.telefono}
-                      onChange={(e) => setNewUser({ ...newUser, telefono: e.target.value })}
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none font-mono"
+                      type="password"
+                      required
+                      placeholder="••••••••"
+                      value={newUser.contrasena}
+                      onChange={(e) => setNewUser({ ...newUser, contrasena: e.target.value })}
+                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Rol Inicial</label>
+                    <label className="font-semibold text-slate-800">Rol Correspondiente</label>
                     <select
                       value={newUser.roleCode}
                       onChange={(e) => setNewUser({ ...newUser, roleCode: e.target.value })}
@@ -441,7 +415,7 @@ export default function UsersPage({ onNavigateToPortal }) {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">Estatus Inicial</label>
+                    <label className="font-semibold text-slate-800">Estado / Estatus</label>
                     <select
                       value={newUser.estatus}
                       onChange={(e) => setNewUser({ ...newUser, estatus: e.target.value })}
@@ -465,7 +439,7 @@ export default function UsersPage({ onNavigateToPortal }) {
                     type="submit"
                     className="px-5 py-2 bg-slate-900 text-white rounded-xl font-bold transition shadow-md"
                   >
-                    Guardar Usuario
+                    Guardar Usuario en BD
                   </button>
                 </div>
               </form>
@@ -473,20 +447,20 @@ export default function UsersPage({ onNavigateToPortal }) {
           </div>
         )}
 
-        {/* MODAL: Visualizar Expediente/Detalle del Usuario */}
+        {/* MODAL: Visualizar Detalle Exhaustivo del Usuario / Alumno */}
         {selectedUserDetail && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
               <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 className="font-bold text-xs">Ficha General del Usuario</h3>
+                <h3 className="font-bold text-xs">Ficha Detallada del Expediente</h3>
                 <button onClick={() => setSelectedUserDetail(null)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
               </div>
 
-              <div className="p-6 space-y-4 text-xs">
+              <div className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
                 <div className="flex justify-between items-start border-b pb-3">
                   <div>
                     <h4 className="text-base font-bold text-slate-900">{selectedUserDetail.name}</h4>
-                    <span className="font-mono text-blue-950 font-bold">{selectedUserDetail.username}</span>
+                    <span className="font-mono text-blue-950 font-bold">Matrícula / Username: {selectedUserDetail.username}</span>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
                     selectedUserDetail.estatus === 'Activo'
@@ -497,24 +471,38 @@ export default function UsersPage({ onNavigateToPortal }) {
                   </span>
                 </div>
 
-                <div className="space-y-2 text-slate-700">
+                <div className="space-y-2.5 text-slate-700">
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                    <span className="font-semibold text-slate-400">Rol del Sistema:</span>
+                    <span className="font-semibold text-slate-400">Rol Asignado:</span>
                     <span className="font-bold text-slate-900">{selectedUserDetail.role} ({selectedUserDetail.roleCode})</span>
                   </div>
 
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                    <span className="font-semibold text-slate-400">Correo Electrónico:</span>
+                    <span className="font-semibold text-slate-400">Correo Principal:</span>
                     <span className="font-bold text-slate-900">{selectedUserDetail.email}</span>
                   </div>
 
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                    <span className="font-semibold text-slate-400">Teléfono Contacto:</span>
-                    <span className="font-mono font-bold text-slate-900">{selectedUserDetail.telefono}</span>
+                    <span className="font-semibold text-slate-400">Teléfono Celular:</span>
+                    <span className="font-mono font-bold text-slate-900">{selectedUserDetail.telefono || 'No registrado'}</span>
                   </div>
 
+                  {selectedUserDetail.curp && (
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="font-semibold text-slate-400">CURP:</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedUserDetail.curp}</span>
+                    </div>
+                  )}
+
+                  {selectedUserDetail.municipio && (
+                    <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                      <span className="font-semibold text-slate-400">Municipio / Localidad:</span>
+                      <span className="font-bold text-slate-900">{selectedUserDetail.municipio}, {selectedUserDetail.estado}</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                    <span className="font-semibold text-slate-400">Fecha de Registro:</span>
+                    <span className="font-semibold text-slate-400">Fecha de Registro en Sistema:</span>
                     <span className="font-mono text-slate-800">{selectedUserDetail.fechaRegistro}</span>
                   </div>
                 </div>
@@ -536,7 +524,7 @@ export default function UsersPage({ onNavigateToPortal }) {
                     onClick={() => setSelectedUserDetail(null)}
                     className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs ml-auto transition"
                   >
-                    Cerrar
+                    Cerrar Detalle
                   </button>
                 </div>
               </div>
