@@ -17,13 +17,14 @@ export const obtenerAlumnosActivos = async (
         subsistema: true,
         validacionExpedientes: true,
         tutorParentescoRel: true,
+        identidadCultural: true, // <--- Incluimos la relación para obtener el nombre real
         discapacidades: {
           include: {
             discapacidad: true,
           },
         },
       },
-      orderBy: { creadoEn: "desc" }, // Usamos creadoEn que es el campo estándar existente
+      orderBy: { creadoEn: "desc" },
     });
 
     // Mapeo seguro para inyectar textos formateados legibles para la interfaz
@@ -33,9 +34,7 @@ export const obtenerAlumnosActivos = async (
 
       return {
         ...alumno,
-        identidadCulturalTexto: alumno.identidadCulturalId
-          ? "REGISTRADA"
-          : "NINGUNO",
+        identidadCulturalTexto: alumno.identidadCultural?.nombre || "NINGUNO", // <--- Asignamos el nombre correcto
         discapacidadesTexto:
           listaDiscapacidades.length > 0
             ? listaDiscapacidades.join(", ")

@@ -21,6 +21,17 @@ export default function ValidacionAspirantesPage() {
 
   const [textoObservaciones, setTextoObservaciones] = useState("");
 
+  const [modalNotificacion, setModalNotificacion] = useState({
+    isOpen: false,
+    titulo: "",
+    mensaje: "",
+    tipo: "exito",
+  });
+
+  const mostrarNotificacion = (titulo, mensaje, tipo = "exito") => {
+    setModalNotificacion({ isOpen: true, titulo, mensaje, tipo });
+  };
+
   const cargarAspirantes = async () => {
     setCargando(true);
     try {
@@ -74,10 +85,18 @@ export default function ValidacionAspirantesPage() {
     }
   };
 
+  const todosDocumentosValidados =
+    selectedSolicitud &&
+    selectedSolicitud.documentosTemp &&
+    selectedSolicitud.documentosTemp.length > 0 &&
+    selectedSolicitud.documentosTemp.every((d) => d.estatusDoc === "APROBADO");
+
   const handleEnviarObservaciones = async () => {
     if (!textoObservaciones.trim()) {
-      alert(
+      mostrarNotificacion(
+        "Atención",
         "Por favor, escribe las correcciones necesarias antes de marcar como pendiente.",
+        "error",
       );
       return;
     }
@@ -94,17 +113,27 @@ export default function ValidacionAspirantesPage() {
       const resultado = await res.json();
 
       if (res.ok && resultado.ok) {
-        alert(
+        mostrarNotificacion(
+          "Correcciones Solicitadas",
           "Se han enviado las observaciones y requerido correcciones al aspirante con éxito.",
+          "exito",
         );
         setSelectedSolicitud(null);
         cargarAspirantes();
       } else {
-        alert(resultado.mensaje || "Error al guardar las observaciones.");
+        mostrarNotificacion(
+          "Error",
+          resultado.mensaje || "Error al guardar las observaciones.",
+          "error",
+        );
       }
     } catch (error) {
       console.error("Error al enviar observaciones:", error);
-      alert("Error de conexión al enviar las observaciones.");
+      mostrarNotificacion(
+        "Error de Red",
+        "Error de conexión al enviar las observaciones.",
+        "error",
+      );
     }
   };
 
@@ -113,8 +142,10 @@ export default function ValidacionAspirantesPage() {
       selectedSolicitud.documentosTemp.some((d) => d.estatusDoc !== "APROBADO");
 
     if (documentosPendientesORechazados) {
-      alert(
-        'Acción no permitida: Todos los documentos del expediente deben estar explícitamente marcados como "Aprobado" antes de aprobar al alumno.',
+      mostrarNotificacion(
+        "Acción no permitida",
+        'Todos los documentos del expediente deben estar explícitamente marcados como "Aprobado" antes de aprobar al alumno.',
+        "error",
       );
       return;
     }
@@ -133,17 +164,27 @@ export default function ValidacionAspirantesPage() {
       const resultado = await res.json();
 
       if (res.ok && resultado.ok) {
-        alert(
-          `¡Expediente aprobado con éxito!\n\nEl tipo de usuario ha cambiado a Alumno.\nMatrícula Asignada: ${resultado.data.matricula}\nContraseña Única: ${resultado.data.password}`,
+        mostrarNotificacion(
+          "¡Expediente Aprobado con Éxito!",
+          `El tipo de usuario ha cambiado formalmente a Alumno.\n\n• Matrícula Asignada: ${resultado.data.matricula}\n• Contraseña Única: ${resultado.data.password}`,
+          "exito",
         );
         setSelectedSolicitud(null);
         cargarAspirantes();
       } else {
-        alert(resultado.mensaje || "Error al aprobar el expediente.");
+        mostrarNotificacion(
+          "Error de Aprobación",
+          resultado.mensaje || "Error al aprobar el expediente.",
+          "error",
+        );
       }
     } catch (error) {
       console.error("Error en aprobación:", error);
-      alert("Error de conexión al procesar la aprobación.");
+      mostrarNotificacion(
+        "Error de Red",
+        "Error de conexión al procesar la aprobación.",
+        "error",
+      );
     }
   };
 
@@ -316,7 +357,7 @@ export default function ValidacionAspirantesPage() {
               <div className="p-6 space-y-6 overflow-y-auto text-xs text-slate-700 bg-slate-50/50">
                 <div className="space-y-3">
                   <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b pb-1">
-                    1. Información General y Sociodemográfica del Aspirante
+                    1. Información General del Aspirante
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -362,7 +403,7 @@ export default function ValidacionAspirantesPage() {
 
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
                       <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
-                        🧬 Perfil e Inclusión
+                        🧬 Datos Adicionales
                       </span>
                       <p>
                         <strong className="text-slate-500">
@@ -423,11 +464,21 @@ export default function ValidacionAspirantesPage() {
                             ).join(", ")
                           : "N/A"}
                       </p>
+                      {/* Tutor con el mismo estilo de fuente y colores estandarizados de la tarjeta */}
                       <p className="pt-1">
                         <strong className="text-slate-500">Tutor:</strong>{" "}
-                        {selectedSolicitud.tutorNombres
-                          ? `${selectedSolicitud.tutorApellidoPaterno || ""} ${selectedSolicitud.tutorNombres} (${selectedSolicitud.tutorTelefono})`
-                          : "N/A"}
+                        {selectedSolicitud.tutorNombres ? (
+                          <span>
+                            {`${selectedSolicitud.tutorApellidoPaterno || ""} ${selectedSolicitud.tutorApellidoMaterno || ""} ${selectedSolicitud.tutorNombres}`.trim()}{" "}
+                            (
+                            {selectedSolicitud.tutorParentescoRel?.nombre ||
+                              "PARENTESCO NO ESPECIFICADO"}
+                            ){" — "}
+                            Tel: {selectedSolicitud.tutorTelefono || "N/A"}
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -516,7 +567,17 @@ export default function ValidacionAspirantesPage() {
                   <button
                     type="button"
                     onClick={handleEnviarObservaciones}
-                    className="px-4 py-2.5 text-xs font-bold text-amber-950 bg-amber-200 hover:bg-amber-300 border border-amber-400 rounded-xl transition shadow-2xs"
+                    disabled={todosDocumentosValidados}
+                    title={
+                      todosDocumentosValidados
+                        ? "No disponible: Todos los documentos ya se encuentran validados y aprobados."
+                        : "Enviar correcciones requeridas"
+                    }
+                    className={`px-4 py-2.5 text-xs font-bold rounded-xl transition shadow-2xs ${
+                      todosDocumentosValidados
+                        ? "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60"
+                        : "text-amber-950 bg-amber-200 hover:bg-amber-300 border border-amber-400"
+                    }`}
                   >
                     ⚠️ Marcar Pendiente / Requerir Correcciones
                   </button>
@@ -530,6 +591,42 @@ export default function ValidacionAspirantesPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {modalNotificacion.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-6 text-center space-y-4 transform transition-all animate-fadeIn">
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-sm ${
+                  modalNotificacion.tipo === "exito"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-900"
+                }`}
+              >
+                {modalNotificacion.tipo === "exito" ? "✓" : "!"}
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">
+                {modalNotificacion.titulo}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-medium">
+                {modalNotificacion.mensaje}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setModalNotificacion({
+                    isOpen: false,
+                    titulo: "",
+                    mensaje: "",
+                    tipo: "exito",
+                  })
+                }
+                className="w-full py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
+              >
+                Entendido
+              </button>
             </div>
           </div>
         )}

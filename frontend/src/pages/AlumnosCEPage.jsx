@@ -18,10 +18,20 @@ export default function AlumnosCEPage() {
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(false);
 
+  const [modalNotificacion, setModalNotificacion] = useState({
+    isOpen: false,
+    titulo: "",
+    mensaje: "",
+    tipo: "exito",
+  });
+
+  const mostrarNotificacion = (titulo, mensaje, tipo = "exito") => {
+    setModalNotificacion({ isOpen: true, titulo, mensaje, tipo });
+  };
+
   const cargarAlumnos = async () => {
     setCargando(true);
     try {
-      // CORREGIDO: Apuntando correctamente a la ruta en minúsculas "/api/controlescolar/alumnos"
       const res = await fetch(
         "http://localhost:4000/api/controlescolar/alumnos",
       );
@@ -39,6 +49,57 @@ export default function AlumnosCEPage() {
   useEffect(() => {
     cargarAlumnos();
   }, []);
+
+  const handleSubirDocumentoManual = async (documentoId, nuevoArchivo) => {
+    if (!nuevoArchivo) return;
+    try {
+      const dataToSend = new FormData();
+      dataToSend.append("archivo", nuevoArchivo);
+
+      const response = await fetch(
+        `http://localhost:4000/api/admission/documentos/${documentoId}/modificar`,
+        {
+          method: "PATCH",
+          body: dataToSend,
+        },
+      );
+      const resultado = await response.json();
+
+      if (response.ok && resultado.ok) {
+        mostrarNotificacion(
+          "Archivo Actualizado",
+          "El documento ha sido cargado y actualizado con éxito en el expediente del alumno.",
+          "exito",
+        );
+        const resActualizada = await fetch(
+          "http://localhost:4000/api/controlescolar/alumnos",
+        );
+        const resultadoActualizado = await resActualizada.json();
+        if (resActualizada.ok && resultadoActualizado.ok) {
+          setAlumnos(resultadoActualizado.data || []);
+          const alumnoActualizado = resultadoActualizado.data.find(
+            (a) => a.id === alumnoSeleccionado.id,
+          );
+          if (alumnoActualizado) {
+            setAlumnoSeleccionado(alumnoActualizado);
+          }
+        }
+      } else {
+        mostrarNotificacion(
+          "Error",
+          resultado.mensaje || "No se pudo actualizar el archivo.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error al subir documento:", error);
+      mostrarNotificacion(
+        "Error de Red",
+        "Error de conexión al intentar subir el documento.",
+        "error",
+      );
+    }
+  };
 
   const alumnosFiltrados = alumnos.filter((alumn) => {
     const nombreCompleto =
@@ -160,14 +221,13 @@ export default function AlumnosCEPage() {
           </div>
         </div>
 
-        {/* Modal de Perfil de Alumno */}
         {alumnoSeleccionado && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
             <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[92vh]">
               <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
                 <div>
                   <h3 className="font-extrabold text-base tracking-tight text-white">
-                    Expediente e Historial del Alumno:{" "}
+                    Inspección Integral de Expediente del Alumno:{" "}
                     {alumnoSeleccionado.folio}
                   </h3>
                   <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
@@ -261,7 +321,9 @@ export default function AlumnosCEPage() {
                         <strong className="text-slate-500">
                           Identidad Cultural:
                         </strong>{" "}
-                        {alumnoSeleccionado.identidadCulturalTexto || "NINGUNO"}
+                        {alumnoSeleccionado.identidadCulturalTexto ||
+                          alumnoSeleccionado.identidadCultural?.nombre ||
+                          "NINGUNO"}
                       </p>
                       <p>
                         <strong className="text-slate-500">
@@ -289,11 +351,32 @@ export default function AlumnosCEPage() {
                         (CCT:{" "}
                         {alumnoSeleccionado.cctEscuelaProcedencia || "N/A"})
                       </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Semestres a Cursar:
+                        </strong>{" "}
+                        {alumnoSeleccionado.semestresSeleccionados
+                          ? JSON.parse(
+                              JSON.stringify(
+                                alumnoSeleccionado.semestresSeleccionados,
+                              ),
+                            ).join(", ")
+                          : "N/A"}
+                      </p>
                       <p className="pt-1">
                         <strong className="text-slate-500">Tutor:</strong>{" "}
-                        {alumnoSeleccionado.tutorNombres
-                          ? `${alumnoSeleccionado.tutorApellidoPaterno || ""} ${alumnoSeleccionado.tutorNombres} (${alumnoSeleccionado.tutorTelefono})`
-                          : "N/A"}
+                        {alumnoSeleccionado.tutorNombres ? (
+                          <span>
+                            {`${alumnoSeleccionado.tutorApellidoPaterno || ""} ${alumnoSeleccionado.tutorApellidoMaterno || ""} ${alumnoSeleccionado.tutorNombres}`.trim()}{" "}
+                            (
+                            {alumnoSeleccionado.tutorParentescoRel?.nombre ||
+                              "PARENTESCO NO ESPECIFICADO"}
+                            ){" — "}
+                            Tel: {alumnoSeleccionado.tutorTelefono || "N/A"}
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -301,7 +384,8 @@ export default function AlumnosCEPage() {
 
                 <div className="space-y-3 pt-2">
                   <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b pb-1">
-                    2. Expediente Digital Validado (Solo Lectura)
+                    2. Expediente Digital (Gestión y Carga Manual por Control
+                    Escolar)
                   </h4>
                   <div className="space-y-2">
                     {alumnoSeleccionado.documentos?.map((doc) => (
@@ -314,21 +398,51 @@ export default function AlumnosCEPage() {
                             {traducirTipoDocumento(doc.tipoDoc)}
                           </span>
                           <span className="text-[10px] text-slate-500 font-mono">
-                            Archivo: {doc.nombreArchivo}
+                            Archivo:{" "}
+                            {doc.nombreArchivo || "Sin archivo cargado"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <a
-                            href={`http://localhost:4000/api/controlescolar/documentos/${doc.id}/ver`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
-                          >
-                            👁️ Ver Archivo
-                          </a>
+                          {doc.archivoBlob ? (
+                            <a
+                              href={`http://localhost:4000/api/controlescolar/documentos/${doc.id}/ver`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                            >
+                              👁️ Ver Archivo
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200 font-semibold">
+                              Sin Archivo Digital
+                            </span>
+                          )}
+
                           <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold">
                             {doc.estatusDoc || "APROBADO"} ✓
                           </span>
+
+                          <label className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
+                            ✏️{" "}
+                            {doc.archivoBlob
+                              ? "Editar / Subir"
+                              : "Subir Archivo"}
+                            <input
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png"
+                              className="hidden"
+                              onChange={(e) => {
+                                e.preventDefault();
+                                const nuevoArchivo = e.target.files[0];
+                                if (nuevoArchivo) {
+                                  handleSubirDocumentoManual(
+                                    doc.id,
+                                    nuevoArchivo,
+                                  );
+                                }
+                              }}
+                            />
+                          </label>
                         </div>
                       </div>
                     ))}
@@ -345,6 +459,42 @@ export default function AlumnosCEPage() {
                   Cerrar Ficha
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {modalNotificacion.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-6 text-center space-y-4 transform transition-all animate-fadeIn">
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-sm ${
+                  modalNotificacion.tipo === "exito"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-amber-100 text-amber-900"
+                }`}
+              >
+                {modalNotificacion.tipo === "exito" ? "✓" : "!"}
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">
+                {modalNotificacion.titulo}
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap font-medium">
+                {modalNotificacion.mensaje}
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setModalNotificacion({
+                    isOpen: false,
+                    titulo: "",
+                    mensaje: "",
+                    tipo: "exito",
+                  })
+                }
+                className="w-full py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
+              >
+                Entendido
+              </button>
             </div>
           </div>
         )}

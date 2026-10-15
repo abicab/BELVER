@@ -3,6 +3,7 @@ import {
   registrarAspirante,
   verificarDuplicado,
   consultarEstatus,
+  modificarDocumento,
 } from "../controllers/admissionController.js";
 import { upload } from "../middlewares/uploadMiddleware.js"; // O tu configuración de multer
 
@@ -10,6 +11,11 @@ const router = Router();
 
 router.get("/verificar-duplicado", verificarDuplicado);
 router.get("/consulta", consultarEstatus);
+router.patch(
+  "/documentos/:id/modificar",
+  upload.single("archivo"),
+  modificarDocumento,
+);
 
 // ESTA ES LA RUTA CRÍTICA QUE DEBE RECIBIR TODOS LOS CAMPOS DE ARCHIVOS:
 router.post(

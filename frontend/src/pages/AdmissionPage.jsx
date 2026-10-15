@@ -437,6 +437,43 @@ export default function AdmissionPage() {
     }
   };
 
+  // FUNCIÓN PARA MODIFICAR DOCUMENTO RECHAZADO
+  const handleModificarDocumentoRechazado = async (
+    documentoId,
+    nuevoArchivo,
+  ) => {
+    if (!nuevoArchivo) return;
+    try {
+      const dataToSend = new FormData();
+      dataToSend.append("archivo", nuevoArchivo);
+
+      const response = await fetch(
+        `http://localhost:4000/api/admission/documentos/${documentoId}/modificar`,
+        {
+          method: "PATCH",
+          body: dataToSend,
+        },
+      );
+      const resultado = await response.json();
+
+      if (response.ok && resultado.ok) {
+        mostrarAlerta(
+          "Documento modificado y enviado a revisión exitosamente.",
+          "Actualización Exitosa",
+        );
+        handleConsultar();
+      } else {
+        mostrarAlerta(
+          resultado.mensaje || "No se pudo actualizar el documento.",
+          "Error de Actualización",
+        );
+      }
+    } catch (error) {
+      console.error("Error al modificar documento:", error);
+      mostrarAlerta("Error de conexión al servidor.", "Error de Red");
+    }
+  };
+
   const nextStep = async () => {
     if (step === 1) {
       if (
@@ -591,9 +628,18 @@ export default function AdmissionPage() {
       if (response.ok && resultado.ok) {
         const nombreCompleto =
           `${formData.apellidoPaterno} ${formData.apellidoMaterno || ""} ${formData.nombres}`.trim();
+        const fechaVigencia = new Date();
+        fechaVigencia.setDate(fechaVigencia.getDate() + 15);
+        const fechaLimiteStr = fechaVigencia.toLocaleDateString("es-MX", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+
         setSubmittedData({
           folio: resultado.data.folio,
           aspirante: nombreCompleto,
+          fechaLimite: fechaLimiteStr,
         });
       } else {
         mostrarAlerta(
@@ -617,12 +663,12 @@ export default function AdmissionPage() {
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
         <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-xl p-6 text-center space-y-4">
           <div className="flex justify-between items-center px-4 border-b pb-3">
-            <div className="text-[10px] font-bold text-slate-400 uppercase">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">
               [ Logo Institucional ]
-            </div>
-            <div className="text-[10px] font-bold text-slate-400 uppercase">
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase">
               [ Logo BELVER ]
-            </div>
+            </span>
           </div>
 
           <div className="w-10 h-10 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center mx-auto text-lg font-bold">
@@ -632,53 +678,47 @@ export default function AdmissionPage() {
             ¡Solicitud Registrada Exitosamente!
           </h2>
           <p className="text-[11px] text-slate-500">
-            Comprobante oficial de registro institucional - BELVER
+            Comprobante de registro a BELVER
           </p>
 
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 my-3 space-y-2 text-left">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 my-3 space-y-3 text-left">
             <div>
               <span className="text-[9px] text-slate-400 font-bold uppercase block">
-                Nombre del Estudiante
+                Nombre del estudiante
               </span>
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 uppercase">
                 {submittedData.aspirante}
               </div>
             </div>
-            <div className="border-t pt-2 text-center">
+            <div className="border-t pt-3 text-center">
               <span className="text-[9px] text-slate-500 font-bold uppercase block">
-                Folio de Seguimiento Oficial
+                Folio de seguimiento oficial
               </span>
-              <div className="text-xl font-mono font-extrabold text-blue-950 tracking-wider mt-0.5">
+              <div className="text-2xl font-mono font-extrabold text-blue-950 tracking-wider mt-0.5">
                 {submittedData.folio}
               </div>
             </div>
           </div>
 
-          <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-3 text-left space-y-2 text-[11px] text-blue-950">
-            <p>
-              El comprobante y tu folio de seguimiento han sido enviados a tu
-              correo electrónico registrado.
-            </p>
-            <p>
-              En un plazo de 5 días hábiles, deberás ingresar nuevamente a la
-              plataforma para revisar el estatus de la documentación que
-              enviaste.
-            </p>
-            <p>
-              En caso de que se presente alguna observación, deberás realizar
-              las modificaciones correspondientes para que el documento pueda
-              ser aceptado.
-            </p>
-          </div>
-
-          <p className="text-[10px] text-slate-400 italic">
-            Nota: Los registros no validados serán eliminados automáticamente al
-            finalizar el periodo de inscripciones.
+          <p className="text-xs text-slate-700 leading-relaxed text-left">
+            En un plazo de 5 días hábiles deberás ingresar al apartado de
+            inscripción dando clic en la opción{" "}
+            <strong>“Folio de inscripción”</strong> para revisar el estatus de
+            la documentación que enviaste.
+          </p>
+          <p className="text-xs text-slate-700 leading-relaxed text-left">
+            En caso de presentar alguna observación, tendrás que realizar las
+            modificaciones correspondientes para completar tu proceso de
+            inscripción; en caso de no hacerlo dentro del periodo estipulado,
+            tendrás que realizar tu proceso completo nuevamente.
+          </p>
+          <p className="text-xs font-bold text-red-600 text-left mt-2">
+            Fecha límite para modificaciones: {submittedData.fechaLimite}
           </p>
 
           <button
             onClick={() => window.location.reload()}
-            className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
+            className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md mt-4"
           >
             Finalizar y Volver al Inicio
           </button>
@@ -1760,7 +1800,7 @@ export default function AdmissionPage() {
           </div>
         </form>
 
-        {/* MODAL DE CONSULTA ESTILIZADO CON VISUALIZADOR SEGURO */}
+        {/* MODAL DE CONSULTA ESTILIZADO CON VISUALIZADOR Y MODIFICACIÓN ACTIVA */}
         {isConsultaOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 transform transition-all">
@@ -1887,7 +1927,6 @@ export default function AdmissionPage() {
                       </span>
                     </div>
 
-                    {/* SECCIÓN DE MATRÍCULA Y CONTRASEÑA ÚNICA (SOLO SI ESTÁ APROBADO) */}
                     {consultaResult.estatus === "APROBADO" &&
                       consultaResult.matricula && (
                         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
@@ -1935,7 +1974,6 @@ export default function AdmissionPage() {
                       </div>
                     </div>
 
-                    {/* BLOQUE DE OBSERVACIONES DE CONTROL ESCOLAR (SOLO SE MUESTRA SI NO ESTÁ APROBADO) */}
                     {consultaResult.estatus !== "APROBADO" &&
                       consultaResult.observaciones && (
                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
@@ -2016,11 +2054,13 @@ export default function AdmissionPage() {
                                       className="hidden"
                                       onChange={(e) => {
                                         e.preventDefault();
-                                        console.log(
-                                          "Modificando documento:",
-                                          doc.tipo,
-                                          e.target.files[0],
-                                        );
+                                        const archivoNuevo = e.target.files[0];
+                                        if (archivoNuevo) {
+                                          handleModificarDocumentoRechazado(
+                                            doc.id,
+                                            archivoNuevo,
+                                          );
+                                        }
                                       }}
                                     />
                                   </label>

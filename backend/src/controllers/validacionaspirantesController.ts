@@ -21,7 +21,6 @@ export const obtenerAspirantesControlEscolar = async (
   try {
     const { estatus, modalidad, busqueda } = req.query;
 
-    // Filtro base: Solo mostrar expedientes que aún NO tienen matrícula asignada
     const whereClause: any = {
       matricula: null,
     };
@@ -171,7 +170,6 @@ export const aprobarYGenerarCredencialesControl = async (
   try {
     const { id } = req.params;
 
-    // ID 5 corresponde a "Alumno" en tu catálogo tipo_usuario
     const tipoUsuarioAlumnoId = 5;
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -251,31 +249,43 @@ export const aprobarYGenerarCredencialesControl = async (
       return aspiranteActualizado;
     });
 
-    // Envío del correo institucional en segundo plano
+    const portalEscolarUrl = "http://www.belver.clavijero.edu.mx";
+
+    // Envío del correo institucional de aprobación (Correo 1 oficial de BELVER)
     transporter
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
         to: resultado.correoElectronico1,
-        subject: "¡Documentos Validados y Asignación de Matrícula - BELVER!",
+        subject:
+          "Documentos Validados y Aprobados - Asignación de Matrícula - BELVER",
         html: `
         <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px; color: #333333;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
             <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
-              <h2 style="margin: 0; font-size: 20px;">¡Documentos Validados y Expediente Aprobado - Sistema BELVER!</h2>
+              <h2 style="margin: 0; font-size: 20px;">DOCUMENTOS VALIDADOS Y APROBADOS</h2>
             </div>
             <div style="padding: 30px;">
-              <p>Estimado(a) <strong>${resultado.nombres}</strong>,</p>
-              <p>Tus documentos han sido validados con éxito y tu expediente ha sido <strong>APROBADO</strong> por el departamento de Control Escolar.</p>
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Matrícula Asignada:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px;">${resultado.matricula}</span></p>
-                <p style="margin: 5px 0;"><strong>Contraseña Única:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px;">${resultado.password}</span></p>
+              <p>Estimado(a) <strong>${resultado.nombres} ${resultado.apellidoPaterno} ${resultado.apellidoMaterno || ""}</strong>,</p>
+              <p>Te damos la bienvenida a Bachillerato en Línea de Veracruz, te comentamos que tus documentos han sido validados con éxito.</p>
+              <p>Te recordamos que debes ingresar a <a href="${portalEscolarUrl}" target="_blank" style="color: #1e3a8a; font-weight: bold;">www.belver.clavijero.edu.mx</a> donde encontrarás tu Taller de inducción <strong>“Estudiar a distancia en línea”</strong>, el cual debes cursar y aprobar para obtener tu asignación de materias.</p>
+
+              <p style="margin-top: 20px; font-weight: bold;">Tus datos de acceso son los siguientes:</p>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin: 10px 0;">
+                <p style="margin: 5px 0;"><strong>Matrícula:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px; font-weight: bold;">${resultado.matricula}</span></p>
+                <p style="margin: 5px 0;"><strong>Contraseña:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px; font-weight: bold;">${resultado.password}</span></p>
               </div>
-              <p>Guarda estos datos en un lugar seguro; los necesitarás para acceder a tu portal escolar.</p>
+
+              <p style="font-size: 11px; color: #64748b;">Para una mejor experiencia, te sugerimos copiar y pegar tus datos de acceso, además de utilizar un equipo de cómputo para el óptimo acceso a tus cursos.</p>
+              <p style="font-size: 11px; color: #64748b; font-weight: bold;">Guarda estos datos en un lugar seguro; los necesitarás para acceder a tu portal escolar.</p>
+
+              <div style="margin-top: 25px; text-align: center;">
+                <a href="${portalEscolarUrl}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Acceder al Portal Escolar</a>
+              </div>
             </div>
           </div>
         </div>
       `,
-        text: `Tus documentos fueron validados con éxito. Matrícula: ${resultado.matricula}, Contraseña: ${resultado.password}`,
+        text: `Estimado(a) ${resultado.nombres} ${resultado.apellidoPaterno}, te damos la bienvenida a Bachillerato en Línea de Veracruz, tus documentos han sido validados con éxito. Ingresa a www.belver.clavijero.edu.mx para tu Taller de inducción. Matrícula: ${resultado.matricula}, Contraseña: ${resultado.password}`,
       })
       .catch((emailError) => {
         console.error(
@@ -286,7 +296,8 @@ export const aprobarYGenerarCredencialesControl = async (
 
     res.status(200).json({
       ok: true,
-      mensaje: "¡Aspirante aprobado y credenciales generadas exitosamente!",
+      mensaje:
+        "¡Expediente aprobado, matrícula y contraseña generadas con éxito!",
       data: {
         id: resultado.id,
         matricula: resultado.matricula,
@@ -325,7 +336,7 @@ export const aprobarYGenerarCredencialesControl = async (
   }
 };
 
-// Endpoint para emitir observaciones y requerir correcciones al aspirante
+// Endpoint para emitir observaciones, requerir correcciones al aspirante y enviar correo institucional con especificaciones BELVER
 export const emitirObservacionesControl = async (
   req: Request,
   res: Response,
@@ -344,27 +355,96 @@ export const emitirObservacionesControl = async (
 
     const fechaActual = new Date();
 
-    const controlActualizado = await prisma.validacionExpediente.upsert({
-      where: { aspiranteId: Number(id) },
-      update: {
-        dictamenGeneral: "CON_OBSERVACIONES",
-        observaciones: observaciones.trim(),
-        fechaValidacion: fechaActual,
-        validadoPor: "Control Escolar",
-      },
-      create: {
-        aspiranteId: Number(id),
-        dictamenGeneral: "CON_OBSERVACIONES",
-        observaciones: observaciones.trim(),
-        fechaValidacion: fechaActual,
-        validadoPor: "Control Escolar",
-      },
+    const resultado = await prisma.$transaction(async (tx) => {
+      const controlActualizado = await tx.validacionExpediente.upsert({
+        where: { aspiranteId: Number(id) },
+        update: {
+          dictamenGeneral: "CON_OBSERVACIONES",
+          observaciones: observaciones.trim(),
+          fechaValidacion: fechaActual,
+          validadoPor: "Control Escolar",
+        },
+        create: {
+          aspiranteId: Number(id),
+          dictamenGeneral: "CON_OBSERVACIONES",
+          observaciones: observaciones.trim(),
+          fechaValidacion: fechaActual,
+          validadoPor: "Control Escolar",
+        },
+      });
+
+      const aspirante = await tx.aspirante.findUnique({
+        where: { id: Number(id) },
+      });
+
+      return { controlActualizado, aspirante };
     });
+
+    if (!resultado.aspirante) {
+      res.status(404).json({ ok: false, mensaje: "Aspirante no encontrado." });
+      return;
+    }
+
+    const linkConsulta = "http://localhost:5173";
+    const nombreCompleto =
+      `${resultado.aspirante.nombres} ${resultado.aspirante.apellidoPaterno} ${resultado.aspirante.apellidoMaterno || ""}`.trim();
+
+    // Envío del correo institucional de observaciones conforme a las especificaciones exactas de BELVER
+    transporter
+      .sendMail({
+        from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
+        to: resultado.aspirante.correoElectronico1,
+        subject: `Observaciones en tu Expediente y Solicitud de Correcciones - ${resultado.aspirante.folio} - BELVER`,
+        html: `
+        <div style="font-family: Arial, sans-serif; background-color: #f1f5f9; padding: 25px; color: #1e293b;">
+          <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
+            <div style="padding: 30px 24px; text-align: center;">
+              <h2 style="margin: 0 0 5px 0; font-size: 18px; font-weight: bold; color: #0f172a;">Aviso de Observaciones en su Expediente</h2>
+              <p style="margin: 0 0 20px 0; font-size: 11px; color: #64748b;">Control Escolar - BELVER</p>
+
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: left;">
+                <div style="margin-bottom: 12px;">
+                  <span style="font-size: 9px; font-weight: bold; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;">Nombre del estudiante</span>
+                  <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase;">${nombreCompleto}</div>
+                </div>
+                <div style="border-top: 1px solid #e2e8f0; paddingTop: 10px; text-align: center;">
+                  <span style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">Folio de seguimiento oficial</span>
+                  <div style="font-family: monospace; font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: 1px;">${resultado.aspirante.folio}</div>
+                </div>
+              </div>
+
+              <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: left; color: #78350f;">
+                <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 4px;">Observaciones y correcciones requeridas:</span>
+                <p style="margin: 0; font-size: 12px; white-space: pre-wrap; line-height: 1.5;">${observaciones.trim()}</p>
+              </div>
+
+              <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
+                En un plazo de 5 días hábiles deberás ingresar al apartado de inscripción dando clic en la opción <strong>“Folio de inscripción”</strong> para realizar las modificaciones correspondientes en tu documentación.
+              </p>
+              <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
+                En caso de no hacerlo dentro del periodo estipulado, tendrás que realizar tu proceso completo nuevamente.
+              </p>
+
+              <div style="margin-top: 25px;">
+                <a href="${linkConsulta}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Consultar Folio y Modificar Documentos</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+        text: `Aviso de Observaciones en su Expediente - BELVER. Estudiante: ${nombreCompleto}, Folio: ${resultado.aspirante.folio}. Observaciones: ${observaciones.trim()}. Deberá ingresar a la plataforma en un plazo de 5 días hábiles para realizar las modificaciones correspondientes.`,
+      })
+      .catch((emailError) => {
+        console.error(
+          "Advertencia: No se pudo enviar el correo de observaciones:",
+          emailError,
+        );
+      });
 
     res.status(200).json({
       ok: true,
       mensaje: "Observaciones guardadas y enviadas al aspirante correctamente.",
-      data: controlActualizado,
+      data: resultado.controlActualizado,
     });
   } catch (error) {
     console.error("Error al emitir observaciones:", error);

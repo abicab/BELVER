@@ -182,6 +182,12 @@ export const registrarAspirante = async (
     const fechaVigencia = new Date();
     fechaVigencia.setDate(fechaVigencia.getDate() + 15);
 
+    const fechaLimiteStr = fechaVigencia.toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
     const parseId = (val: any) => {
       const num = Number(val);
       return isNaN(num) || num <= 0 ? null : num;
@@ -194,6 +200,26 @@ export const registrarAspirante = async (
     const pId = parseId(
       datosValidados.parentescoTutorId || rawBody.parentescoTutorId,
     );
+
+    // Lógica para extraer el semestre más alto si se seleccionaron varios
+    const semestresRecibidos =
+      datosValidados.semestresSeleccionados ||
+      rawBody.semestresSeleccionados ||
+      [];
+    let semestreIdMaximo = null;
+
+    if (Array.isArray(semestresRecibidos) && semestresRecibidos.length > 0) {
+      const numerosSemestres = semestresRecibidos
+        .map((s: any) => {
+          const match = String(s).match(/\d+/);
+          return match ? parseInt(match[0], 10) : Number(s);
+        })
+        .filter((n: number) => !isNaN(n));
+
+      if (numerosSemestres.length > 0) {
+        semestreIdMaximo = Math.max(...numerosSemestres);
+      }
+    }
 
     const nuevoAspirante = await prisma.$transaction(async (tx) => {
       const nombresDiscapacidades = datosValidados.discapacidades || [];
@@ -274,7 +300,11 @@ export const registrarAspirante = async (
             datosValidados.nombreEscuelaProcedencia || null,
           sistemaProcedenciaLetra: letraProcedencia,
           otroSistemaProcedencia: datosValidados.otroSistemaProcedencia || null,
-          semestresSeleccionados: datosValidados.semestresSeleccionados || [],
+
+          semestresSeleccionados: semestresRecibidos,
+          ...(semestreIdMaximo && {
+            semestreRel: { connect: { id: semestreIdMaximo } },
+          }),
 
           discapacidades: {
             create: registrosDiscapacidades.map((d: any) => ({
@@ -313,7 +343,7 @@ export const registrarAspirante = async (
       `${datosValidados.apellidoPaterno} ${datosValidados.apellidoMaterno || ""} ${datosValidados.nombres}`.trim();
     const linkConsulta = "http://localhost:5173";
 
-    // Envío de correo en segundo plano (No bloquea ni demora la respuesta al usuario)
+    // Envío de correo institucional (Correo 2: Comprobante de Registro y Folio)
     transporter
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
@@ -322,29 +352,36 @@ export const registrarAspirante = async (
         html: `
         <div style="font-family: Arial, sans-serif; background-color: #f1f5f9; padding: 25px; color: #1e293b;">
           <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
-            <div style="padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background-color: #ffffff;">
-              <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">[ Logo Institucional ]</span>
-              <span style="font-size: 10px; font-weight: bold; color: #94a3b8; text-transform: uppercase;">[ Logo BELVER ]</span>
-            </div>
             <div style="padding: 30px 24px; text-align: center;">
-              <div style="width: 48px; height: 48px; background-color: #dbeafe; color: #1e40af; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; margin-bottom: 15px;">✓</div>
               <h2 style="margin: 0 0 5px 0; font-size: 18px; font-weight: bold; color: #0f172a;">¡Solicitud Registrada Exitosamente!</h2>
-              <p style="margin: 0 0 20px 0; font-size: 11px; color: #64748b;">Comprobante oficial de registro institucional - BELVER</p>
+              <p style="margin: 0 0 20px 0; font-size: 11px; color: #64748b;">Comprobante de registro a BELVER</p>
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: left;">
                 <div style="margin-bottom: 12px;">
-                  <span style="font-size: 9px; font-weight: bold; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;">Nombre del Estudiante</span>
+                  <span style="font-size: 9px; font-weight: bold; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 2px;">Nombre del estudiante</span>
                   <div style="font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase;">${nombreCompleto}</div>
                 </div>
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 10px; text-align: center;">
-                  <span style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">Folio de Seguimiento Oficial</span>
+                  <span style="font-size: 9px; font-weight: bold; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;">Folio de seguimiento oficial</span>
                   <div style="font-family: monospace; font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: 1px;">${nuevoAspirante.folio}</div>
                 </div>
+              </div>
+              <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
+                En un plazo de 5 días hábiles deberás ingresar al apartado de inscripción dando clic en la opción <strong>“Folio de inscripción”</strong> para revisar el estatus de la documentación que enviaste.
+              </p>
+              <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
+                En caso de presentar alguna observación, tendrás que realizar las modificaciones correspondientes para completar tu proceso de inscripción; en caso de no hacerlo dentro del periodo estipulado, tendrás que realizar tu proceso completo nuevamente.
+              </p>
+              <p style="font-size: 12px; font-weight: bold; color: #b91c1c; text-align: left; margin-top: 15px;">
+                Fecha límite para modificaciones: ${fechaLimiteStr}
+              </p>
+              <div style="margin-top: 25px;">
+                <a href="${linkConsulta}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Consultar Folio de Inscripción</a>
               </div>
             </div>
           </div>
         </div>
       `,
-        text: `¡Solicitud Registrada Exitosamente! Nombre: ${nombreCompleto}, Folio: ${nuevoAspirante.folio}.`,
+        text: `¡Solicitud Registrada Exitosamente! Nombre: ${nombreCompleto}, Folio: ${nuevoAspirante.folio}. En un plazo de 5 días hábiles revisa el estatus de tu documentación. Fecha límite para modificaciones: ${fechaLimiteStr}.`,
       })
       .catch((emailError) => {
         console.error(
@@ -422,7 +459,7 @@ export const aprobarExpediente = async (
         data: {
           matricula: matriculaGenerada,
           password: passwordGenerada,
-          tipoUsuarioId: tipoUsuarioAlumnoId, // Actualiza formalmente a Alumno (ID 5)
+          tipoUsuarioId: tipoUsuarioAlumnoId,
           estatusAcademico: "ACTIVO_REGULAR",
         },
       });
@@ -451,31 +488,42 @@ export const aprobarExpediente = async (
       return aspiranteActualizado;
     });
 
-    // Envío de correo de aprobación en segundo plano
+    const portalEscolarUrl = "http://www.belver.clavijero.edu.mx";
+
+    // Envío de correo de aprobación y matrícula (Correo 1 oficial de BELVER)
     transporter
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
         to: resultado.correoElectronico1,
         subject:
-          "¡Aprobación de Expediente y Asignación de Matrícula - BELVER!",
+          "Documentos Validados y Aprobados - Asignación de Matrícula - BELVER",
         html: `
         <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px; color: #333333;">
           <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
             <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
-              <h2 style="margin: 0; font-size: 20px;">¡Expediente Aprobado - Sistema BELVER!</h2>
+              <h2 style="margin: 0; font-size: 20px;">Documentos Validados y Aprobados - BELVER</h2>
             </div>
             <div style="padding: 30px;">
-              <p>Estimado(a) <strong>${resultado.nombres}</strong>,</p>
-              <p>Tu expediente ha sido <strong>APROBADO</strong> satisfactoriamente.</p>
+              <p>Estimado(a) <strong>${resultado.nombres} ${resultado.apellidoPaterno}</strong>,</p>
+              <p>Te damos la bienvenida a Bachillerato en Línea de Veracruz. Te comentamos que tus documentos han sido validados con éxito.</p>
+              <p>Te recordamos que debes ingresar a <a href="${portalEscolarUrl}" target="_blank" style="color: #1e3a8a; font-weight: bold;">www.belver.clavijero.edu.mx</a> donde encontrarás tu Taller de inducción <strong>“Estudiar a distancia en línea”</strong>, el cual debes cursar y aprobar para obtener tu asignación de materias.</p>
+
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Matrícula Asignada:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px;">${resultado.matricula}</span></p>
-                <p style="margin: 5px 0;"><strong>Contraseña Única:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px;">${resultado.password}</span></p>
+                <p style="margin: 5px 0;"><strong>Matrícula:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px; font-weight: bold;">${resultado.matricula}</span></p>
+                <p style="margin: 5px 0;"><strong>Contraseña:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px; font-weight: bold;">${resultado.password}</span></p>
+              </div>
+
+              <p style="font-size: 11px; color: #64748b;">Para una mejor experiencia, te sugerimos copiar y pegar tus datos de acceso, además de utilizar un equipo de cómputo para el óptimo acceso a tus cursos.</p>
+              <p style="font-size: 11px; color: #64748b; font-weight: bold;">Guarda estos datos en un lugar seguro; los necesitarás para acceder a tu portal escolar.</p>
+
+              <div style="margin-top: 25px; text-align: center;">
+                <a href="${portalEscolarUrl}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Acceder al Portal Escolar</a>
               </div>
             </div>
           </div>
         </div>
       `,
-        text: `Tu expediente fue aprobado. Matrícula: ${resultado.matricula}, Contraseña: ${resultado.password}`,
+        text: `Estimado(a) ${resultado.nombres} ${resultado.apellidoPaterno}, tus documentos han sido validados con éxito. Ingresa a www.belver.clavijero.edu.mx para tu Taller de inducción. Tus datos de acceso son: Matrícula: ${resultado.matricula}, Contraseña: ${resultado.password}`,
       })
       .catch((emailError) => {
         console.error(
@@ -531,6 +579,59 @@ export const verDocumento = async (
     res.status(500).json({
       ok: false,
       mensaje: "Error interno al visualizar el documento.",
+    });
+  }
+};
+
+// NUEVA FUNCIÓN: Modificar documento rechazado por el aspirante
+export const modificarDocumento = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      res
+        .status(400)
+        .json({ ok: false, mensaje: "No se proporcionó ningún archivo." });
+      return;
+    }
+
+    const documentoExistente = await prisma.documento.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!documentoExistente) {
+      res.status(404).json({ ok: false, mensaje: "Documento no encontrado." });
+      return;
+    }
+
+    const nombreSeguro =
+      file.originalname.length > 250
+        ? file.originalname.substring(0, 250)
+        : file.originalname;
+
+    await prisma.documento.update({
+      where: { id: Number(id) },
+      data: {
+        nombreArchivo: nombreSeguro,
+        archivoBlob: file.buffer,
+        estatusDoc: "PENDIENTE", // Regresa a pendiente de revisión
+        comentario: null, // Limpia el motivo del rechazo previo
+      },
+    });
+
+    res.status(200).json({
+      ok: true,
+      mensaje: "Documento modificado y enviado a revisión exitosamente.",
+    });
+  } catch (error) {
+    console.error("Error al modificar el documento:", error);
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al procesar la modificación del documento.",
     });
   }
 };
