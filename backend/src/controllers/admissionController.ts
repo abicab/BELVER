@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../config/prisma.js";
 import { admissionSchema } from "../middlewares/admissionMiddleware.js";
 import nodemailer from "nodemailer";
+import PDFDocument from "pdfkit";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -633,5 +634,176 @@ export const modificarDocumento = async (
       ok: false,
       mensaje: "Error interno al procesar la modificación del documento.",
     });
+  }
+};
+
+export const descargarComprobantePDF = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { folio } = req.params;
+    const aspirante = await prisma.aspirante.findUnique({
+      where: { folio: String(folio).trim().toUpperCase() },
+    });
+
+    if (!aspirante) {
+      res.status(404).json({ ok: false, mensaje: "Solicitud no encontrada." });
+      return;
+    }
+
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const chunks: Buffer[] = [];
+
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => {
+      const result = Buffer.concat(chunks);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="Comprobante_Registro_${aspirante.folio}.pdf"`,
+      );
+      res.send(result);
+    });
+
+    const nombreCompleto =
+      `${aspirante.apellidoPaterno} ${aspirante.apellidoMaterno || ""} ${aspirante.nombres}`.toUpperCase();
+    const fechaVigenciaStr = aspirante.vigenciaFolio
+      ? new Date(aspirante.vigenciaFolio).toLocaleDateString("es-MX", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "N/A";
+
+    // --- CINTILLO SUPERIOR (ESPACIO PARA LOGOS) ---
+    doc.rect(40, 40, 515, 36).strokeColor("#cbd5e1").lineWidth(1).stroke();
+    doc.fontSize(8).font("Helvetica-Bold").fillColor("#64748b");
+    doc.text("[ LOGO INSTITUCIONAL ]", 50, 54, { width: 230, align: "left" });
+    doc.text("[ LOGO BELVER ]", 275, 54, { width: 230, align: "right" });
+
+    // --- ENCABEZADO (ALINEADO A LA IZQUIERDA) ---
+    doc.y = 95;
+    doc.x = 40;
+    doc
+      .fontSize(16)
+      .font("Helvetica-Bold")
+      .fillColor("#0f172a")
+      .text("¡Solicitud Registrada Exitosamente!", 40, doc.y, {
+        align: "left",
+      });
+    doc.moveDown(0.3);
+    doc
+      .fontSize(9)
+      .font("Helvetica")
+      .fillColor("#64748b")
+      .text(
+        "Comprobante oficial de registro institucional - BELVER",
+        40,
+        doc.y,
+        { align: "left" },
+      );
+    doc.moveDown(1.5);
+
+    // --- TARJETA CENTRAL (DISEÑO ORIGINAL CENTRADO) ---
+    const boxTop = doc.y;
+    const boxWidth = 430;
+    const boxLeft = (515 - boxWidth) / 2 + 40; // Centrado horizontalmente
+
+    doc
+      .roundedRect(boxLeft, boxTop, boxWidth, 110, 10)
+      .fillAndStroke("#f8fafc", "#e2e8f0");
+
+    // Nombre del Estudiante dentro de la tarjeta
+    doc
+      .fontSize(8)
+      .font("Helvetica-Bold")
+      .fillColor("#94a3b8")
+      .text("NOMBRE DEL ESTUDIANTE", boxLeft, boxTop + 15, {
+        align: "center",
+        width: boxWidth,
+      });
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#0f172a")
+      .text(nombreCompleto, boxLeft + 20, boxTop + 28, {
+        align: "center",
+        width: boxWidth - 40,
+      });
+
+    // Línea divisoria interna
+    doc
+      .moveTo(boxLeft + 30, boxTop + 55)
+      .lineTo(boxLeft + boxWidth - 30, boxTop + 55)
+      .strokeColor("#e2e8f0")
+      .lineWidth(1)
+      .stroke();
+
+    // Folio de Seguimiento Oficial dentro de la tarjeta
+    doc
+      .fontSize(8)
+      .font("Helvetica-Bold")
+      .fillColor("#64748b")
+      .text("FOLIO DE SEGUIMIENTO OFICIAL", boxLeft, boxTop + 65, {
+        align: "center",
+        width: boxWidth,
+      });
+    doc
+      .fontSize(18)
+      .font("Helvetica-Bold")
+      .fillColor("#0f172a")
+      .text(aspirante.folio, boxLeft, boxTop + 78, {
+        align: "center",
+        width: boxWidth,
+      });
+
+    doc.y = boxTop + 130;
+    doc.moveDown(1);
+
+    // --- TEXTOS INFORMATIVOS (JUSTIFICADOS) ---
+    doc.fontSize(9.5).font("Helvetica").fillColor("#334155");
+    doc.text(
+      "En un plazo de 5 días hábiles deberás ingresar al apartado de inscripción dando clic en la opción “Folio de inscripción” para revisar el estatus de la documentación que enviaste.",
+      40,
+      doc.y,
+      { align: "justify", lineGap: 4, width: 515 },
+    );
+    doc.moveDown(0.8);
+    doc.text(
+      "En caso de presentar alguna observación, tendrás que realizar las modificaciones correspondientes para completar tu proceso de inscripción; en caso de no hacerlo dentro del periodo estipulado, tendrás que realizar tu proceso completo nuevamente.",
+      40,
+      doc.y,
+      { align: "justify", lineGap: 4, width: 515 },
+    );
+    doc.moveDown(1);
+
+    // --- NOTAS Y FECHA LÍMITE ---
+    doc
+      .fontSize(9)
+      .font("Helvetica")
+      .fillColor("#64748b")
+      .text("Nota: El Folio será enviado a tu correo electrónico.", 40, doc.y, {
+        align: "justify",
+        width: 515,
+      });
+    doc.moveDown(0.6);
+    doc
+      .fontSize(10)
+      .font("Helvetica-Bold")
+      .fillColor("#dc2626")
+      .text(
+        `Fecha límite para modificaciones: ${fechaVigenciaStr}`,
+        40,
+        doc.y,
+        { align: "center", width: 515 },
+      );
+
+    doc.end();
+  } catch (error) {
+    console.error("Error al generar comprobante PDF:", error);
+    res
+      .status(500)
+      .json({ ok: false, mensaje: "Error interno al generar el PDF." });
   }
 };

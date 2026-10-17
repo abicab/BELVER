@@ -437,7 +437,6 @@ export default function AdmissionPage() {
     }
   };
 
-  // FUNCIÓN PARA MODIFICAR DOCUMENTO RECHAZADO
   const handleModificarDocumentoRechazado = async (
     documentoId,
     nuevoArchivo,
@@ -509,7 +508,7 @@ export default function AdmissionPage() {
       ) {
         mostrarAlerta(
           "Los dos correos electrónicos que ingresaste no coinciden.",
-          "Correos Desiguales",
+          "Verifica el Correo",
         );
         return;
       }
@@ -520,10 +519,7 @@ export default function AdmissionPage() {
         !formData.parentescoTutorId ||
         !formData.tutorTelefono
       ) {
-        mostrarAlerta(
-          "Los datos del padre, madre o tutor (Apellidos, Nombre, Parentesco y Teléfono) son obligatorios.",
-          "Tutor Incompleto",
-        );
+        mostrarAlerta("Los datos del Tutor son obligatorios.");
         return;
       }
 
@@ -548,7 +544,6 @@ export default function AdmissionPage() {
       if (formData.semestresSeleccionados.length === 0) {
         mostrarAlerta(
           "Por favor selecciona al menos un semestre que vas a cursar en BELVER.",
-          "Semestre Faltante",
         );
         return;
       }
@@ -658,6 +653,14 @@ export default function AdmissionPage() {
     }
   };
 
+  const handleDescargarPDF = () => {
+    if (!submittedData?.folio) return;
+    window.open(
+      `http://localhost:4000/api/admission/comprobante/${submittedData.folio}`,
+      "_blank",
+    );
+  };
+
   if (submittedData) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
@@ -712,13 +715,23 @@ export default function AdmissionPage() {
             inscripción; en caso de no hacerlo dentro del periodo estipulado,
             tendrás que realizar tu proceso completo nuevamente.
           </p>
-          <p className="text-xs font-bold text-red-600 text-left mt-2">
+          <p className="text-xs text-slate-700 leading-relaxed text-center">
+            Nota: El Folio sera enviado a tu correo electrónico.
+          </p>
+          <p className="text-xs font-bold text-red-600 text-center mt-2">
             Fecha límite para modificaciones: {submittedData.fechaLimite}
           </p>
 
           <button
+            onClick={handleDescargarPDF}
+            className="w-full py-2.5 text-xs font-bold text-blue-950 bg-blue-100 hover:bg-blue-200 rounded-xl transition shadow-sm border border-blue-200 flex items-center justify-center gap-2 mt-4"
+          >
+            📥 Descargar Comprobante Oficial (PDF)
+          </button>
+
+          <button
             onClick={() => window.location.reload()}
-            className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md mt-4"
+            className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
           >
             Finalizar y Volver al Inicio
           </button>
@@ -756,7 +769,7 @@ export default function AdmissionPage() {
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-0"></div>
           {[
             { s: 1, label: "Datos, Domicilio y Tutor" },
-            { s: 2, label: "Historial y Semestre" },
+            { s: 2, label: "Datos Académicos" },
             { s: 3, label: "Documentación Oficial" },
             { s: 4, label: "Revisión y Envío" },
           ].map((item) => (
@@ -788,7 +801,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Apellido Paterno *
+                      Apellido Paterno{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="apellidoPaterno"
@@ -814,7 +828,8 @@ export default function AdmissionPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Nombre(s) *
+                      Nombre(s){" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="nombres"
@@ -830,7 +845,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      CURP (18 Caracteres) *
+                      CURP (18 Caracteres){" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="curp"
@@ -850,7 +866,8 @@ export default function AdmissionPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Teléfono Celular *
+                      Teléfono Celular{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="telefonoCelular"
@@ -894,7 +911,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Correo Electrónico 1 *
+                      Correo Electrónico 1{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="correoElectronico1"
@@ -907,7 +925,8 @@ export default function AdmissionPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Confirmar Correo Electrónico *
+                      Confirmar Correo Electrónico{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="correoElectronicoConfirmacion"
@@ -967,7 +986,7 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      País *
+                      País <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="pais"
@@ -982,9 +1001,17 @@ export default function AdmissionPage() {
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      {formData.pais === "MÉXICO"
-                        ? "Código Postal (5 dígitos) *"
-                        : "Código Postal / ZIP *"}
+                      {formData.pais === "MÉXICO" ? (
+                        <>
+                          Código Postal (5 dígitos){" "}
+                          <span className="text-red-600 font-bold">*</span>
+                        </>
+                      ) : (
+                        <>
+                          Código Postal / ZIP{" "}
+                          <span className="text-red-600 font-bold">*</span>
+                        </>
+                      )}
                     </label>
                     <input
                       name="codigoPostal"
@@ -1003,7 +1030,8 @@ export default function AdmissionPage() {
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Estado / Provincia *
+                      Estado / Provincia{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="estado"
@@ -1025,7 +1053,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Municipio / Alcaldía *
+                      Municipio / Alcaldía{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="municipio"
@@ -1045,7 +1074,8 @@ export default function AdmissionPage() {
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Colonia / Asentamiento *
+                      Colonia / Asentamiento{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     {formData.pais === "MÉXICO" &&
                     coloniasDisponibles.length > 0 ? (
@@ -1076,7 +1106,7 @@ export default function AdmissionPage() {
 
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
-                      Calle *
+                      Calle <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="calle"
@@ -1198,7 +1228,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950">
-                      Ap. Paterno *
+                      Ap. Paterno{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="tutorApellidoPaterno"
@@ -1224,7 +1255,8 @@ export default function AdmissionPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950">
-                      Nombre(s) *
+                      Nombre(s){" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="tutorNombres"
@@ -1239,7 +1271,8 @@ export default function AdmissionPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950">
-                      Parentesco *
+                      Parentesco{" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </label>
                     <select
                       name="parentescoTutorId"
@@ -1257,7 +1290,7 @@ export default function AdmissionPage() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-amber-950">
-                      Teléfono *
+                      Teléfono <span className="text-red-600 font-bold">*</span>
                     </label>
                     <input
                       name="tutorTelefono"
@@ -1283,7 +1316,8 @@ export default function AdmissionPage() {
 
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-slate-700">
-                  Modalidad de Registro *
+                  Modalidad de Registro{" "}
+                  <span className="text-red-600 font-bold">*</span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label
@@ -1342,7 +1376,8 @@ export default function AdmissionPage() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-slate-700">
-                        Clave de la Escuela (CCT) *
+                        Clave de la Escuela (CCT){" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         name="cctEscuelaProcedencia"
@@ -1356,7 +1391,8 @@ export default function AdmissionPage() {
                     </div>
                     <div className="flex flex-col gap-1 sm:col-span-2">
                       <label className="text-xs font-semibold text-slate-700">
-                        Nombre de la Escuela *
+                        Nombre de la Escuela{" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         name="nombreEscuelaProcedencia"
@@ -1374,7 +1410,8 @@ export default function AdmissionPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-amber-950">
-                        Subsistema de Procedencia *
+                        Subsistema de Procedencia{" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <select
                         name="subsistemaId"
@@ -1405,7 +1442,8 @@ export default function AdmissionPage() {
                       .includes("OTRO") && (
                       <div className="flex flex-col gap-1 sm:col-span-2">
                         <label className="text-xs font-semibold text-amber-950">
-                          Especifique el Subsistema u Otro *
+                          Especifique el Subsistema u Otro{" "}
+                          <span className="text-red-600 font-bold">*</span>
                         </label>
                         <input
                           name="otroSistemaProcedencia"
@@ -1420,7 +1458,8 @@ export default function AdmissionPage() {
 
                     <div className="flex flex-col gap-1">
                       <label className="text-xs font-semibold text-amber-950">
-                        Clave de la Escuela (CCT) *
+                        Clave de la Escuela (CCT){" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         name="cctEscuelaProcedencia"
@@ -1434,7 +1473,8 @@ export default function AdmissionPage() {
                     </div>
                     <div className="flex flex-col gap-1 sm:col-span-2">
                       <label className="text-xs font-semibold text-amber-950">
-                        Nombre del Plantel / Escuela *
+                        Nombre del Plantel / Escuela{" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         name="nombreEscuelaProcedencia"
@@ -1451,7 +1491,8 @@ export default function AdmissionPage() {
 
               <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-200 space-y-2">
                 <label className="text-xs font-bold text-blue-950 uppercase tracking-wider block">
-                  ¿Qué semestre(s) vas a cursar en BELVER? *
+                  ¿Qué semestre(s) vas a cursar en BELVER?{" "}
+                  <span className="text-red-600 font-bold">*</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-blue-200">
                   {semestresDisponibles.map((sem) => (
@@ -1505,7 +1546,10 @@ export default function AdmissionPage() {
                 )}
                 <div className="flex flex-col gap-1 w-full">
                   <label className="text-xs font-semibold text-slate-800 flex justify-between">
-                    <span>Fotografía del Aspirante (JPG/PNG) *</span>
+                    <span>
+                      Fotografía del Aspirante (JPG/PNG){" "}
+                      <span className="text-red-600 font-bold">*</span>
+                    </span>
                     {formData.photo && (
                       <span className="text-[10px] text-emerald-700 font-mono font-bold flex items-center gap-2">
                         ✓ Cargada
@@ -1559,8 +1603,8 @@ export default function AdmissionPage() {
                   key: "studyCert",
                   label:
                     formData.tipoAdmision === "nuevo_ingreso"
-                      ? "Certificado de Secundaria (De Ambos Lados PDF)"
-                      : "Certificado de Secundaria (De Ambos Lados PDF)",
+                      ? "Certificado de Secundaria (De Ambos Lados) (PDF)"
+                      : "Certificado de Secundaria (De Ambos Lados) (PDF)",
                 },
               ].map((doc) => (
                 <div
@@ -1568,7 +1612,10 @@ export default function AdmissionPage() {
                   className="flex flex-col gap-1.5 p-4 bg-slate-50 border border-slate-200 rounded-xl"
                 >
                   <label className="text-xs font-semibold text-slate-800 flex justify-between items-center">
-                    <span>{doc.label} *</span>
+                    <span>
+                      {doc.label}{" "}
+                      <span className="text-red-600 font-bold">*</span>
+                    </span>
                     {formData[doc.key] && (
                       <span className="text-[10px] text-emerald-700 font-mono font-bold flex items-center gap-2">
                         ✓ Cargado
@@ -1609,7 +1656,8 @@ export default function AdmissionPage() {
                   <label className="text-xs font-semibold text-amber-950 flex justify-between items-center">
                     <span>
                       Constancia de Estudios / Certificado incompleto o
-                      Equivalencia (PDF) *
+                      Equivalencia (PDF){" "}
+                      <span className="text-red-600 font-bold">*</span>
                     </span>
                     {formData.constanciaEstudios && (
                       <span className="text-[10px] text-emerald-800 font-mono font-bold flex items-center gap-2">
@@ -1740,7 +1788,7 @@ export default function AdmissionPage() {
                     )}
                     {formData.curpFile && (
                       <span className="px-2 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-semibold">
-                        ✓ CURP PDF
+                        ✓ CURP
                       </span>
                     )}
                     {formData.ineDocument && (
@@ -1839,7 +1887,8 @@ export default function AdmissionPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Folio de Seguimiento *
+                        Folio de Seguimiento{" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         type="text"
@@ -1852,7 +1901,8 @@ export default function AdmissionPage() {
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        CURP del Aspirante *
+                        CURP del Aspirante{" "}
+                        <span className="text-red-600 font-bold">*</span>
                       </label>
                       <input
                         type="text"

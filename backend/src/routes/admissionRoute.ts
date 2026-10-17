@@ -4,11 +4,13 @@ import {
   verificarDuplicado,
   consultarEstatus,
   modificarDocumento,
+  descargarComprobantePDF,
 } from "../controllers/admissionController.js";
 import { upload } from "../middlewares/uploadMiddleware.js"; // O tu configuración de multer
 
 const router = Router();
 
+router.get("/comprobante/:folio", descargarComprobantePDF);
 router.get("/verificar-duplicado", verificarDuplicado);
 router.get("/consulta", consultarEstatus);
 router.patch(

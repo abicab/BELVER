@@ -15,7 +15,7 @@ const traducirTipoDocumento = (tipo) => {
 export default function ValidacionAspirantesPage() {
   const [solicitudes, setSolicitudes] = useState([]);
   const [selectedSolicitud, setSelectedSolicitud] = useState(null);
-  const [filtroEstatus, setFiltroEstatus] = useState("TODOS");
+  const [filtroEstatus, setFiltroEstatus] = useState("TODOS"); // "TODOS", "PENDIENTE", "RECHAZADO"
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -32,11 +32,12 @@ export default function ValidacionAspirantesPage() {
     setModalNotificacion({ isOpen: true, titulo, mensaje, tipo });
   };
 
+  // Cargamos todos los aspirantes una sola vez al montar el componente para filtrado instantáneo
   const cargarAspirantes = async () => {
     setCargando(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/controlescolar/aspirantes?estatus=${filtroEstatus}`,
+        `http://localhost:4000/api/controlescolar/aspirantes?estatus=TODOS`,
       );
       const resultado = await res.json();
       if (res.ok && resultado.ok) {
@@ -51,7 +52,7 @@ export default function ValidacionAspirantesPage() {
 
   useEffect(() => {
     cargarAspirantes();
-  }, [filtroEstatus]);
+  }, []);
 
   const handleOpenDictamen = (solicitud) => {
     setSelectedSolicitud({
@@ -166,7 +167,7 @@ export default function ValidacionAspirantesPage() {
       if (res.ok && resultado.ok) {
         mostrarNotificacion(
           "¡Expediente Aprobado con Éxito!",
-          `El tipo de usuario ha cambiado formalmente a Alumno.\n\n• Matrícula Asignada: ${resultado.data.matricula}\n• Contraseña Única: ${resultado.data.password}`,
+          `El tipo de usuario ha cambiado formalmente a Alumno.\n\nMatrícula Asignada: ${resultado.data.matricula}\nContraseña Única: ${resultado.data.password}`,
           "exito",
         );
         setSelectedSolicitud(null);
@@ -188,13 +189,28 @@ export default function ValidacionAspirantesPage() {
     }
   };
 
+  // Filtrado 100% local e instantáneo en el navegador
   const solicitudesFiltradas = solicitudes.filter((sol) => {
     const nombreCompleto =
       `${sol.nombres} ${sol.apellidoPaterno} ${sol.apellidoMaterno || ""}`.toLowerCase();
+
+    let cumpleFiltroEstatus = true;
+    const tieneAlgunRechazado = sol.documentos?.some(
+      (d) => d.estatusDoc === "RECHAZADO",
+    );
+    const esPendiente = !sol.matricula && !tieneAlgunRechazado;
+
+    if (filtroEstatus === "PENDIENTE") {
+      cumpleFiltroEstatus = esPendiente;
+    } else if (filtroEstatus === "RECHAZADO") {
+      cumpleFiltroEstatus = tieneAlgunRechazado;
+    }
+
     return (
-      sol.folio.toLowerCase().includes(busqueda.toLowerCase()) ||
-      nombreCompleto.includes(busqueda.toLowerCase()) ||
-      sol.curp.toLowerCase().includes(busqueda.toLowerCase())
+      cumpleFiltroEstatus &&
+      (sol.folio.toLowerCase().includes(busqueda.toLowerCase()) ||
+        nombreCompleto.includes(busqueda.toLowerCase()) ||
+        sol.curp.toLowerCase().includes(busqueda.toLowerCase()))
     );
   });
 
@@ -207,12 +223,33 @@ export default function ValidacionAspirantesPage() {
               Departamento de Control Escolar
             </span>
             <h1 className="text-2xl font-bold text-slate-900 mt-2">
-              Validación de Expedientes y Dictamen de Admisión
+              Validación de Expedientes
             </h1>
             <p className="text-xs text-slate-500">
               Cotejo documental, perfil sociodemográfico, asignación de
               matrícula y credenciales institucionales.
             </p>
+          </div>
+
+          {/* Submenú de pestañas integrado en la barra de título */}
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs self-start md:self-auto">
+            {[
+              { id: "TODOS", label: "Todos" },
+              { id: "PENDIENTE", label: "Pendientes" },
+              { id: "RECHAZADO", label: "Rechazados" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFiltroEstatus(tab.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  filtroEstatus === tab.id
+                    ? "bg-[#0f172a] text-white shadow-sm scale-105"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -231,16 +268,6 @@ export default function ValidacionAspirantesPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={filtroEstatus}
-              onChange={(e) => setFiltroEstatus(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1.5 px-3 rounded-xl outline-none cursor-pointer"
-            >
-              <option value="TODOS">Todos</option>
-              <option value="PENDIENTE">Pendientes</option>
-              <option value="APROBADO">Aprobados (Alumnos)</option>
-              <option value="RECHAZADO">Rechazados</option>
-            </select>
             <button
               onClick={cargarAspirantes}
               className="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition"
@@ -259,10 +286,8 @@ export default function ValidacionAspirantesPage() {
                   <th className="p-4">Aspirante / CURP</th>
                   <th className="p-4">Modalidad</th>
                   <th className="p-4">Procedencia</th>
-                  <th className="p-4 py-2 text-center text-xs font-semibold text-slate-600 uppercase">
-                    Matrícula
-                  </th>
-                  <th className="p-4 text-right">Acción</th>
+                  <th className="p-4">Matrícula</th>
+                  <th className="p-4 text-center">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -309,15 +334,15 @@ export default function ValidacionAspirantesPage() {
                       <td className="p-4 text-slate-600">
                         {sol.nombreEscuelaProcedencia || "N/A"}
                       </td>
-                      <td className="px-4 py-2 text-center text-xs text-slate-700 font-mono font-bold">
+                      <td className="p-4 text-slate-600">
                         {sol.matricula || "—"}
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-center">
                         <button
                           onClick={() => handleOpenDictamen(sol)}
-                          className="px-3 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-lg font-semibold text-xs transition"
+                          className="px-3 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-lg font-semibold text-xs transition inline-block"
                         >
-                          Cotejar y Dictaminar
+                          Dictaminar
                         </button>
                       </td>
                     </tr>
@@ -334,7 +359,7 @@ export default function ValidacionAspirantesPage() {
               <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
                 <div>
                   <h3 className="font-extrabold text-base tracking-tight text-white">
-                    Inspección Integral de Expediente: {selectedSolicitud.folio}
+                    Expediente del Aspirante: {selectedSolicitud.folio}
                   </h3>
                   <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
                     <span className="text-white text-sm">
@@ -363,7 +388,7 @@ export default function ValidacionAspirantesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
                       <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
-                        📍 Domicilio y Contacto
+                        Domicilio y Contacto
                       </span>
                       <p>
                         <strong className="text-slate-500">Celular:</strong>{" "}
@@ -403,7 +428,7 @@ export default function ValidacionAspirantesPage() {
 
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
                       <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
-                        🧬 Datos Adicionales
+                        Datos Personales
                       </span>
                       <p>
                         <strong className="text-slate-500">
@@ -436,7 +461,7 @@ export default function ValidacionAspirantesPage() {
 
                     <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
                       <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
-                        🎓 Académico y Tutor
+                        Académico y Tutor
                       </span>
                       <p>
                         <strong className="text-slate-500">Modalidad:</strong>{" "}
@@ -464,7 +489,6 @@ export default function ValidacionAspirantesPage() {
                             ).join(", ")
                           : "N/A"}
                       </p>
-                      {/* Tutor con el mismo estilo de fuente y colores estandarizados de la tarjeta */}
                       <p className="pt-1">
                         <strong className="text-slate-500">Tutor:</strong>{" "}
                         {selectedSolicitud.tutorNombres ? (
@@ -579,7 +603,7 @@ export default function ValidacionAspirantesPage() {
                         : "text-amber-950 bg-amber-200 hover:bg-amber-300 border border-amber-400"
                     }`}
                   >
-                    ⚠️ Marcar Pendiente / Requerir Correcciones
+                    ⚠️ Marcar Pendiente
                   </button>
 
                   <button
@@ -587,7 +611,7 @@ export default function ValidacionAspirantesPage() {
                     onClick={handleAprobarExpediente}
                     className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition shadow-md"
                   >
-                    ✓ Aprobar, Generar Matrícula y Contraseña Única
+                    ✓ Aprobar y Generar Matrícula
                   </button>
                 </div>
               </div>
