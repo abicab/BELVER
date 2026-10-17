@@ -251,6 +251,8 @@ export default function AdmissionPage() {
         .replace(/[^A-Za-z0-9]/g, "")
         .toUpperCase()
         .slice(0, 10);
+    } else if (name === "numeroExterior" || name === "numeroInterior") {
+      processedValue = value.slice(0, 10).toUpperCase();
     } else if (name === "curp") {
       processedValue = value
         .replace(/[^A-Za-z0-9]/g, "")
@@ -1128,6 +1130,7 @@ export default function AdmissionPage() {
                     <input
                       name="numeroExterior"
                       type="text"
+                      maxLength={10}
                       value={formData.numeroExterior}
                       onChange={handleChange}
                       placeholder="Ej. S/N"
@@ -1141,6 +1144,7 @@ export default function AdmissionPage() {
                     <input
                       name="numeroInterior"
                       type="text"
+                      maxLength={10}
                       value={formData.numeroInterior}
                       onChange={handleChange}
                       placeholder="Ej. INT 4"

@@ -202,7 +202,6 @@ export const registrarAspirante = async (
       datosValidados.parentescoTutorId || rawBody.parentescoTutorId,
     );
 
-    // Lógica para extraer el semestre más alto si se seleccionaron varios
     const semestresRecibidos =
       datosValidados.semestresSeleccionados ||
       rawBody.semestresSeleccionados ||
@@ -228,7 +227,6 @@ export const registrarAspirante = async (
         where: { nombre: { in: nombresDiscapacidades } },
       });
 
-      // ID 2 corresponde a "Aspirante" en la tabla tipo_usuario
       const tipoUsuarioAspiranteId = 2;
 
       let subsistemaIdFinal = parseId(
@@ -259,6 +257,7 @@ export const registrarAspirante = async (
         data: {
           folio: randomFolio,
           vigenciaFolio: fechaVigencia,
+          esMigrado: false, // Indicador de que es un alumno nuevo registrado mediante el portal
           apellidoPaterno: datosValidados.apellidoPaterno,
           apellidoMaterno: datosValidados.apellidoMaterno || null,
           nombres: datosValidados.nombres,
@@ -344,7 +343,6 @@ export const registrarAspirante = async (
       `${datosValidados.apellidoPaterno} ${datosValidados.apellidoMaterno || ""} ${datosValidados.nombres}`.trim();
     const linkConsulta = "http://localhost:5173";
 
-    // Envío de correo institucional (Correo 2: Comprobante de Registro y Folio)
     transporter
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
@@ -417,7 +415,7 @@ export const aprobarExpediente = async (
 ): Promise<void> => {
   try {
     const { aspiranteId } = req.params;
-    const { observaciones, estatusDocumentos } = req.body;
+    const { estatusDocumentos } = req.body;
 
     const anioDosDigitos = String(new Date().getFullYear()).slice(-2);
     const prefijo = `B${anioDosDigitos}`;
@@ -451,7 +449,6 @@ export const aprobarExpediente = async (
     const matriculaGenerada = `${prefijo}${consecutivoFormateado}`;
     const passwordGenerada = Math.random().toString(36).slice(-8).toUpperCase();
 
-    // ID 5 corresponde inequívocamente a "Alumno" en la tabla tipo_usuario
     const tipoUsuarioAlumnoId = 5;
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -491,7 +488,6 @@ export const aprobarExpediente = async (
 
     const portalEscolarUrl = "http://www.belver.clavijero.edu.mx";
 
-    // Envío de correo de aprobación y matrícula (Correo 1 oficial de BELVER)
     transporter
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
@@ -584,7 +580,6 @@ export const verDocumento = async (
   }
 };
 
-// NUEVA FUNCIÓN: Modificar documento rechazado por el aspirante
 export const modificarDocumento = async (
   req: Request,
   res: Response,
@@ -619,8 +614,8 @@ export const modificarDocumento = async (
       data: {
         nombreArchivo: nombreSeguro,
         archivoBlob: file.buffer,
-        estatusDoc: "PENDIENTE", // Regresa a pendiente de revisión
-        comentario: null, // Limpia el motivo del rechazo previo
+        estatusDoc: "PENDIENTE",
+        comentario: null,
       },
     });
 
@@ -676,13 +671,11 @@ export const descargarComprobantePDF = async (
         })
       : "N/A";
 
-    // --- CINTILLO SUPERIOR (ESPACIO PARA LOGOS) ---
     doc.rect(40, 40, 515, 36).strokeColor("#cbd5e1").lineWidth(1).stroke();
     doc.fontSize(8).font("Helvetica-Bold").fillColor("#64748b");
     doc.text("[ LOGO INSTITUCIONAL ]", 50, 54, { width: 230, align: "left" });
     doc.text("[ LOGO BELVER ]", 275, 54, { width: 230, align: "right" });
 
-    // --- ENCABEZADO (ALINEADO A LA IZQUIERDA) ---
     doc.y = 95;
     doc.x = 40;
     doc
@@ -705,16 +698,14 @@ export const descargarComprobantePDF = async (
       );
     doc.moveDown(1.5);
 
-    // --- TARJETA CENTRAL (DISEÑO ORIGINAL CENTRADO) ---
     const boxTop = doc.y;
     const boxWidth = 430;
-    const boxLeft = (515 - boxWidth) / 2 + 40; // Centrado horizontalmente
+    const boxLeft = (515 - boxWidth) / 2 + 40;
 
     doc
       .roundedRect(boxLeft, boxTop, boxWidth, 110, 10)
       .fillAndStroke("#f8fafc", "#e2e8f0");
 
-    // Nombre del Estudiante dentro de la tarjeta
     doc
       .fontSize(8)
       .font("Helvetica-Bold")
@@ -732,7 +723,6 @@ export const descargarComprobantePDF = async (
         width: boxWidth - 40,
       });
 
-    // Línea divisoria interna
     doc
       .moveTo(boxLeft + 30, boxTop + 55)
       .lineTo(boxLeft + boxWidth - 30, boxTop + 55)
@@ -740,7 +730,6 @@ export const descargarComprobantePDF = async (
       .lineWidth(1)
       .stroke();
 
-    // Folio de Seguimiento Oficial dentro de la tarjeta
     doc
       .fontSize(8)
       .font("Helvetica-Bold")
@@ -761,7 +750,6 @@ export const descargarComprobantePDF = async (
     doc.y = boxTop + 130;
     doc.moveDown(1);
 
-    // --- TEXTOS INFORMATIVOS (JUSTIFICADOS) ---
     doc.fontSize(9.5).font("Helvetica").fillColor("#334155");
     doc.text(
       "En un plazo de 5 días hábiles deberás ingresar al apartado de inscripción dando clic en la opción “Folio de inscripción” para revisar el estatus de la documentación que enviaste.",
@@ -778,7 +766,6 @@ export const descargarComprobantePDF = async (
     );
     doc.moveDown(1);
 
-    // --- NOTAS Y FECHA LÍMITE ---
     doc
       .fontSize(9)
       .font("Helvetica")

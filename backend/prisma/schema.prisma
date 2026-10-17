@@ -22,7 +22,7 @@ model Subsistema {
 
 model Genero {
   id         Int         @id @default(autoincrement())
-  nombre     String      @unique @db.VarChar(100)
+  nombre     String      @unique @db.VarChar(50)
   activo     Boolean     @default(true)
   aspirantes Aspirante[]
 
@@ -39,17 +39,17 @@ model IdentidadCultural {
 }
 
 model Discapacidad {
-  id          Int                     @id @default(autoincrement())
-  nombre      String                  @unique @db.VarChar(100)
-  activo      Boolean                 @default(true)
-  aspirantes  AspiranteDiscapacidad[]
+  id         Int                     @id @default(autoincrement())
+  nombre     String                  @unique @db.VarChar(100)
+  activo     Boolean                 @default(true)
+  aspirantes AspiranteDiscapacidad[]
 
   @@map("discapacidad")
 }
 
 model Parentesco {
   id         Int         @id @default(autoincrement())
-  nombre     String      @unique @db.VarChar(100)
+  nombre     String      @unique @db.VarChar(50)
   activo     Boolean     @default(true)
   aspirantes Aspirante[]
 
@@ -58,7 +58,7 @@ model Parentesco {
 
 model TipoEstudiante {
   id         Int         @id @default(autoincrement())
-  nombre     String      @unique @db.VarChar(100)
+  nombre     String      @unique @db.VarChar(50)
   activo     Boolean     @default(true)
   aspirantes Aspirante[]
 
@@ -67,7 +67,7 @@ model TipoEstudiante {
 
 model Semestre {
   id         Int         @id @default(autoincrement())
-  nombre     String      @unique @db.VarChar(100)
+  nombre     String      @unique @db.VarChar(50)
   activo     Boolean     @default(true)
   aspirantes Aspirante[]
 
@@ -106,13 +106,13 @@ model TipoUsuario {
 
 model Usuario {
   id              Int         @id @default(autoincrement())
-  id_tipoUsuario Int
+  id_tipoUsuario  Int
   tipoUsuario     TipoUsuario @relation(fields: [id_tipoUsuario], references: [id], onDelete: Restrict)
-  correo          String      @unique @db.VarChar(50)
+  correo          String      @unique @db.VarChar(60)
   contrasena      String      @db.VarChar(255)
-  nombres         String      @db.VarChar(50)
-  apellidoPaterno String      @db.VarChar(50)
-  apellidoMaterno String?     @db.VarChar(50)
+  nombres         String      @db.VarChar(30)
+  apellidoPaterno String      @db.VarChar(30)
+  apellidoMaterno String?     @db.VarChar(30)
   activo          Boolean     @default(true)
   creadoEn        DateTime    @default(now())
   updateAt        DateTime    @updatedAt
@@ -127,24 +127,27 @@ model Usuario {
 // ==========================================
 
 model Aspirante {
-  id             Int       @id @default(autoincrement())
-  folio          String    @unique @db.VarChar(50)
-  vigenciaFolio  DateTime?
+  id            Int       @id @default(autoincrement())
+  folio         String    @unique @db.VarChar(30)
+  vigenciaFolio DateTime?
 
-  matricula     String?     @unique @db.VarChar(50)
-  password      String?     @db.VarChar(255)
-  tipoUsuarioId Int         @default(2) @map("tipo_usuario_id")
+  matricula      String?     @unique @db.VarChar(15)
+  password       String?     @db.VarChar(255)
+  tipoUsuarioId  Int         @default(2) @map("tipo_usuario_id")
   tipoUsuarioRel TipoUsuario @relation(fields: [tipoUsuarioId], references: [id], onDelete: Restrict)
 
-  apellidoPaterno    String    @db.VarChar(50)
-  apellidoMaterno    String?   @db.VarChar(50)
-  nombres            String    @db.VarChar(50)
-  curp               String    @unique @db.VarChar(50)
+  // Campo clave para diferenciar alumnos nuevos (autoservicio) vs. migrados/históricos ("viejitos")
+  esMigrado      Boolean     @default(false) @map("es_migrado")
+
+  apellidoPaterno    String   @db.VarChar(30)
+  apellidoMaterno    String?  @db.VarChar(30)
+  nombres            String   @db.VarChar(30)
+  curp               String   @unique @db.VarChar(18)
   fechaNacimiento    DateTime?
-  correoElectronico1 String    @db.VarChar(50)
-  correoElectronico2 String?   @db.VarChar(50)
-  telefonoCelular    String    @db.VarChar(50)
-  telefonoParticular String?   @db.VarChar(50)
+  correoElectronico1 String   @db.VarChar(60)
+  correoElectronico2 String?  @db.VarChar(60)
+  telefonoCelular    String   @db.VarChar(10)
+  telefonoParticular String?  @db.VarChar(10)
 
   // Relaciones con Catálogos
   generoId            Int?
@@ -154,48 +157,48 @@ model Aspirante {
   discapacidades      AspiranteDiscapacidad[]
 
   pais           String  @default("MÉXICO") @db.VarChar(50)
-  codigoPostal   String? @db.VarChar(50)
+  codigoPostal   String? @db.VarChar(10)
   estado         String  @db.VarChar(50)
   municipio      String  @db.VarChar(50)
-  colonia        String  @db.VarChar(50)
-  calle          String  @db.VarChar(50)
-  numeroExterior String? @db.VarChar(50)
-  numeroInterior String? @db.VarChar(50)
+  colonia        String  @db.VarChar(100)
+  calle          String  @db.VarChar(100)
+  numeroExterior String? @db.VarChar(10)
+  numeroInterior String? @db.VarChar(10)
 
-  tutorApellidoPaterno String?     @db.VarChar(50)
-  tutorApellidoMaterno String?     @db.VarChar(50)
-  tutorNombres         String?     @db.VarChar(50)
+  tutorApellidoPaterno String?     @db.VarChar(30)
+  tutorApellidoMaterno String?     @db.VarChar(30)
+  tutorNombres         String?     @db.VarChar(30)
   parentescoTutorId    Int?
   tutorParentescoRel   Parentesco? @relation(fields: [parentescoTutorId], references: [id])
-  tutorTelefono        String?     @db.VarChar(50)
+  tutorTelefono        String?     @db.VarChar(10)
 
-  tipoAdmision             String      @db.VarChar(50)
-  subsistemaId             Int?
-  subsistema               Subsistema? @relation(fields: [subsistemaId], references: [id])
-  cctEscuelaProcedencia    String?     @db.VarChar(50)
-  nombreEscuelaProcedencia String?     @db.VarChar(50)
-  sistemaProcedenciaLetra  String?     @db.VarChar(50)
-  otroSistemaProcedencia   String?     @db.VarChar(50)
+  tipoAdmision               String  @db.VarChar(50)
+  subsistemaId               Int?
+  subsistema                 Subsistema? @relation(fields: [subsistemaId], references: [id])
+  cctEscuelaProcedencia      String? @db.VarChar(20)
+  nombreEscuelaProcedencia   String? @db.VarChar(150)
+  sistemaProcedenciaLetra    String? @db.VarChar(5)
+  otroSistemaProcedencia     String? @db.VarChar(100)
 
-  semestresSeleccionados   Json?
+  semestresSeleccionados Json?
 
-  tipoEstudianteId         Int?
-  tipoEstudianteRel        TipoEstudiante? @relation(fields: [tipoEstudianteId], references: [id])
-  semestreId               Int?
-  semestreRel              Semestre?       @relation(fields: [semestreId], references: [id])
-  planEstudios             String?         @db.VarChar(50)
+  tipoEstudianteId      Int?
+  tipoEstudianteRel     TipoEstudiante? @relation(fields: [tipoEstudianteId], references: [id])
+  semestreId            Int?
+  semestreRel           Semestre?       @relation(fields: [semestreId], references: [id])
+  planEstudios          String?         @db.VarChar(50)
 
-  estatusAcademico         String          @default("ACTIVO_REGULAR") @db.VarChar(50)
+  estatusAcademico      String          @default("ACTIVO_REGULAR") @db.VarChar(50)
 
-  creadoEn                 DateTime        @default(now())
-  updatedAt                DateTime        @updatedAt
+  creadoEn              DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
 
-  documentos               Documento[]
-  historiales              HistorialAcademico[]
-  validacionExpedientes   ValidacionExpediente?
-  pagos                    Pago[]
-  materiasInscritas        MateriaInscrita[]
-  calificaciones           Calificacion[]
+  documentos            Documento[]
+  historiales           HistorialAcademico[]
+  validacionExpedientes ValidacionExpediente?
+  pagos                 Pago[]
+  materiasInscritas     MateriaInscrita[]
+  calificaciones        Calificacion[]
 
   @@map("aspirante")
 }
@@ -230,7 +233,7 @@ model Documento {
   aspirante     Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   tipoDoc       String    @db.VarChar(50)
   nombreArchivo String    @db.VarChar(255)
-  archivoBlob   Bytes
+  archivoBlob   Bytes?    @db.LongBlob // Opcional para alumnos migrados antes de subir su documento manual
   estatusDoc    String    @default("PENDIENTE") @db.VarChar(50)
   comentario    String?   @db.Text
   creadoEn      DateTime  @default(now())
@@ -247,12 +250,12 @@ model Auditoria {
   eventoId     String   @unique @db.VarChar(50)
   UsuariosId   Int?
   usuario      Usuario? @relation(fields: [UsuariosId], references: [id], onDelete: SetNull)
-  usuarioTexto String?  @db.VarChar(50)
+  usuarioTexto String?  @db.VarChar(60)
   rol          String?  @db.VarChar(50)
   modulo       String?  @db.VarChar(50)
   accion       String?  @db.VarChar(50)
   detalle      String?  @db.Text
-  ip           String?  @db.VarChar(50)
+  ip           String?  @db.VarChar(45)
   level        String?  @default("Informativo") @db.VarChar(50)
   creadoEn     DateTime @default(now())
 
@@ -260,17 +263,17 @@ model Auditoria {
 }
 
 model Pago {
-  id                 Int       @id @default(autoincrement())
+  id                 Int      @id @default(autoincrement())
   aspiranteId        Int
   aspirante          Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  concepto           String    @db.VarChar(50)
+  concepto           String   @db.VarChar(100)
   monto              Float
-  referenciaBancaria String    @unique @db.VarChar(50)
-  fechaPago          DateTime  @default(now())
-  metodo             String    @default("Captura Manual (Ventanilla)") @db.VarChar(50)
-  estatus            String    @default("CONCILIADO") @db.VarChar(50)
-  creadoEn           DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  referenciaBancaria String   @unique @db.VarChar(100)
+  fechaPago          DateTime @default(now())
+  metodo             String   @default("Captura Manual (Ventanilla)") @db.VarChar(100)
+  estatus            String   @default("CONCILIADO") @db.VarChar(50)
+  creadoEn           DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("pago")
 }
@@ -280,32 +283,32 @@ model Pago {
 // ==========================================
 
 model PlanEstudio {
-  id          Int       @id @default(autoincrement())
-  clave       String    @unique @db.VarChar(50)
-  nombre      String    @db.VarChar(100)
-  descripcion String?   @db.Text
-  activo      Boolean   @default(true)
-  creadoEn    DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id          Int      @id @default(autoincrement())
+  clave       String   @unique @db.VarChar(50)
+  nombre      String   @db.VarChar(150)
+  descripcion String?  @db.Text
+  activo      Boolean  @default(true)
+  creadoEn    DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   materias    Materia[]
 
   @@map("plan_estudio")
 }
 
 model Materia {
-  id             Int          @id @default(autoincrement())
-  planEstudioId Int
-  planEstudio   PlanEstudio  @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
-  codigo         String       @db.VarChar(50)
-  nombreCompleto String       @map("nombre_completo") @db.VarChar(150)
-  nombreCorto    String       @map("nombre_corto") @db.VarChar(100)
+  id             Int         @id @default(autoincrement())
+  planEstudioId  Int
+  planEstudio    PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  codigo         String      @db.VarChar(50)
+  nombreCompleto String      @map("nombre_completo") @db.VarChar(150)
+  nombreCorto    String      @map("nombre_corto") @db.VarChar(100)
   semestre       Int
 
-  prerrequisitos    Seriacion[]          @relation("MateriaPrerrequisito")
-  esPrerrequisitoDe Seriacion[]          @relation("MateriaSiguiente")
-  historiales        HistorialAcademico[]
-  materiasInscritas MateriaInscrita[]
-  calificaciones    Calificacion[]
+  prerrequisitos      Seriacion[]      @relation("MateriaPrerrequisito")
+  esPrerrequisitoDe   Seriacion[]      @relation("MateriaSiguiente")
+  historiales         HistorialAcademico[]
+  materiasInscritas   MateriaInscrita[]
+  calificaciones      Calificacion[]
 
   @@unique([planEstudioId, codigo])
   @@map("materia")
@@ -327,13 +330,13 @@ model Seriacion {
 // ==========================================
 
 model MateriaInscrita {
-  id             Int          @id @default(autoincrement())
-  aspiranteId    Int
-  aspirante      Aspirante    @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  materiaId      Int
-  materia        Materia      @relation(fields: [materiaId], references: [id], onDelete: Cascade)
-  estatus        String       @default("Cursando") @db.VarChar(50)
-  creadoEn       DateTime     @default(now())
+  id          Int       @id @default(autoincrement())
+  aspiranteId Int
+  aspirante   Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+  materiaId   Int
+  materia     Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  estatus     String    @default("Cursando") @db.VarChar(50)
+  creadoEn    DateTime  @default(now())
 
   calificaciones Calificacion[]
 
@@ -350,12 +353,12 @@ model Calificacion {
   materiaInscritaId Int?
   materiaInscrita   MateriaInscrita? @relation(fields: [materiaInscritaId], references: [id], onDelete: SetNull)
 
-  parcial           Int              @default(1)
-  calificacion      Float
-  periodo           String           @db.VarChar(50)
-  observaciones     String?          @db.Text
-  creadoEn          DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  parcial       Int      @default(1)
+  calificacion  Float
+  periodo       String   @db.VarChar(50)
+  observaciones String?  @db.Text
+  creadoEn      DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@unique([aspiranteId, materiaId, parcial, periodo])
   @@map("calificacion")
