@@ -6,12 +6,15 @@ import studyPlanRoutes from "./routes/studyPlanRoutes";
 import validacionaspirantesRoute from "./routes/validacionaspirantesRoute.ts";
 import userRoutes from "./routes/userRoutes.js"; // 1. IMPORTAR LA RUTA DE USUARIOS
 import historialRoutes from "./routes/historialRoute.js";
+import alumnosCERouter from "./routes/alumnosCERouter";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use("/api/controlescolar", alumnosCERouter); // Montar las rutas de alumnos del control escolar
 
 // CAMBIAMOS ESTA LÍNEA para que coincida exactamente con el frontend (/api/controlescolar)
 app.use("/api/controlescolar", validacionaspirantesRoute);
@@ -30,7 +33,6 @@ app.use("/api/usuarios", userRoutes);
 
 // Ruta Historial
 app.use("/api/historial", historialRoutes);
-
 
 app.get("/", (req, res) => {
   res.json({ ok: true, mensaje: "API de BELVER funcionando correctamente" });

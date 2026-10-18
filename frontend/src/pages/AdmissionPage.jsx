@@ -239,11 +239,22 @@ export default function AdmissionPage() {
     let processedValue = value;
 
     if (name.includes("correoElectronico")) {
-      processedValue = value.trim();
+      processedValue = value.trim().slice(0, 60);
     } else if (
       ["telefonoCelular", "telefonoParticular", "tutorTelefono"].includes(name)
     ) {
       processedValue = value.replace(/\D/g, "").slice(0, 10);
+    } else if (
+      [
+        "apellidoPaterno",
+        "apellidoMaterno",
+        "nombres",
+        "tutorApellidoPaterno",
+        "tutorApellidoMaterno",
+        "tutorNombres",
+      ].includes(name)
+    ) {
+      processedValue = value.toUpperCase().slice(0, 30);
     } else if (name === "codigoPostal" && formData.pais === "MÉXICO") {
       processedValue = value.replace(/\D/g, "").slice(0, 5);
     } else if (name === "cctEscuelaProcedencia") {
@@ -809,6 +820,7 @@ export default function AdmissionPage() {
                     <input
                       name="apellidoPaterno"
                       type="text"
+                      maxLength={30}
                       value={formData.apellidoPaterno}
                       onChange={handleChange}
                       placeholder="PRIMER APELLIDO"
@@ -822,6 +834,7 @@ export default function AdmissionPage() {
                     <input
                       name="apellidoMaterno"
                       type="text"
+                      maxLength={30}
                       value={formData.apellidoMaterno}
                       onChange={handleChange}
                       placeholder="SEGUNDO APELLIDO"
@@ -836,6 +849,7 @@ export default function AdmissionPage() {
                     <input
                       name="nombres"
                       type="text"
+                      maxLength={30}
                       value={formData.nombres}
                       onChange={handleChange}
                       placeholder="NOMBRE(S)"
@@ -919,6 +933,7 @@ export default function AdmissionPage() {
                     <input
                       name="correoElectronico1"
                       type="email"
+                      maxLength={60}
                       value={formData.correoElectronico1}
                       onChange={handleChange}
                       placeholder="correo@ejemplo.com"
@@ -933,6 +948,7 @@ export default function AdmissionPage() {
                     <input
                       name="correoElectronicoConfirmacion"
                       type="email"
+                      maxLength={60}
                       value={formData.correoElectronicoConfirmacion}
                       onChange={handleChange}
                       placeholder="Repita su correo electrónico"
@@ -949,6 +965,7 @@ export default function AdmissionPage() {
                     <input
                       name="correoElectronico2"
                       type="email"
+                      maxLength={60}
                       value={formData.correoElectronico2}
                       onChange={handleChange}
                       placeholder="alternativo@ejemplo.com"
@@ -1238,6 +1255,7 @@ export default function AdmissionPage() {
                     <input
                       name="tutorApellidoPaterno"
                       type="text"
+                      maxLength={30}
                       value={formData.tutorApellidoPaterno}
                       onChange={handleChange}
                       placeholder="PRIMER APELLIDO"
@@ -1251,6 +1269,7 @@ export default function AdmissionPage() {
                     <input
                       name="tutorApellidoMaterno"
                       type="text"
+                      maxLength={30}
                       value={formData.tutorApellidoMaterno}
                       onChange={handleChange}
                       placeholder="SEGUNDO APELLIDO"
@@ -1265,6 +1284,7 @@ export default function AdmissionPage() {
                     <input
                       name="tutorNombres"
                       type="text"
+                      maxLength={30}
                       value={formData.tutorNombres}
                       onChange={handleChange}
                       placeholder="NOMBRE(S)"

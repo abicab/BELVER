@@ -6,7 +6,10 @@ import {
   verDocumentoControl,
   emitirObservacionesControl,
 } from "../controllers/validacionaspirantesController.js";
-import { obtenerAlumnosActivos } from "../controllers/alumnosCEController.js";
+import {
+  obtenerAlumnosActivos,
+  cambiarEstatusAlumno,
+} from "../controllers/alumnosCEController.js";
 
 const router = Router();
 
@@ -22,5 +25,5 @@ router.patch(
 router.get("/documentos/:documentoId/ver", verDocumentoControl);
 router.patch("/aspirantes/:id/aprobar", aprobarYGenerarCredencialesControl);
 router.patch("/aspirantes/:id/observaciones", emitirObservacionesControl);
-
+router.patch("/alumnos/:id/estatus", cambiarEstatusAlumno);
 export default router;

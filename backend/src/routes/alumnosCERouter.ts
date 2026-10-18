@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { obtenerAlumnosActivos } from "../controllers/alumnosCEController.js";
+import {
+  obtenerAlumnosActivos,
+  obtenerCalificacionesAlumno,
+} from "../controllers/alumnosCEController.js";
 // ... (tus otras importaciones de aspirantes, etc.)
 
 const router = Router();
@@ -8,5 +11,7 @@ const router = Router();
 router.get("/alumnos", obtenerAlumnosActivos);
 
 // ... (tus otras rutas existentes de aspirantes, documentos, etc.)
+// Ruta para obtener el historial académico y calificaciones de un alumno
+router.get("/alumnos/:id/calificaciones", obtenerCalificacionesAlumno);
 
 export default router;

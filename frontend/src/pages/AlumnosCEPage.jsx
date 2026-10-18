@@ -15,6 +15,14 @@ const traducirTipoDocumento = (tipo) => {
 export default function AlumnosCEPage() {
   const [alumnos, setAlumnos] = useState([]);
   const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
+
+  // Estados para calificaciones conectados a la BD
+  const [modalCalificaciones, setModalCalificaciones] = useState(null);
+  const [historialAcademico, setHistorialAcademico] = useState(null);
+  const [cargandoCalificaciones, setCargandoCalificaciones] = useState(false);
+
+  const [modalBaja, setModalBaja] = useState(null);
+  const [filtroEstatusTab, setFiltroEstatusTab] = useState("ACTIVOS");
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(false);
 
@@ -49,6 +57,72 @@ export default function AlumnosCEPage() {
   useEffect(() => {
     cargarAlumnos();
   }, []);
+
+  const abrirModalCalificaciones = async (alumn) => {
+    setModalCalificaciones(alumn);
+    setCargandoCalificaciones(true);
+    setHistorialAcademico(null);
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/controlescolar/alumnos/${alumn.id}/calificaciones`,
+      );
+      const resultado = await res.json();
+      if (res.ok && resultado.ok) {
+        setHistorialAcademico(resultado.data);
+      } else {
+        mostrarNotificacion(
+          "Aviso",
+          resultado.mensaje || "No se pudo obtener el historial académico.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error al cargar calificaciones:", error);
+      mostrarNotificacion(
+        "Error de Red",
+        "No se pudo conectar con el servidor para consultar el historial.",
+        "error",
+      );
+    } finally {
+      setCargandoCalificaciones(false);
+    }
+  };
+
+  const cambiarEstatusAlumnoServidor = async (alumnoId, nuevoEstatus) => {
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/controlescolar/alumnos/${alumnoId}/estatus`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ estatus: nuevoEstatus }),
+        },
+      );
+      const resultado = await res.json();
+      if (res.ok && resultado.ok) {
+        mostrarNotificacion(
+          "Actualización Exitosa",
+          `El estatus del alumno ha cambiado a ${nuevoEstatus} correctamente.`,
+          "exito",
+        );
+        setModalBaja(null);
+        cargarAlumnos();
+      } else {
+        mostrarNotificacion(
+          "Error",
+          resultado.mensaje || "No se pudo actualizar el estatus.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error al cambiar estatus:", error);
+      mostrarNotificacion(
+        "Error de Red",
+        "Error de conexión al procesar la solicitud.",
+        "error",
+      );
+    }
+  };
 
   const handleSubirDocumentoManual = async (documentoId, nuevoArchivo) => {
     if (!nuevoArchivo) return;
@@ -101,17 +175,27 @@ export default function AlumnosCEPage() {
     }
   };
 
-  const alumnosFiltrados = alumnos.filter((alumn) => {
-    const nombreCompleto =
-      `${alumn.nombres} ${alumn.apellidoPaterno} ${alumn.apellidoMaterno || ""}`.toLowerCase();
-    return (
-      alumn.folio.toLowerCase().includes(busqueda.toLowerCase()) ||
-      (alumn.matricula &&
-        alumn.matricula.toLowerCase().includes(busqueda.toLowerCase())) ||
-      nombreCompleto.includes(busqueda.toLowerCase()) ||
-      alumn.curp.toLowerCase().includes(busqueda.toLowerCase())
-    );
-  });
+  const alumnosFiltrados = alumnos
+    .filter((alumn) => {
+      const nombreCompleto =
+        `${alumn.nombres} ${alumn.apellidoPaterno} ${alumn.apellidoMaterno || ""}`.toLowerCase();
+
+      const esBaja =
+        alumn.estatusAcademico === "BAJA" ||
+        alumn.estatusAcademico === "BAJA_TEMPORAL";
+      const cumplePestana = filtroEstatusTab === "ACTIVOS" ? !esBaja : esBaja;
+
+      const cumpleBusqueda =
+        busqueda.trim() === "" ||
+        alumn.folio.toLowerCase().includes(busqueda.toLowerCase()) ||
+        (alumn.matricula &&
+          alumn.matricula.toLowerCase().includes(busqueda.toLowerCase())) ||
+        nombreCompleto.includes(busqueda.toLowerCase()) ||
+        alumn.curp.toLowerCase().includes(busqueda.toLowerCase());
+
+      return cumplePestana && cumpleBusqueda;
+    })
+    .slice(0, 10);
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
@@ -128,6 +212,25 @@ export default function AlumnosCEPage() {
               Gestión y supervisión de estudiantes con expediente validado,
               matrícula y contraseña institucional.
             </p>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs self-start md:self-auto">
+            {[
+              { id: "ACTIVOS", label: "Activos" },
+              { id: "BAJAS", label: "Bajas" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFiltroEstatusTab(tab.id)}
+                className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  filtroEstatusTab === tab.id
+                    ? "bg-[#0f172a] text-white shadow-sm scale-105"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -163,7 +266,7 @@ export default function AlumnosCEPage() {
                   <th className="p-4">Modalidad</th>
                   <th className="p-4">Correo Electrónico</th>
                   <th className="p-4 text-center">Estatus</th>
-                  <th className="p-4 text-center">Acción</th>
+                  <th className="p-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -176,45 +279,72 @@ export default function AlumnosCEPage() {
                 ) : alumnosFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="p-8 text-center text-slate-400">
-                      No se encontraron alumnos registrados con matrícula
-                      activa.
+                      No se encontraron alumnos registrados.
                     </td>
                   </tr>
                 ) : (
-                  alumnosFiltrados.map((alumn) => (
-                    <tr key={alumn.id} className="hover:bg-slate-50 transition">
-                      <td className="p-4 font-mono font-extrabold text-emerald-900 text-sm">
-                        {alumn.matricula}
-                      </td>
-                      <td className="p-4">
-                        <span className="font-semibold text-slate-900 block uppercase">{`${alumn.apellidoPaterno} ${alumn.apellidoMaterno || ""} ${alumn.nombres}`}</span>
-                        <span className="text-[10px] font-mono text-slate-500">
-                          {alumn.curp}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-900">
-                          {alumn.tipoAdmision}
-                        </span>
-                      </td>
-                      <td className="p-4 text-slate-600 font-medium">
-                        {alumn.correoElectronico1}
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg font-bold text-[10px] uppercase">
-                          {alumn.estatusAcademico || "ACTIVO_REGULAR"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={() => setAlumnoSeleccionado(alumn)}
-                          className="px-3.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-lg font-semibold text-xs transition shadow-sm"
-                        >
-                          Expediente
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                  alumnosFiltrados.map((alumn) => {
+                    const esBaja =
+                      alumn.estatusAcademico === "BAJA" ||
+                      alumn.estatusAcademico === "BAJA_TEMPORAL";
+                    return (
+                      <tr
+                        key={alumn.id}
+                        className="hover:bg-slate-50 transition"
+                      >
+                        <td className="p-4 font-mono font-extrabold text-emerald-900 text-sm">
+                          {alumn.matricula}
+                        </td>
+                        <td className="p-4">
+                          <span className="font-semibold text-slate-900 block uppercase">{`${alumn.apellidoPaterno} ${alumn.apellidoMaterno || ""} ${alumn.nombres}`}</span>
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {alumn.curp}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-900">
+                            {alumn.tipoAdmision}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-600 font-medium">
+                          {alumn.correoElectronico1}
+                        </td>
+                        <td className="p-4 text-center">
+                          <button
+                            onClick={() =>
+                              setModalBaja({
+                                alumno: alumn,
+                                nuevoEstatus: esBaja ? "Activo" : "Baja",
+                              })
+                            }
+                            className={`px-2.5 py-1 rounded-lg font-bold text-[10px] uppercase transition cursor-pointer inline-block ${
+                              esBaja
+                                ? "bg-red-100 text-red-800 hover:bg-red-200"
+                                : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                            }`}
+                            title="Haga clic para cambiar estatus"
+                          >
+                            {esBaja ? "Baja" : "Activo"}
+                          </button>
+                        </td>
+                        <td className="p-4 text-right space-x-2">
+                          <button
+                            onClick={() => setAlumnoSeleccionado(alumn)}
+                            className="px-3.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-lg font-semibold text-xs transition shadow-sm inline-block"
+                          >
+                            Expediente
+                          </button>
+
+                          <button
+                            onClick={() => abrirModalCalificaciones(alumn)}
+                            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold text-xs transition shadow-sm inline-block"
+                          >
+                            Calificaciones
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -231,7 +361,6 @@ export default function AlumnosCEPage() {
                   </h3>
                   <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
                     <span className="text-white text-sm">
-                      👤{" "}
                       {`${alumnoSeleccionado.apellidoPaterno} ${alumnoSeleccionado.apellidoMaterno || ""} ${alumnoSeleccionado.nombres}`}
                     </span>
                     <span className="font-mono text-cyan-300">
@@ -364,18 +493,10 @@ export default function AlumnosCEPage() {
                       </p>
                       <p className="pt-1">
                         <strong className="text-slate-500">Tutor:</strong>{" "}
-                        {alumnoSeleccionado.tutorNombres ? (
-                          <span>
-                            {`${alumnoSeleccionado.tutorApellidoPaterno || ""} ${alumnoSeleccionado.tutorApellidoMaterno || ""} ${alumnoSeleccionado.tutorNombres}`.trim()}{" "}
-                            (
-                            {alumnoSeleccionado.tutorParentescoRel?.nombre ||
-                              "PARENTESCO NO ESPECIFICADO"}
-                            ){" — "}
-                            Tel: {alumnoSeleccionado.tutorTelefono || "N/A"}
-                          </span>
-                        ) : (
-                          "N/A"
-                        )}
+                        {alumnoSeleccionado.tutorNombres
+                          ? `${alumnoSeleccionado.tutorApellidoPaterno || ""} ${alumnoSeleccionado.tutorApellidoMaterno || ""} ${alumnoSeleccionado.tutorNombres}`.trim() +
+                            ` (${alumnoSeleccionado.tutorParentescoRel?.nombre || "PARENTESCO NO ESPECIFICADO"}) — Tel: ${alumnoSeleccionado.tutorTelefono || "N/A"}`
+                          : "N/A"}
                       </p>
                     </div>
                   </div>
@@ -408,7 +529,7 @@ export default function AlumnosCEPage() {
                               rel="noopener noreferrer"
                               className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
                             >
-                              👁️ Ver Archivo
+                              Ver Archivo
                             </a>
                           ) : (
                             <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200 font-semibold">
@@ -417,11 +538,10 @@ export default function AlumnosCEPage() {
                           )}
 
                           <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold">
-                            {doc.estatusDoc || "APROBADO"} ✓
+                            {doc.estatusDoc || "APROBADO"}
                           </span>
 
                           <label className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
-                            ✏️{" "}
                             {doc.archivoBlob
                               ? "Editar / Subir"
                               : "Subir Archivo"}
@@ -461,18 +581,153 @@ export default function AlumnosCEPage() {
           </div>
         )}
 
+        {/* Modal de Calificaciones con la misma cabecera del Expediente y plan completo detectado */}
+        {modalCalificaciones && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[92vh]">
+              {/* Cabecera idéntica al modal de expediente */}
+              <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white uppercase">
+                    Historial Académico y Calificaciones
+                  </h3>
+                  <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
+                    <span className="text-white text-sm uppercase">
+                      {`${modalCalificaciones.apellidoPaterno} ${modalCalificaciones.apellidoMaterno || ""} ${modalCalificaciones.nombres}`}
+                    </span>
+                    <span className="font-mono text-cyan-300">
+                      CURP: {modalCalificaciones.curp}
+                    </span>
+                    <span className="font-mono bg-emerald-800/80 text-emerald-200 px-2 py-0.5 rounded text-[11px]">
+                      Matrícula: {modalCalificaciones.matricula}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setModalCalificaciones(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Contenido de calificaciones y plan completo */}
+              <div className="p-6 space-y-4 bg-slate-50/50 overflow-y-auto flex-1">
+                {cargandoCalificaciones ? (
+                  <div className="p-12 text-center text-slate-400 text-xs font-medium animate-pulse">
+                    Consultando plan de estudios e historial en la base de
+                    datos...
+                  </div>
+                ) : historialAcademico?.planEstudios ? (
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <div className="p-3 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700">
+                      Plan de Estudios Asignado:{" "}
+                      <span className="text-blue-950">
+                        {historialAcademico.planEstudios}
+                      </span>
+                    </div>
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
+                        <tr>
+                          <th className="p-4">Materia / Asignatura</th>
+                          <th className="p-4 text-center">Semestre</th>
+                          <th className="p-4 text-center">Calificación</th>
+                          <th className="p-4 text-center">Estatus</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {historialAcademico.calificaciones.map((mat, idx) => (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-50/60 transition"
+                          >
+                            <td className="p-4 text-slate-900 font-bold">
+                              {mat.materia}
+                            </td>
+                            <td className="p-4 text-center font-mono">
+                              {mat.semestre}°
+                            </td>
+                            <td className="p-4 text-center font-mono font-extrabold text-blue-950">
+                              {mat.final}
+                            </td>
+                            <td className="p-4 text-center">
+                              <span
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                                  mat.estatus === "ACREDITADA" ||
+                                  mat.estatus === "APROBADO"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                {mat.estatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="p-10 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-slate-500 text-xs">
+                    Este alumno es de revalidación o aún no tiene un plan de
+                    estudios asignado para mostrar su historial académico.
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-white border-t border-slate-200 flex justify-end shrink-0">
+                <button
+                  onClick={() => setModalCalificaciones(null)}
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition shadow-2xs"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Confirmación de Estatus */}
+        {modalBaja && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-6 text-center space-y-4">
+              <h3 className="text-base font-bold text-slate-900">
+                Confirmar Cambio de Estatus
+              </h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                ¿Estás seguro de que quieres cambiar el estatus a{" "}
+                <strong>{modalBaja.nuevoEstatus}</strong> al alumno{" "}
+                <strong>{`${modalBaja.alumno.nombres} ${modalBaja.alumno.apellidoPaterno} ${modalBaja.alumno.apellidoMaterno || ""}`}</strong>{" "}
+                con matrícula <strong>{modalBaja.alumno.matricula}</strong>?
+              </p>
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalBaja(null)}
+                  className="w-1/2 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    cambiarEstatusAlumnoServidor(
+                      modalBaja.alumno.id,
+                      modalBaja.nuevoEstatus,
+                    )
+                  }
+                  className="w-1/2 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
+                >
+                  Sí, Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {modalNotificacion.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-6 text-center space-y-4 transform transition-all animate-fadeIn">
-              <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto text-xl font-bold shadow-sm ${
-                  modalNotificacion.tipo === "exito"
-                    ? "bg-emerald-100 text-emerald-800"
-                    : "bg-amber-100 text-amber-900"
-                }`}
-              >
-                {modalNotificacion.tipo === "exito" ? "✓" : "!"}
-              </div>
               <h3 className="text-base font-extrabold text-slate-900">
                 {modalNotificacion.titulo}
               </h3>
