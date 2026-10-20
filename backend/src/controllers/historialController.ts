@@ -3,10 +3,20 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Obtener lista de alumnos/aspirantes activos o registrados
+// Obtener lista de alumnos (todos o filtrados por revalidación)
 export const getAlumnosHistorial = async (req: Request, res: Response) => {
   try {
+    const { tipo } = req.query; // 'revalidacion' o undefined
+    
+    const whereCondition: any = {};
+    if (tipo === "revalidacion") {
+      whereCondition.tipoAdmision = {
+        contains: "revalidación",
+      };
+    }
+
     const alumnos = await prisma.aspirante.findMany({
+      where: whereCondition,
       select: {
         id: true,
         matricula: true,
@@ -17,6 +27,7 @@ export const getAlumnosHistorial = async (req: Request, res: Response) => {
         curp: true,
         estatusAcademico: true,
         planEstudios: true,
+        tipoAdmision: true,
       },
       orderBy: { id: "desc" },
     });
@@ -53,6 +64,7 @@ export const getHistorialPorAlumno = async (req: Request, res: Response) => {
       where: { aspiranteId: Number(aspiranteId) },
       include: {
         materia: true,
+        planEstudio: true,
       },
       orderBy: { materia: { semestre: "asc" } },
     });
@@ -63,35 +75,67 @@ export const getHistorialPorAlumno = async (req: Request, res: Response) => {
   }
 };
 
-// Asignar materias y calificaciones al historial académico del alumno
+// Asignar materias y calificaciones enteras (5-10) validando que tenga matrícula
 export const asignarMateriasHistorial = async (req: Request, res: Response) => {
   try {
-    const { aspiranteId, planEstudioClave, materiasAsignadas, periodo } = req.body;
+    const { 
+      aspiranteId, 
+      planEstudioClave, 
+      materiasAsignadas 
+    } = req.body;
 
-    if (!aspiranteId || !materiasAsignadas || !Array.isArray(materiasAsignadas) || materiasAsignadas.length === 0) {
+    if (!aspiranteId || !planEstudioClave || !materiasAsignadas || !Array.isArray(materiasAsignadas)) {
       return res.status(400).json({ error: "Datos incompletos para realizar la asignación." });
     }
 
     const idAlumno = Number(aspiranteId);
-    const periodoLectivo = periodo || "2024-2025";
 
-    // Transacción atómica para consistencia total en DB
+    // Validar que el alumno cuente con matrícula asignada
+    const alumnoVerif = await prisma.aspirante.findUnique({
+      where: { id: idAlumno },
+      select: { matricula: true, tipoAdmision: true },
+    });
+
+    if (!alumnoVerif || !alumnoVerif.matricula) {
+      return res.status(400).json({ 
+        error: "No se le puede asignar un plan de estudios ni historial a un alumno de nuevo ingreso sin matrícula." 
+      });
+    }
+
+    const planObj = await prisma.planEstudio.findUnique({
+      where: { clave: planEstudioClave },
+    });
+
+    if (!planObj) {
+      return res.status(404).json({ error: "El plan de estudios seleccionado no existe." });
+    }
+
+    const planEstudioId = planObj.id;
+    const fechaCapturaAutomatica = new Date();
+    const periodoPeriodoLectivo = fechaCapturaAutomatica.toISOString().split('T')[0];
+
     await prisma.$transaction(async (tx) => {
-      // 1. Actualizar el plan de estudios del alumno si se envió uno
-      if (planEstudioClave) {
-        await tx.aspirante.update({
-          where: { id: idAlumno },
-          data: { planEstudios: planEstudioClave },
-        });
-      }
+      // 1. Actualizar el plan de estudios del alumno
+      await tx.aspirante.update({
+        where: { id: idAlumno },
+        data: { planEstudios: planEstudioClave },
+      });
 
       for (const item of materiasAsignadas) {
         const { materiaId, calificacion, tipoExamen } = item;
-        const nota = calificacion !== undefined && calificacion !== null ? Number(calificacion) : null;
-        const tipoEx = tipoExamen || "F";
-        const estatusMateria = nota !== null && nota >= 6 ? "ACREDITADA" : "CURSANDO";
+        
+        if (calificacion !== undefined && calificacion !== null && calificacion !== "") {
+          const nota = Number(calificacion);
+          if (isNaN(nota) || nota < 5 || nota > 10) {
+            throw new Error(`Calificación inválida (${nota}). Solo se permiten enteros del 5 al 10.`);
+          }
+        }
 
-        // 2. Insertar o actualizar en HistorialAcademico
+        const notaFinal = calificacion !== undefined && calificacion !== null && calificacion !== "" ? Math.round(Number(calificacion)) : null;
+        const tipoEx = tipoExamen || "F";
+        const estatusMateria = notaFinal !== null && notaFinal >= 6 ? "ACREDITADA" : (notaFinal === 5 ? "REPROBADA" : "CURSANDO");
+
+        // 2. Historial Académico
         await tx.historialAcademico.upsert({
           where: {
             aspiranteId_materiaId: {
@@ -100,22 +144,24 @@ export const asignarMateriasHistorial = async (req: Request, res: Response) => {
             },
           },
           update: {
-            calificacion: nota,
+            planEstudioId: planEstudioId,
+            calificacion: notaFinal,
             tipoExamen: tipoEx,
             estatus: estatusMateria,
-            periodo: periodoLectivo,
+            planEstudiosCapturado: fechaCapturaAutomatica,
           },
           create: {
             aspiranteId: idAlumno,
             materiaId: Number(materiaId),
-            calificacion: nota,
+            planEstudioId: planEstudioId,
+            calificacion: notaFinal,
             tipoExamen: tipoEx,
             estatus: estatusMateria,
-            periodo: periodoLectivo,
+            planEstudiosCapturado: fechaCapturaAutomatica,
           },
         });
 
-        // 3. Registrar o actualizar en MateriaInscrita para reflejo en tiempo real
+        // 3. Materia Inscrita
         await tx.materiaInscrita.upsert({
           where: {
             aspiranteId_materiaId: {
@@ -124,17 +170,19 @@ export const asignarMateriasHistorial = async (req: Request, res: Response) => {
             },
           },
           update: {
+            planEstudioId: planEstudioId,
             estatus: estatusMateria,
           },
           create: {
             aspiranteId: idAlumno,
             materiaId: Number(materiaId),
+            planEstudioId: planEstudioId,
             estatus: estatusMateria,
           },
         });
 
-        // 4. Registrar en Calificacion si existe una nota capturada
-        if (nota !== null) {
+        // 4. Calificación
+        if (notaFinal !== null) {
           const materiaInscritaReg = await tx.materiaInscrita.findUnique({
             where: {
               aspiranteId_materiaId: {
@@ -150,29 +198,31 @@ export const asignarMateriasHistorial = async (req: Request, res: Response) => {
                 aspiranteId: idAlumno,
                 materiaId: Number(materiaId),
                 parcial: 1,
-                periodo: periodoLectivo,
+                periodo: periodoPeriodoLectivo,
               },
             },
             update: {
-              calificacion: nota,
+              planEstudioId: planEstudioId,
+              calificacion: notaFinal,
               materiaInscritaId: materiaInscritaReg?.id,
             },
             create: {
               aspiranteId: idAlumno,
               materiaId: Number(materiaId),
+              planEstudioId: planEstudioId,
               materiaInscritaId: materiaInscritaReg?.id,
               parcial: 1,
-              calificacion: nota,
-              periodo: periodoLectivo,
+              calificacion: notaFinal,
+              periodo: periodoPeriodoLectivo,
             },
           });
         }
       }
     });
 
-    return res.json({ message: "Materias y calificaciones asignadas con éxito al historial." });
-  } catch (error) {
+    return res.json({ message: "Historial académico actualizado correctamente con plan de estudios y calificaciones." });
+  } catch (error: any) {
     console.error("Error al asignar materias e historial:", error);
-    return res.status(500).json({ error: "Ocurrió un error al guardar los cambios en el historial." });
+    return res.status(500).json({ error: error.message || "Ocurrió un error al guardar los cambios en el historial." });
   }
 };

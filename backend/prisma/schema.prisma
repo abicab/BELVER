@@ -290,7 +290,11 @@ model PlanEstudio {
   activo      Boolean  @default(true)
   creadoEn    DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  materias    Materia[]
+
+  materias           Materia[]
+  historiales        HistorialAcademico[]
+  materiasInscritas  MateriaInscrita[]
+  calificaciones     Calificacion[]
 
   @@map("plan_estudio")
 }
@@ -330,13 +334,15 @@ model Seriacion {
 // ==========================================
 
 model MateriaInscrita {
-  id          Int       @id @default(autoincrement())
-  aspiranteId Int
-  aspirante   Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  materiaId   Int
-  materia     Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
-  estatus     String    @default("Cursando") @db.VarChar(50)
-  creadoEn    DateTime  @default(now())
+  id            Int         @id @default(autoincrement())
+  aspiranteId   Int
+  aspirante     Aspirante   @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+  materiaId     Int
+  materia       Materia     @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  planEstudioId Int
+  planEstudio   PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  estatus       String      @default("Cursando") @db.VarChar(50)
+  creadoEn      DateTime    @default(now())
 
   calificaciones Calificacion[]
 
@@ -350,11 +356,13 @@ model Calificacion {
   aspirante         Aspirante        @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   materiaId         Int
   materia           Materia          @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  planEstudioId     Int
+  planEstudio       PlanEstudio      @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
   materiaInscritaId Int?
   materiaInscrita   MateriaInscrita? @relation(fields: [materiaInscritaId], references: [id], onDelete: SetNull)
 
   parcial       Int      @default(1)
-  calificacion  Float
+  calificacion  Int      // Calificación entera de 5 a 10
   periodo       String   @db.VarChar(50)
   observaciones String?  @db.Text
   creadoEn      DateTime @default(now())
@@ -365,15 +373,17 @@ model Calificacion {
 }
 
 model HistorialAcademico {
-  id           Int       @id @default(autoincrement())
-  aspiranteId  Int
-  aspirante    Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  materiaId    Int
-  materia      Materia   @relation(fields: [materiaId], references: [id], onDelete: Cascade)
-  calificacion Float?
-  tipoExamen   String?   @default("F") @db.VarChar(50)
-  estatus      String    @default("CURSANDO") @db.VarChar(50)
-  periodo      String?   @db.VarChar(50)
+  id                    Int          @id @default(autoincrement())
+  aspiranteId           Int
+  aspirante             Aspirante    @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+  materiaId             Int
+  materia               Materia      @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  planEstudioId         Int
+  planEstudio           PlanEstudio  @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  calificacion          Int?         // Entero de 5 a 10 (5 reprobatoria)
+  tipoExamen            String?      @default("F") @db.VarChar(50)
+  estatus               String       @default("CURSANDO") @db.VarChar(50)
+  planEstudiosCapturado DateTime?    // Fecha única de captura
 
   @@unique([aspiranteId, materiaId])
   @@map("historial_academico")

@@ -263,6 +263,7 @@ CREATE TABLE `materia_inscrita` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
     `materiaId` INTEGER NOT NULL,
+    `planEstudioId` INTEGER NOT NULL,
     `estatus` VARCHAR(50) NOT NULL DEFAULT 'Cursando',
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -275,9 +276,10 @@ CREATE TABLE `calificacion` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
     `materiaId` INTEGER NOT NULL,
+    `planEstudioId` INTEGER NOT NULL,
     `materiaInscritaId` INTEGER NULL,
     `parcial` INTEGER NOT NULL DEFAULT 1,
-    `calificacion` DOUBLE NOT NULL,
+    `calificacion` INTEGER NOT NULL,
     `periodo` VARCHAR(50) NOT NULL,
     `observaciones` TEXT NULL,
     `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -292,10 +294,11 @@ CREATE TABLE `historial_academico` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `aspiranteId` INTEGER NOT NULL,
     `materiaId` INTEGER NOT NULL,
-    `calificacion` DOUBLE NULL,
+    `planEstudioId` INTEGER NOT NULL,
+    `calificacion` INTEGER NULL,
     `tipoExamen` VARCHAR(50) NULL DEFAULT 'F',
     `estatus` VARCHAR(50) NOT NULL DEFAULT 'CURSANDO',
-    `periodo` VARCHAR(50) NULL,
+    `planEstudiosCapturado` DATETIME(3) NULL,
 
     UNIQUE INDEX `historial_academico_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),
     PRIMARY KEY (`id`)
@@ -359,10 +362,16 @@ ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_aspiranteId_fkey
 ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `materia_inscrita` ADD CONSTRAINT `materia_inscrita_planEstudioId_fkey` FOREIGN KEY (`planEstudioId`) REFERENCES `plan_estudio`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_planEstudioId_fkey` FOREIGN KEY (`planEstudioId`) REFERENCES `plan_estudio`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `calificacion` ADD CONSTRAINT `calificacion_materiaInscritaId_fkey` FOREIGN KEY (`materiaInscritaId`) REFERENCES `materia_inscrita`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
@@ -372,3 +381,6 @@ ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_aspiranteI
 
 -- AddForeignKey
 ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_materiaId_fkey` FOREIGN KEY (`materiaId`) REFERENCES `materia`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `historial_academico` ADD CONSTRAINT `historial_academico_planEstudioId_fkey` FOREIGN KEY (`planEstudioId`) REFERENCES `plan_estudio`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
