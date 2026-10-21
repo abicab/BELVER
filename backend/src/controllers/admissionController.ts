@@ -141,6 +141,52 @@ export const registrarAspirante = async (
   res: Response,
 ): Promise<void> => {
   try {
+    const cicloActivo = await (prisma as any).cicloEscolar.findFirst({
+      where: { activo: 1 },
+    });
+
+    if (!cicloActivo) {
+      res.status(403).json({
+        ok: false,
+        mensaje:
+          "No existe un ciclo escolar activo configurado en el sistema para permitir inscripciones.",
+      });
+      return;
+    }
+
+    const ahora = new Date();
+    const fechaInicioCiclo = cicloActivo.inicia
+      ? new Date(cicloActivo.inicia)
+      : null;
+    const fechaFinCiclo = cicloActivo.termina
+      ? new Date(cicloActivo.termina)
+      : null;
+
+    if (
+      (fechaInicioCiclo && ahora < fechaInicioCiclo) ||
+      (fechaFinCiclo && ahora > fechaFinCiclo)
+    ) {
+      res.status(403).json({
+        ok: false,
+        mensaje:
+          "El periodo de inscripción se encuentra cerrado o fuera de vigencia según el ciclo escolar actual.",
+      });
+      return;
+    }
+
+    // Determinamos la vigencia del folio extrayéndola directamente de la base de datos
+    let fechaVigencia = new Date();
+    const fechaBD =
+      cicloActivo.fechaConformarExpediente ||
+      cicloActivo.fecha_conformar_expediente ||
+      cicloActivo.termina;
+
+    if (fechaBD) {
+      fechaVigencia = new Date(fechaBD);
+    } else {
+      fechaVigencia = new Date("2026-10-25T23:59:59");
+    }
+
     const rawBody = { ...req.body };
 
     if (typeof rawBody.discapacidades === "string") {
@@ -164,10 +210,6 @@ export const registrarAspirante = async (
     const validationResult = admissionSchema.safeParse(rawBody);
 
     if (!validationResult.success) {
-      console.error(
-        "Errores de validación Zod:",
-        validationResult.error.format(),
-      );
       res.status(400).json({
         ok: false,
         mensaje: "Errores de validación en el formulario",
@@ -180,8 +222,6 @@ export const registrarAspirante = async (
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
     const randomFolio = `BEL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const fechaVigencia = new Date();
-    fechaVigencia.setDate(fechaVigencia.getDate() + 15);
 
     const fechaLimiteStr = fechaVigencia.toLocaleDateString("es-MX", {
       day: "2-digit",
@@ -257,7 +297,7 @@ export const registrarAspirante = async (
         data: {
           folio: randomFolio,
           vigenciaFolio: fechaVigencia,
-          esMigrado: false, // Indicador de que es un alumno nuevo registrado mediante el portal
+          esMigrado: false,
           apellidoPaterno: datosValidados.apellidoPaterno,
           apellidoMaterno: datosValidados.apellidoMaterno || null,
           nombres: datosValidados.nombres,
@@ -347,7 +387,7 @@ export const registrarAspirante = async (
       .sendMail({
         from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
         to: datosValidados.correoElectronico1,
-        subject: `Comprobante de Registro y Folio Oficial: ${nuevoAspirante.folio} - BELVER`,
+        subject: `Comprobante de Registro y Folio Oficial: ${nuevoAspirante.folio}BELVER`,
         html: `
         <div style="font-family: Arial, sans-serif; background-color: #f1f5f9; padding: 25px; color: #1e293b;">
           <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0;">
@@ -392,7 +432,10 @@ export const registrarAspirante = async (
     res.status(201).json({
       ok: true,
       mensaje: "¡Registro de aspirante exitoso!",
-      data: { folio: nuevoAspirante.folio },
+      data: {
+        folio: nuevoAspirante.folio,
+        fechaLimite: fechaLimiteStr,
+      },
     });
   } catch (error: any) {
     console.error("Error detallado al registrar aspirante:", error);
@@ -416,39 +459,24 @@ export const aprobarExpediente = async (
   try {
     const { aspiranteId } = req.params;
     const { estatusDocumentos } = req.body;
-
     const anioDosDigitos = String(new Date().getFullYear()).slice(-2);
     const prefijo = `B${anioDosDigitos}`;
-
     const ultimoAlumno = await prisma.aspirante.findFirst({
-      where: {
-        matricula: {
-          startsWith: prefijo,
-        },
-      },
-      orderBy: {
-        matricula: "desc",
-      },
-      select: {
-        matricula: true,
-      },
+      where: { matricula: { startsWith: prefijo } },
+      orderBy: { matricula: "desc" },
+      select: { matricula: true },
     });
-
     let siguienteConsecutivo = 1;
     if (ultimoAlumno && ultimoAlumno.matricula) {
       const numeroActual = parseInt(
         ultimoAlumno.matricula.replace(prefijo, ""),
         10,
       );
-      if (!isNaN(numeroActual)) {
-        siguienteConsecutivo = numeroActual + 1;
-      }
+      if (!isNaN(numeroActual)) siguienteConsecutivo = numeroActual + 1;
     }
-
     const consecutivoFormateado = String(siguienteConsecutivo).padStart(6, "0");
     const matriculaGenerada = `${prefijo}${consecutivoFormateado}`;
     const passwordGenerada = Math.random().toString(36).slice(-8).toUpperCase();
-
     const tipoUsuarioAlumnoId = 5;
 
     const resultado = await prisma.$transaction(async (tx) => {
@@ -461,7 +489,6 @@ export const aprobarExpediente = async (
           estatusAcademico: "ACTIVO_REGULAR",
         },
       });
-
       await tx.validacionExpediente.update({
         where: { aspiranteId: Number(aspiranteId) },
         data: {
@@ -470,7 +497,6 @@ export const aprobarExpediente = async (
           fechaValidacion: new Date(),
         },
       });
-
       if (estatusDocumentos && Array.isArray(estatusDocumentos)) {
         for (const doc of estatusDocumentos) {
           await tx.documento.update({
@@ -482,52 +508,8 @@ export const aprobarExpediente = async (
           });
         }
       }
-
       return aspiranteActualizado;
     });
-
-    const portalEscolarUrl = "http://www.belver.clavijero.edu.mx";
-
-    transporter
-      .sendMail({
-        from: `"Sistema BELVER" <${process.env.SMTP_USER}>`,
-        to: resultado.correoElectronico1,
-        subject:
-          "Documentos Validados y Aprobados - Asignación de Matrícula - BELVER",
-        html: `
-        <div style="font-family: Arial, sans-serif; background-color: #f4f6f8; padding: 20px; color: #333333;">
-          <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-            <div style="background-color: #0f172a; color: #ffffff; padding: 20px; text-align: center;">
-              <h2 style="margin: 0; font-size: 20px;">Documentos Validados y Aprobados - BELVER</h2>
-            </div>
-            <div style="padding: 30px;">
-              <p>Estimado(a) <strong>${resultado.nombres} ${resultado.apellidoPaterno}</strong>,</p>
-              <p>Te damos la bienvenida a Bachillerato en Línea de Veracruz. Te comentamos que tus documentos han sido validados con éxito.</p>
-              <p>Te recordamos que debes ingresar a <a href="${portalEscolarUrl}" target="_blank" style="color: #1e3a8a; font-weight: bold;">www.belver.clavijero.edu.mx</a> donde encontrarás tu Taller de inducción <strong>“Estudiar a distancia en línea”</strong>, el cual debes cursar y aprobar para obtener tu asignación de materias.</p>
-
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin: 20px 0;">
-                <p style="margin: 5px 0;"><strong>Matrícula:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px; font-weight: bold;">${resultado.matricula}</span></p>
-                <p style="margin: 5px 0;"><strong>Contraseña:</strong> <span style="font-family: monospace; color: #1e3a8a; font-size: 16px; font-weight: bold;">${resultado.password}</span></p>
-              </div>
-
-              <p style="font-size: 11px; color: #64748b;">Para una mejor experiencia, te sugerimos copiar y pegar tus datos de acceso, además de utilizar un equipo de cómputo para el óptimo acceso a tus cursos.</p>
-              <p style="font-size: 11px; color: #64748b; font-weight: bold;">Guarda estos datos en un lugar seguro; los necesitarás para acceder a tu portal escolar.</p>
-
-              <div style="margin-top: 25px; text-align: center;">
-                <a href="${portalEscolarUrl}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Acceder al Portal Escolar</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      `,
-        text: `Estimado(a) ${resultado.nombres} ${resultado.apellidoPaterno}, tus documentos han sido validados con éxito. Ingresa a www.belver.clavijero.edu.mx para tu Taller de inducción. Tus datos de acceso son: Matrícula: ${resultado.matricula}, Contraseña: ${resultado.password}`,
-      })
-      .catch((emailError) => {
-        console.error(
-          "Advertencia: No se pudo enviar el correo de aprobación:",
-          emailError,
-        );
-      });
 
     res.status(200).json({
       ok: true,
@@ -552,12 +534,10 @@ export const verDocumento = async (
     const documento = await prisma.documento.findUnique({
       where: { id: Number(id) },
     });
-
     if (!documento || !documento.archivoBlob) {
       res.status(404).json({ ok: false, mensaje: "Documento no encontrado." });
       return;
     }
-
     const nombreArchivo = documento.nombreArchivo.toLowerCase();
     let contentType = "application/octet-stream";
     if (nombreArchivo.endsWith(".pdf")) contentType = "application/pdf";
@@ -573,10 +553,12 @@ export const verDocumento = async (
     res.send(documento.archivoBlob);
   } catch (error) {
     console.error("Error al visualizar documento:", error);
-    res.status(500).json({
-      ok: false,
-      mensaje: "Error interno al visualizar el documento.",
-    });
+    res
+      .status(500)
+      .json({
+        ok: false,
+        mensaje: "Error interno al visualizar el documento.",
+      });
   }
 };
 
@@ -587,28 +569,23 @@ export const modificarDocumento = async (
   try {
     const { id } = req.params;
     const file = req.file;
-
     if (!file) {
       res
         .status(400)
         .json({ ok: false, mensaje: "No se proporcionó ningún archivo." });
       return;
     }
-
     const documentoExistente = await prisma.documento.findUnique({
       where: { id: Number(id) },
     });
-
     if (!documentoExistente) {
       res.status(404).json({ ok: false, mensaje: "Documento no encontrado." });
       return;
     }
-
     const nombreSeguro =
       file.originalname.length > 250
         ? file.originalname.substring(0, 250)
         : file.originalname;
-
     await prisma.documento.update({
       where: { id: Number(id) },
       data: {
@@ -618,17 +595,20 @@ export const modificarDocumento = async (
         comentario: null,
       },
     });
-
-    res.status(200).json({
-      ok: true,
-      mensaje: "Documento modificado y enviado a revisión exitosamente.",
-    });
+    res
+      .status(200)
+      .json({
+        ok: true,
+        mensaje: "Documento modificado y enviado a revisión exitosamente.",
+      });
   } catch (error) {
     console.error("Error al modificar el documento:", error);
-    res.status(500).json({
-      ok: false,
-      mensaje: "Error interno al procesar la modificación del documento.",
-    });
+    res
+      .status(500)
+      .json({
+        ok: false,
+        mensaje: "Error interno al procesar la modificación del documento.",
+      });
   }
 };
 
@@ -641,15 +621,12 @@ export const descargarComprobantePDF = async (
     const aspirante = await prisma.aspirante.findUnique({
       where: { folio: String(folio).trim().toUpperCase() },
     });
-
     if (!aspirante) {
       res.status(404).json({ ok: false, mensaje: "Solicitud no encontrada." });
       return;
     }
-
     const doc = new PDFDocument({ margin: 40, size: "A4" });
     const chunks: Buffer[] = [];
-
     doc.on("data", (chunk) => chunks.push(chunk));
     doc.on("end", () => {
       const result = Buffer.concat(chunks);
@@ -701,11 +678,9 @@ export const descargarComprobantePDF = async (
     const boxTop = doc.y;
     const boxWidth = 430;
     const boxLeft = (515 - boxWidth) / 2 + 40;
-
     doc
       .roundedRect(boxLeft, boxTop, boxWidth, 110, 10)
       .fillAndStroke("#f8fafc", "#e2e8f0");
-
     doc
       .fontSize(8)
       .font("Helvetica-Bold")
@@ -722,14 +697,12 @@ export const descargarComprobantePDF = async (
         align: "center",
         width: boxWidth - 40,
       });
-
     doc
       .moveTo(boxLeft + 30, boxTop + 55)
       .lineTo(boxLeft + boxWidth - 30, boxTop + 55)
       .strokeColor("#e2e8f0")
       .lineWidth(1)
       .stroke();
-
     doc
       .fontSize(8)
       .font("Helvetica-Bold")
@@ -749,7 +722,6 @@ export const descargarComprobantePDF = async (
 
     doc.y = boxTop + 130;
     doc.moveDown(1);
-
     doc.fontSize(9.5).font("Helvetica").fillColor("#334155");
     doc.text(
       "En un plazo de 5 días hábiles deberás ingresar al apartado de inscripción dando clic en la opción “Folio de inscripción” para revisar el estatus de la documentación que enviaste.",
@@ -765,7 +737,6 @@ export const descargarComprobantePDF = async (
       { align: "justify", lineGap: 4, width: 515 },
     );
     doc.moveDown(1);
-
     doc
       .fontSize(9)
       .font("Helvetica")

@@ -11,7 +11,7 @@ export default function ReportesPage() {
     setCargando(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/controlescolar/aspirantes?estatus=TODOS`,
+        `http://localhost:4000/api/controlescolar/reportes?estatus=${estatusFiltro}&modalidad=${modalidadFiltro}`,
       );
       const resultado = await res.json();
       if (res.ok && resultado.ok) {
@@ -24,32 +24,22 @@ export default function ReportesPage() {
     }
   };
 
+  // Se recargan los datos automáticamente cada vez que el usuario cambia un filtro
   useEffect(() => {
     cargarDatosReporte();
-  }, []);
-
-  // Filtrado de datos para el reporte
-  const datosFiltrados = datosReporte.filter((item) => {
-    const cumpleModalidad =
-      modalidadFiltro === "TODOS" || item.tipoAdmision === modalidadFiltro;
-    const cumpleEstatus =
-      estatusFiltro === "TODOS" ||
-      (estatusFiltro === "ALUMNOS" && item.matricula) ||
-      (estatusFiltro === "ASPIRANTES" && !item.matricula);
-    return cumpleModalidad && cumpleEstatus;
-  });
+  }, [estatusFiltro, modalidadFiltro]);
 
   // Función para exportar a Excel
   const exportarAExcel = () => {
-    if (datosFiltrados.length === 0) {
+    if (datosReporte.length === 0) {
       alert("No hay datos para exportar con los filtros seleccionados.");
       return;
     }
 
-    const datosExcel = datosFiltrados.map((item, index) => ({
+    const datosExcel = datosReporte.map((item, index) => ({
       "No.": index + 1,
       Folio: item.folio,
-      Matrícula: item.matricula || "PENDIENTE",
+      Matrícula: item.matricula || "PENDIENTE (EN PRÓRROGA)",
       "Apellido Paterno": item.apellidoPaterno,
       "Apellido Materno": item.apellidoMaterno || "",
       Nombres: item.nombres,
@@ -83,13 +73,14 @@ export default function ReportesPage() {
               Generación y Descarga de Reportes Institucionales
             </h1>
             <p className="text-xs text-slate-500">
-              Filtra el padrón de aspirantes y alumnos para exportar la
-              información directamente a formato Excel.
+              Filtra el padrón de aspirantes y alumnos (incluyendo la prórroga
+              de 5 días para pendientes) para exportar la información
+              directamente a formato Excel.
             </p>
           </div>
           <button
             onClick={exportarAExcel}
-            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2"
+            className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2 cursor-pointer"
           >
             📊 Descargar Reporte en Excel
           </button>
@@ -104,7 +95,7 @@ export default function ReportesPage() {
             <select
               value={modalidadFiltro}
               onChange={(e) => setModalidadFiltro(e.target.value)}
-              className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold"
+              className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
             >
               <option value="TODOS">Todas las modalidades</option>
               <option value="nuevo_ingreso">Nuevo Ingreso</option>
@@ -119,14 +110,14 @@ export default function ReportesPage() {
             <select
               value={estatusFiltro}
               onChange={(e) => setEstatusFiltro(e.target.value)}
-              className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold"
+              className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
             >
               <option value="TODOS">Todos (Aspirantes y Alumnos)</option>
               <option value="ASPIRANTES">
-                Solo Aspirantes (Sin Matrícula)
+                Solo Aspirantes No Validados (Pendientes con prórroga)
               </option>
               <option value="ALUMNOS">
-                Solo Alumnos Activos (Con Matrícula)
+                Solo Alumnos Validados (Con Matrícula Oficial)
               </option>
             </select>
           </div>
@@ -136,7 +127,7 @@ export default function ReportesPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-700">
             <span>
-              Vista Previa de Registros ({datosFiltrados.length} encontrados)
+              Vista Previa de Registros ({datosReporte.length} encontrados)
             </span>
           </div>
           <div className="overflow-x-auto">
@@ -158,7 +149,7 @@ export default function ReportesPage() {
                       Cargando datos para el reporte...
                     </td>
                   </tr>
-                ) : datosFiltrados.length === 0 ? (
+                ) : datosReporte.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="p-6 text-center text-slate-400">
                       No hay registros que coincidan con los filtros
@@ -166,7 +157,7 @@ export default function ReportesPage() {
                     </td>
                   </tr>
                 ) : (
-                  datosFiltrados.map((item) => (
+                  datosReporte.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50">
                       <td className="p-3 font-mono font-bold text-blue-950">
                         {item.folio}

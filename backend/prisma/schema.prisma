@@ -7,9 +7,7 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// ==========================================
 // CATÁLOGOS INDEPENDIENTES CON BAJA LÓGICA
-// ==========================================
 
 model Subsistema {
   id         Int         @id @default(autoincrement())
@@ -74,10 +72,7 @@ model Semestre {
   @@map("semestre")
 }
 
-// ==========================================
 // TABLA INTERMEDIA PARA DISCAPACIDADES (Muchos a Muchos)
-// ==========================================
-
 model AspiranteDiscapacidad {
   id             Int          @id @default(autoincrement())
   aspiranteId    Int
@@ -89,9 +84,7 @@ model AspiranteDiscapacidad {
   @@map("aspirante_discapacidad")
 }
 
-// ==========================================
 // CONTROL DE TIPOS DE USUARIO Y ROLES
-// ==========================================
 
 model TipoUsuario {
   id          Int     @id @default(autoincrement())
@@ -122,9 +115,7 @@ model Usuario {
   @@map("usuarios")
 }
 
-// ==========================================
 // MODELO PRINCIPAL DE ASPIRANTES Y ALUMNOS
-// ==========================================
 
 model Aspirante {
   id            Int       @id @default(autoincrement())
@@ -203,9 +194,7 @@ model Aspirante {
   @@map("aspirante")
 }
 
-// ==========================================
 // SUBMÓDULO DE VALIDACIÓN DE EXPEDIENTES
-// ==========================================
 
 model ValidacionExpediente {
   id              Int       @id @default(autoincrement())
@@ -223,9 +212,7 @@ model ValidacionExpediente {
   @@map("validacion_expedientes")
 }
 
-// ==========================================
 // MODELO DE DOCUMENTOS
-// ==========================================
 
 model Documento {
   id            Int       @id @default(autoincrement())
@@ -241,9 +228,7 @@ model Documento {
   @@map("documento")
 }
 
-// ==========================================
 // AUDITORÍA Y PAGOS
-// ==========================================
 
 model Auditoria {
   id           Int      @id @default(autoincrement())
@@ -387,4 +372,29 @@ model HistorialAcademico {
 
   @@unique([aspiranteId, materiaId])
   @@map("historial_academico")
+}
+
+// MÓDULO DE CICLOS ESCOLARES Y CONTROL DE FECHAS
+
+model CicloEscolar {
+  id                        Int       @id @default(autoincrement())
+  clave                     String    @unique @db.VarChar(45) // Ej: 2026-A
+  claveIntersemestral       String?   @db.VarChar(45)
+  inicia                    DateTime? @db.Date
+  iniciaIntersemestral      DateTime? @db.Date
+  termina                   DateTime? @db.Date
+  terminaIntersemestral     DateTime? @db.Date
+  activo                    Int       @default(1) // 1: Activo/Interruptor general, 0: Inactivo
+  fechaConformarExpediente  DateTime? @db.Date
+  fechaConformarExpEdInter  DateTime? @db.Date
+  ultimoFolio               String?   @db.VarChar(9)
+  ultimoFolioInter          String?   @db.VarChar(9)
+  inicioCurso               DateTime? @db.Date
+  inicioCursoInter          DateTime? @db.Date
+  fechaTaller               DateTime? @db.Date
+  fechaTallerInter          DateTime? @db.Date
+  creadoEn                  DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@map("ciclo_escolar")
 }

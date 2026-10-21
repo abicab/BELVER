@@ -7,6 +7,9 @@ import validacionaspirantesRoute from "./routes/validacionaspirantesRoute.ts";
 import userRoutes from "./routes/userRoutes.js"; // 1. IMPORTAR LA RUTA DE USUARIOS
 import historialRoutes from "./routes/historialRoute.js";
 import alumnosCERouter from "./routes/alumnosCERouter";
+import { obtenerDatosReportes } from "./controllers/alumnosCEController";
+import router from "./routes/alumnosCERouter";
+import reportesRoutes from "./routes/reportesRoutes";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -14,7 +17,11 @@ const PORT = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/controlescolar", alumnosCERouter); // Montar las rutas de alumnos del control escolar
+// Ruta para obtener datos de reportes institucionales
+app.use("/api/controlescolar/reportes", reportesRoutes);
+
+// Montar las rutas de alumnos del control escolar
+app.use("/api/controlescolar", alumnosCERouter);
 
 // CAMBIAMOS ESTA LÍNEA para que coincida exactamente con el frontend (/api/controlescolar)
 app.use("/api/controlescolar", validacionaspirantesRoute);

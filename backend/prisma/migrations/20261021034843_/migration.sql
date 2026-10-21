@@ -304,6 +304,31 @@ CREATE TABLE `historial_academico` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `ciclo_escolar` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `clave` VARCHAR(45) NOT NULL,
+    `claveIntersemestral` VARCHAR(45) NULL,
+    `inicia` DATE NULL,
+    `iniciaIntersemestral` DATE NULL,
+    `termina` DATE NULL,
+    `terminaIntersemestral` DATE NULL,
+    `activo` INTEGER NOT NULL DEFAULT 1,
+    `fechaConformarExpediente` DATE NULL,
+    `fechaConformarExpEdInter` DATE NULL,
+    `ultimoFolio` VARCHAR(9) NULL,
+    `ultimoFolioInter` VARCHAR(9) NULL,
+    `inicioCurso` DATE NULL,
+    `inicioCursoInter` DATE NULL,
+    `fechaTaller` DATE NULL,
+    `fechaTallerInter` DATE NULL,
+    `creadoEn` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `ciclo_escolar_clave_key`(`clave`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `aspirante_discapacidad` ADD CONSTRAINT `aspirante_discapacidad_aspiranteId_fkey` FOREIGN KEY (`aspiranteId`) REFERENCES `aspirante`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 

@@ -87,10 +87,8 @@ const analizarCurpAutomatica = (curp) => {
   const anioCompleto =
     anioDigito > 26 ? `19${curp.substring(4, 6)}` : `20${curp.substring(4, 6)}`;
   const fechaNacimiento = `${anioCompleto}-${mes}-${dia}`;
-
   const letraSexo = curp.charAt(10).toUpperCase();
   const sexo = letraSexo === "H" ? "HOMBRE" : letraSexo === "M" ? "MUJER" : "";
-
   return { fechaNacimiento, sexo };
 };
 
@@ -131,12 +129,10 @@ export default function AdmissionPage() {
           setGeneros(resultado.data.genero || []);
           setIdentidadesCulturales(resultado.data.identidadCultural || []);
           setParentescosDisponibles(resultado.data.parentesco || []);
-
           const subsFiltrados = (resultado.data.subsistema || []).filter(
             (sub) => !sub.nombre.toUpperCase().includes("SECUNDARIA"),
           );
           setSubsistemasDisponibles(subsFiltrados);
-
           setSemestresDisponibles(resultado.data.semestre || []);
           setDiscapacidadesDisponibles(resultado.data.discapacidad || []);
         }
@@ -200,7 +196,6 @@ export default function AdmissionPage() {
 
   const handleChange = (e) => {
     const { name, value, checked } = e.target;
-
     if (name === "discapacidades") {
       let nuevasDiscapacidades = [...formData.discapacidades];
       if (checked) {
@@ -237,7 +232,6 @@ export default function AdmissionPage() {
     }
 
     let processedValue = value;
-
     if (name.includes("correoElectronico")) {
       processedValue = value.trim().slice(0, 60);
     } else if (
@@ -269,7 +263,6 @@ export default function AdmissionPage() {
         .replace(/[^A-Za-z0-9]/g, "")
         .toUpperCase()
         .slice(0, 18);
-
       if (
         processedValue.length === 18 &&
         validarEstructuraCurp(processedValue)
@@ -327,7 +320,6 @@ export default function AdmissionPage() {
     if (formData.pais === "MÉXICO") {
       const cpLimpio = cp.replace(/\D/g, "").slice(0, 5);
       setFormData((prev) => ({ ...prev, codigoPostal: cpLimpio }));
-
       if (cpLimpio.length === 5) {
         setCargandoCp(true);
         try {
@@ -433,7 +425,6 @@ export default function AdmissionPage() {
         `http://localhost:4000/api/admission/consulta?folio=${claveFolio}&curp=${curpVal}`,
       );
       const resultado = await response.json();
-
       if (response.ok && resultado.ok) {
         setConsultaResult(resultado.data);
       } else {
@@ -458,7 +449,6 @@ export default function AdmissionPage() {
     try {
       const dataToSend = new FormData();
       dataToSend.append("archivo", nuevoArchivo);
-
       const response = await fetch(
         `http://localhost:4000/api/admission/documentos/${documentoId}/modificar`,
         {
@@ -467,7 +457,6 @@ export default function AdmissionPage() {
         },
       );
       const resultado = await response.json();
-
       if (response.ok && resultado.ok) {
         mostrarAlerta(
           "Documento modificado y enviado a revisión exitosamente.",
@@ -507,7 +496,6 @@ export default function AdmissionPage() {
         );
         return;
       }
-
       if (!validarEstructuraCurp(formData.curp.trim())) {
         mostrarAlerta(
           "La CURP ingresada no es válida. Revisa que tenga 18 caracteres exactos y una estructura real.",
@@ -515,7 +503,6 @@ export default function AdmissionPage() {
         );
         return;
       }
-
       if (
         formData.correoElectronico1 !== formData.correoElectronicoConfirmacion
       ) {
@@ -525,7 +512,6 @@ export default function AdmissionPage() {
         );
         return;
       }
-
       if (
         !formData.tutorApellidoPaterno ||
         !formData.tutorNombres ||
@@ -535,7 +521,6 @@ export default function AdmissionPage() {
         mostrarAlerta("Los datos del Tutor son obligatorios.");
         return;
       }
-
       try {
         const res = await fetch(
           `http://localhost:4000/api/admission/verificar-duplicado?curp=${formData.curp.trim()}`,
@@ -636,13 +621,9 @@ export default function AdmissionPage() {
       if (response.ok && resultado.ok) {
         const nombreCompleto =
           `${formData.apellidoPaterno} ${formData.apellidoMaterno || ""} ${formData.nombres}`.trim();
-        const fechaVigencia = new Date();
-        fechaVigencia.setDate(fechaVigencia.getDate() + 15);
-        const fechaLimiteStr = fechaVigencia.toLocaleDateString("es-MX", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
+
+        // ✅ AQUÍ ESTÁ LA MAGIA: Tomamos la fecha límite real mandada por el backend desde ciclo_escolar
+        const fechaLimiteStr = resultado.data.fechaLimite || "N/A";
 
         setSubmittedData({
           folio: resultado.data.folio,
@@ -1017,7 +998,6 @@ export default function AdmissionPage() {
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none uppercase bg-white font-semibold"
                     />
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
                       {formData.pais === "MÉXICO" ? (
@@ -1046,7 +1026,6 @@ export default function AdmissionPage() {
                       className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg outline-none font-mono bg-white"
                     />
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
                       Estado / Provincia{" "}
@@ -1090,7 +1069,6 @@ export default function AdmissionPage() {
                       className={`w-full px-3 py-2 text-xs border border-slate-300 rounded-lg uppercase ${formData.pais === "MÉXICO" ? "bg-slate-100 text-slate-600 font-medium" : "bg-white"}`}
                     />
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
                       Colonia / Asentamiento{" "}
@@ -1122,7 +1100,6 @@ export default function AdmissionPage() {
                       />
                     )}
                   </div>
-
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold text-slate-700">
                       Calle <span className="text-red-600 font-bold">*</span>
@@ -1337,7 +1314,6 @@ export default function AdmissionPage() {
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b pb-2">
                 2. Modalidad de Ingreso y Antecedentes Escolares
               </h2>
-
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-slate-700">
                   Modalidad de Registro{" "}
@@ -1606,9 +1582,6 @@ export default function AdmissionPage() {
                       className="hidden"
                     />
                   </label>
-                  <span className="text-[10px] text-slate-500">
-                    Formato infantil o credencial en fondo blanco o claro.
-                  </span>
                 </div>
               </div>
 
@@ -1625,10 +1598,7 @@ export default function AdmissionPage() {
                 },
                 {
                   key: "studyCert",
-                  label:
-                    formData.tipoAdmision === "nuevo_ingreso"
-                      ? "Certificado de Secundaria (De Ambos Lados) (PDF)"
-                      : "Certificado de Secundaria (De Ambos Lados) (PDF)",
+                  label: "Certificado de Secundaria (De Ambos Lados) (PDF)",
                 },
               ].map((doc) => (
                 <div
@@ -1872,7 +1842,7 @@ export default function AdmissionPage() {
           </div>
         </form>
 
-        {/* MODAL DE CONSULTA ESTILIZADO CON VISUALIZADOR Y MODIFICACIÓN ACTIVA */}
+        {/* MODAL DE CONSULTA */}
         {isConsultaOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
             <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6 transform transition-all">
@@ -1944,32 +1914,9 @@ export default function AdmissionPage() {
                     disabled={cargandoConsulta}
                     className="w-full py-3 bg-slate-950 hover:bg-slate-900 text-white font-bold rounded-xl transition shadow-md flex items-center justify-center gap-2 text-xs tracking-wider uppercase disabled:opacity-50"
                   >
-                    {cargandoConsulta ? (
-                      <span className="flex items-center gap-2">
-                        <svg
-                          className="animate-spin h-4 w-4 text-white"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8v8H4z"
-                          ></path>
-                        </svg>
-                        Verificando en Base de Datos...
-                      </span>
-                    ) : (
-                      "Consultar Estado y Expediente"
-                    )}
+                    {cargandoConsulta
+                      ? "Verificando en Base de Datos..."
+                      : "Consultar Estado y Expediente"}
                   </button>
                 </form>
 
@@ -1991,11 +1938,7 @@ export default function AdmissionPage() {
                         </h3>
                       </div>
                       <span
-                        className={`px-3 py-1.5 font-extrabold rounded-xl text-[10px] tracking-wider uppercase shadow-2xs ${
-                          consultaResult.estatus === "APROBADO"
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-                            : "bg-amber-100 text-amber-900 border border-amber-300"
-                        }`}
+                        className={`px-3 py-1.5 font-extrabold rounded-xl text-[10px] tracking-wider uppercase shadow-2xs ${consultaResult.estatus === "APROBADO" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-100 text-amber-900 border border-amber-300"}`}
                       >
                         {consultaResult.estatus || "EN REVISIÓN"}
                       </span>
@@ -2004,7 +1947,7 @@ export default function AdmissionPage() {
                     {consultaResult.estatus === "APROBADO" &&
                       consultaResult.matricula && (
                         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                          <h4 className="font-bold text-xs uppercase tracking-wide text-emerald-950 flex items-center gap-1.5">
+                          <h4 className="font-bold text-xs uppercase tracking-wide text-emerald-950">
                             🎉 ¡Expediente Aprobado con Éxito! Credenciales
                             Institucionales:
                           </h4>
@@ -2012,7 +1955,7 @@ export default function AdmissionPage() {
                             <div>
                               <span className="text-slate-400 font-bold text-[9px] uppercase block">
                                 Matrícula Asignada:
-                              </span>
+                              </span>{" "}
                               <span className="text-emerald-900 font-extrabold text-sm">
                                 {consultaResult.matricula}
                               </span>
@@ -2020,7 +1963,7 @@ export default function AdmissionPage() {
                             <div>
                               <span className="text-slate-400 font-bold text-[9px] uppercase block">
                                 Contraseña Única:
-                              </span>
+                              </span>{" "}
                               <span className="text-emerald-900 font-extrabold text-sm">
                                 {consultaResult.password}
                               </span>
@@ -2033,7 +1976,7 @@ export default function AdmissionPage() {
                       <div className="flex flex-col">
                         <span className="text-slate-400 font-bold uppercase text-[9px]">
                           Folio Oficial:
-                        </span>
+                        </span>{" "}
                         <span className="font-mono font-bold text-slate-800 text-xs mt-0.5">
                           {consultaResult.folio}
                         </span>
@@ -2041,7 +1984,7 @@ export default function AdmissionPage() {
                       <div className="flex flex-col">
                         <span className="text-slate-400 font-bold uppercase text-[9px]">
                           CURP:
-                        </span>
+                        </span>{" "}
                         <span className="font-mono font-bold text-slate-800 text-xs mt-0.5">
                           {consultaResult.curp}
                         </span>
@@ -2051,7 +1994,7 @@ export default function AdmissionPage() {
                     {consultaResult.estatus !== "APROBADO" &&
                       consultaResult.observaciones && (
                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1">
-                          <h4 className="font-bold text-xs uppercase tracking-wide flex items-center gap-1.5 text-amber-950">
+                          <h4 className="font-bold text-xs uppercase tracking-wide text-amber-950">
                             ⚠️ Observaciones de Control Escolar:
                           </h4>
                           <p className="text-xs leading-relaxed text-amber-900 whitespace-pre-wrap">
@@ -2085,7 +2028,6 @@ export default function AdmissionPage() {
                                   <span className="text-[10px] text-slate-500 font-mono truncate max-w-[190px] sm:max-w-[220px]">
                                     Archivo: {doc.nombreArchivo}
                                   </span>
-
                                   {doc.estatusDoc === "APROBADO" ? (
                                     <span className="text-[10px] font-extrabold text-emerald-700 mt-1 uppercase">
                                       APROBADO
@@ -2104,21 +2046,21 @@ export default function AdmissionPage() {
                                   )}
                                 </div>
                               </div>
-
                               <div className="flex items-center gap-2 self-end sm:self-center">
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    const urlDoc = `http://localhost:4000/api/controlescolar/documentos/${doc.id}/ver`;
-                                    window.open(urlDoc, "_blank");
+                                    window.open(
+                                      `http://localhost:4000/api/controlescolar/documentos/${doc.id}/ver`,
+                                      "_blank",
+                                    );
                                   }}
                                   className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-[10px] font-bold transition shadow-2xs"
                                 >
                                   👁️ Ver
                                 </button>
-
                                 {doc.estatusDoc === "RECHAZADO" && (
                                   <label className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold transition cursor-pointer shadow-2xs">
                                     ✏️ Modificar
@@ -2129,12 +2071,11 @@ export default function AdmissionPage() {
                                       onChange={(e) => {
                                         e.preventDefault();
                                         const archivoNuevo = e.target.files[0];
-                                        if (archivoNuevo) {
+                                        if (archivoNuevo)
                                           handleModificarDocumentoRechazado(
                                             doc.id,
                                             archivoNuevo,
                                           );
-                                        }
                                       }}
                                     />
                                   </label>
