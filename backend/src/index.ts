@@ -1,21 +1,23 @@
 import express from "express";
 import cors from "cors";
 import admissionRoute from "./routes/admissionRoute";
-import catalogoRoute from "./routes/catalogoRoute";
 import studyPlanRoutes from "./routes/studyPlanRoutes";
 import validacionaspirantesRoute from "./routes/validacionaspirantesRoute.ts";
 import userRoutes from "./routes/userRoutes.js"; // 1. IMPORTAR LA RUTA DE USUARIOS
 import historialRoutes from "./routes/historialRoute.js";
 import alumnosCERouter from "./routes/alumnosCERouter";
-import { obtenerDatosReportes } from "./controllers/alumnosCEController";
-import router from "./routes/alumnosCERouter";
 import reportesRoutes from "./routes/reportesRoutes";
+import cicloRoutes from "./routes/cicloRoute.js";
+import catalogoRoute from "./routes/catalogoRoute.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// Montar las rutas de ciclos escolares
+app.use("/api/ciclos", cicloRoutes);
 
 // Ruta para obtener datos de reportes institucionales
 app.use("/api/controlescolar/reportes", reportesRoutes);
@@ -27,7 +29,7 @@ app.use("/api/controlescolar", alumnosCERouter);
 app.use("/api/controlescolar", validacionaspirantesRoute);
 
 // Ruta de Catálogos
-app.use("/api/catalogo", catalogoRoute);
+app.use("/api/catalogos", catalogoRoute);
 
 // Montar las rutas de inscripción
 app.use("/api/admission", admissionRoute);

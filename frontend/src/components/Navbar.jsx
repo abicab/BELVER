@@ -8,9 +8,11 @@ export default function Navbar({
   onOpenConfig,
   onLogout,
 }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const navRef = useRef(null);
 
+  // Todos los módulos disponibles en el sistema con sus roles permitidos
   const ALL_MODULES = [
     {
       id: "ValidacionAspirantesPage",
@@ -24,12 +26,17 @@ export default function Navbar({
     },
     {
       id: "HistorialAca",
-      label: "Historial Academico",
+      label: "Historial Académico",
       roles: ["ADMIN", "CONTROL_ESCOLAR"],
     },
     {
       id: "ReportesPage",
       label: "Reportes",
+      roles: ["ADMIN", "CONTROL_ESCOLAR"],
+    },
+    {
+      id: "PlanEstudiosPage",
+      label: "Planes de Estudio",
       roles: ["ADMIN", "CONTROL_ESCOLAR"],
     },
     { id: "CaePage", label: "Panel CAE", roles: ["ADMIN", "CAE"] },
@@ -38,13 +45,10 @@ export default function Navbar({
       label: "Caja y Pagos",
       roles: ["ADMIN", "FINANZAS", "CAE"],
     },
-    { id: "BitacoraPage", label: "Bitácora", roles: ["ADMIN"] },
+    { id: "CatalogosPage", label: "Catálogos", roles: ["ADMIN"] },
+    { id: "CicloPage", label: "Ciclos Escolares", roles: ["ADMIN"] },
     { id: "UsersPage", label: "Gestión de Usuarios", roles: ["ADMIN"] },
-    {
-      id: "PlanEstudiosPage",
-      label: "Planes de Estudio",
-      roles: ["ADMIN", "CONTROL_ESCOLAR"],
-    },
+    { id: "BitacoraPage", label: "Bitácora", roles: ["ADMIN"] },
     { id: "AlumnoPage", label: "Portal Alumno", roles: ["ADMIN", "ALUMNO"] },
     {
       id: "AlumnoUnicoPage",
@@ -53,19 +57,50 @@ export default function Navbar({
     },
   ];
 
+  // Categorías exclusivas para el menú de ADMIN
+  const ADMIN_CATEGORIES = [
+    {
+      key: "control_escolar",
+      label: "Control Escolar",
+      modules: [
+        "ValidacionAspirantesPage",
+        "AlumnosCEPage",
+        "HistorialAca",
+        "ReportesPage",
+        "PlanEstudiosPage",
+      ],
+    },
+    {
+      key: "administracion",
+      label: "Administración",
+      modules: ["CaePage", "PagosPage"],
+    },
+  ];
+
+  // Módulos independientes que el Administrador también ve fuera de las categorías principales
+  const ADMIN_INDEPENDENT = [
+    "CatalogosPage",
+    "CicloPage",
+    "UsersPage",
+    "BitacoraPage",
+    "AlumnoPage",
+    "AlumnoUnicoPage",
+  ];
+
   const currentRole = userProfile?.roleCode || "GUEST";
   const isAdmin = currentRole === "ADMIN";
 
-  // Filtrado de módulos según el rol activo
+  // Filtrar módulos permitidos para el rol actual
   const visibleModules = ALL_MODULES.filter((mod) =>
-    currentRole === "ADMIN" ? true : mod.roles.includes(currentRole),
+    isAdmin ? true : mod.roles.includes(currentRole),
   );
 
-  // Cerrar menú al hacer clic fuera del componente
+  // Cerrar menús al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
+      if (navRef.current && !navRef.current.contains(event.target)) {
+        setOpenDropdown(null);
+        setIsProfileDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -79,10 +114,15 @@ export default function Navbar({
     return (parts[0][0] + parts[1][0]).toUpperCase();
   };
 
+  const isGroupActive = (moduleIds) => {
+    return moduleIds.includes(activeModule);
+  };
+
   return (
     <header
       style={{ backgroundColor: branding?.headerColor || "#0f172a" }}
-      className="text-white border-b border-white/10 shadow-md sticky top-0 z-40 transition-colors duration-300 select-none"
+      className="text-white border-b border-white/10 shadow-md sticky top-0 z-50 transition-colors duration-300 select-none"
+      ref={navRef}
     >
       {/* 1. Cintillo Institucional Superior */}
       <div className="bg-black/30 px-4 sm:px-8 py-1 flex justify-between items-center text-[10px] text-slate-300 border-b border-white/5">
@@ -106,20 +146,20 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* 2. Barra Principal: Logo (Izq), Módulos (Centro), Botón Perfil con Nombre (Der) */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-4">
+      {/* 2. Barra Principal */}
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-4">
         {/* Identidad Institucional */}
         <div className="flex items-center gap-3 shrink-0">
           {branding?.logoUrl ? (
             <img
               src={branding.logoUrl}
               alt="Logo"
-              className="h-12 w-auto max-w-[150px] rounded-xl object-contain bg-white/10 p-1.5 border border-white/25 shadow-sm"
+              className="h-11 w-auto max-w-[140px] rounded-xl object-contain bg-white/10 p-1.5 border border-white/25 shadow-sm"
             />
           ) : (
             <div
               style={{ backgroundColor: branding?.accentColor || "#1e3a8a" }}
-              className="w-11 h-11 rounded-2xl border border-white/30 flex items-center justify-center font-black text-xs tracking-wider text-white shadow-inner"
+              className="w-10 h-10 rounded-2xl border border-white/30 flex items-center justify-center font-black text-xs tracking-wider text-white shadow-inner"
             >
               {branding?.shortName || "BV"}
             </div>
@@ -141,38 +181,139 @@ export default function Navbar({
           </div>
         </div>
 
-        {/* Pestañas de Módulos */}
-        <nav className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/10 overflow-x-auto max-w-full">
-          {visibleModules.map((mod) => {
-            const isActive = activeModule === mod.id;
-            return (
-              <button
-                key={mod.id}
-                onClick={() => onSelectModule && onSelectModule(mod.id)}
-                style={
-                  isActive
-                    ? { backgroundColor: branding?.accentColor || "#1e3a8a" }
-                    : {}
-                }
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
-                  isActive
-                    ? "text-white shadow-sm border border-white/30 font-bold"
-                    : "text-slate-300 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {mod.label}
-              </button>
-            );
-          })}
+        {/* Navegación Dinámica según el Rol */}
+        <nav className="flex items-center gap-1.5 bg-black/20 p-1 rounded-xl border border-white/10 relative flex-wrap justify-center">
+          {/* SI ES ADMIN: Renderizamos con categorías desplegables */}
+          {isAdmin ? (
+            <>
+              {ADMIN_CATEGORIES.map((cat) => {
+                const catModules = ALL_MODULES.filter((mod) =>
+                  cat.modules.includes(mod.id),
+                );
+                const isOpen = openDropdown === cat.key;
+                const activeCat = isGroupActive(cat.modules);
+
+                return (
+                  <div className="relative" key={cat.key}>
+                    <button
+                      onClick={() => setOpenDropdown(isOpen ? null : cat.key)}
+                      style={
+                        activeCat
+                          ? {
+                              backgroundColor:
+                                branding?.accentColor || "#1e3a8a",
+                            }
+                          : {}
+                      }
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                        activeCat
+                          ? "text-white shadow-sm border border-white/30 font-bold"
+                          : "text-slate-300 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span>{cat.label}</span>
+                      <span
+                        className={`text-[8px] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                      >
+                        ▼
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="absolute left-0 mt-2 w-56 bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-200 py-2 z-50">
+                        {catModules.map((mod) => {
+                          const isModActive = activeModule === mod.id;
+                          return (
+                            <button
+                              key={mod.id}
+                              onClick={() => {
+                                onSelectModule && onSelectModule(mod.id);
+                                setOpenDropdown(null);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors flex items-center justify-between ${
+                                isModActive
+                                  ? "bg-blue-50 text-blue-900 font-bold border-l-4 border-blue-900"
+                                  : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                              }`}
+                            >
+                              <span>{mod.label}</span>
+                              {isModActive && (
+                                <span className="text-[10px] text-blue-900">
+                                  ●
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Botones independientes para el Administrador */}
+              {ALL_MODULES.filter((mod) =>
+                ADMIN_INDEPENDENT.includes(mod.id),
+              ).map((mod) => {
+                const isActive = activeModule === mod.id;
+                return (
+                  <button
+                    key={mod.id}
+                    onClick={() => {
+                      onSelectModule && onSelectModule(mod.id);
+                      setOpenDropdown(null);
+                    }}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: branding?.accentColor || "#1e3a8a",
+                          }
+                        : {}
+                    }
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "text-white shadow-sm border border-white/30 font-bold"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {mod.label}
+                  </button>
+                );
+              })}
+            </>
+          ) : (
+            /* SI ES OTRO ROL (Ej. CONTROL_ESCOLAR): Todos los botones aparecen independientes y directos */
+            visibleModules.map((mod) => {
+              const isActive = activeModule === mod.id;
+              return (
+                <button
+                  key={mod.id}
+                  onClick={() => {
+                    onSelectModule && onSelectModule(mod.id);
+                    setOpenDropdown(null);
+                  }}
+                  style={
+                    isActive
+                      ? { backgroundColor: branding?.accentColor || "#1e3a8a" }
+                      : {}
+                  }
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                    isActive
+                      ? "text-white shadow-sm border border-white/30 font-bold"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {mod.label}
+                </button>
+              );
+            })
+          )}
         </nav>
 
-        {/* Botón de Perfil con Nombre y Avatar Estilo Google */}
-        <div
-          className="relative shrink-0 border-l border-white/15 pl-3"
-          ref={dropdownRef}
-        >
+        {/* Botón de Perfil del Usuario */}
+        <div className="relative shrink-0 border-l border-white/15 pl-3">
           <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
             className="flex items-center gap-2.5 py-1 px-2.5 rounded-full hover:bg-white/10 border border-transparent hover:border-white/15 transition-all cursor-pointer focus:outline-none"
           >
             <div className="hidden sm:block text-right leading-tight">
@@ -184,7 +325,6 @@ export default function Navbar({
               </span>
             </div>
 
-            {/* Círculo con Avatar / Iniciales */}
             <div className="w-9 h-9 rounded-full p-0.5 flex items-center justify-center shrink-0">
               {userProfile?.avatarUrl ? (
                 <img
@@ -205,18 +345,16 @@ export default function Navbar({
             </div>
 
             <span
-              className={`text-[9px] text-slate-300 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
+              className={`text-[9px] text-slate-300 transition-transform duration-200 ${isProfileDropdownOpen ? "rotate-180" : ""}`}
             >
               ▼
             </span>
           </button>
 
-          {/* Menú Desplegable Estilo Tarjeta de Cuenta Google */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-3 w-80 bg-white text-slate-800 rounded-3xl shadow-2xl border border-slate-200 p-5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              {/* Sección Central de la Cuenta */}
+          {/* Menú Desplegable del Perfil */}
+          {isProfileDropdownOpen && (
+            <div className="absolute right-0 mt-3 w-80 bg-white text-slate-800 rounded-3xl shadow-2xl border border-slate-200 p-5 z-50">
               <div className="flex flex-col items-center text-center pb-4 border-b border-slate-100">
-                {/* Avatar Grande Central */}
                 <div className="relative mb-3">
                   {userProfile?.avatarUrl ? (
                     <img
@@ -236,7 +374,6 @@ export default function Navbar({
                   )}
                 </div>
 
-                {/* Nombre y Rol */}
                 <h3 className="font-bold text-sm text-slate-900 leading-tight">
                   {userProfile?.name || "Usuario Activo"}
                 </h3>
@@ -249,37 +386,33 @@ export default function Navbar({
                 </span>
               </div>
 
-              {/* Acciones de la Cuenta */}
               <div className="pt-3 space-y-2">
-                {/* Opción Personalizar: Exclusiva de ADMIN */}
                 {isAdmin && (
                   <button
                     onClick={() => {
-                      setIsDropdownOpen(false);
+                      setIsProfileDropdownOpen(false);
                       if (onOpenConfig) onOpenConfig();
                     }}
-                    className="w-full py-2 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-2 transition shadow-2xs"
+                    className="w-full py-2 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-2 transition cursor-pointer"
                   >
                     <span>🎨</span>
                     <span>Personalizar Sistema</span>
                   </button>
                 )}
 
-                {/* Botón Cerrar Sesión Estilo Google */}
                 <button
                   onClick={() => {
-                    setIsDropdownOpen(false);
+                    setIsProfileDropdownOpen(false);
                     if (onLogout) onLogout();
                     else alert("Sesión finalizada.");
                   }}
-                  className="w-full py-2 px-3 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center gap-2 transition"
+                  className="w-full py-2 px-3 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center gap-2 transition cursor-pointer"
                 >
                   <span>🚪</span>
                   <span>Cerrar sesión</span>
                 </button>
               </div>
 
-              {/* Pie de Tarjeta Institucional */}
               <div className="mt-4 pt-2 text-center text-[10px] text-slate-400 border-t border-slate-100 flex justify-center gap-2">
                 <span>BELVER</span>
                 <span>•</span>

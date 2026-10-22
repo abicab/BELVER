@@ -8,6 +8,8 @@ import PagosPage from "./pages/PagosPage";
 import ValidacionAspirantesPage from "./pages/ValidacionAspirantesPage";
 import AlumnosCEPage from "./pages/AlumnosCEPage";
 import ReportesPage from "./pages/ReportesPage";
+import CicloPage from "./pages/CicloPage";
+import CatalogosPage from "./pages/CatalogoPage";
 
 // Bitácora bajo la responsabilidad de ambos
 import BitacoraPage from "./pages/BitacoraPage";
@@ -72,10 +74,8 @@ export default function App() {
     ...DEFAULT_USER_PROFILE,
   });
 
-  // Estado para guardar la información del alumno que el administrador decide visualizar
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // Manejador para redirigir desde UsersPage al portal del alumno seleccionado
   const handleNavigateToPortal = (targetModule, studentData) => {
     setSelectedStudent(studentData);
 
@@ -90,7 +90,6 @@ export default function App() {
     }
   };
 
-  // Manejador del Login con tolerancias a la respuesta del backend
   const handleLoginSuccess = (data) => {
     const rawRole =
       data?.user?.roleCode || data?.user?.role || data?.role || "ADMIN";
@@ -187,7 +186,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans text-slate-950 bg-slate-100">
-      {/* Navbar visible únicamente cuando hay autenticación y no es portal público */}
       {isAuthenticated && !isPublicPage && (
         <Navbar
           activeModule={currentModule}
@@ -199,7 +197,6 @@ export default function App() {
         />
       )}
 
-      {/* Cabecera aislada en portal público */}
       {isPublicPage && (
         <header className="w-full bg-slate-900 text-white py-2.5 px-4 sm:px-8 flex justify-between items-center text-xs shadow-md">
           <div className="flex items-center gap-2">
@@ -219,7 +216,6 @@ export default function App() {
         </header>
       )}
 
-      {/* Vistas de los módulos */}
       <main className="flex-1">
         {!isAuthenticated && !isPublicPage && (
           <LoginPage
@@ -241,6 +237,11 @@ export default function App() {
             {currentModule === "PagosPage" && <PagosPage />}
             {currentModule === "BitacoraPage" && <BitacoraPage />}
 
+            {/* Vinculación correcta con el identificador exacto de CicloPage */}
+            {currentModule === "CicloPage" && <CicloPage branding={branding} />}
+
+            {currentModule === "CatalogosPage" && <CatalogosPage />}
+
             {currentModule === "UsersPage" && (
               <UsersPage onNavigateToPortal={handleNavigateToPortal} />
             )}
@@ -249,7 +250,6 @@ export default function App() {
               <PlanEstudiosPage userRole={userProfile?.roleCode} />
             )}
 
-            {/* 👈 2. IMPORTANTE: Vista de Historial Académico */}
             {currentModule === "HistorialAca" && <HistorialAca />}
 
             {currentModule === "AlumnoPage" && (
@@ -262,11 +262,9 @@ export default function App() {
         )}
       </main>
 
-      {/* Modal de personalización con diseño estilizado BELVER */}
       {isConfigOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col my-8 animate-in fade-in zoom-in-95 duration-200">
-            {/* Cabecera estilizada del modal */}
+          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-lg shadow-2xl overflow-hidden flex flex-col my-8">
             <div className="bg-slate-900 text-white px-5 py-3.5 flex justify-between items-center border-b border-slate-800">
               <div className="flex items-center gap-2.5">
                 <span className="text-base">🎨</span>
@@ -286,7 +284,7 @@ export default function App() {
               onSubmit={handleSaveConfig}
               className="p-6 space-y-5 text-xs text-slate-700 overflow-y-auto max-h-[75vh]"
             >
-              {/* Sección 1: Identidad Institucional */}
+              {/* Contenido del modal de configuración */}
               <div className="space-y-3.5">
                 <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-900"></span>
@@ -309,7 +307,7 @@ export default function App() {
                           institutionName: e.target.value,
                         })
                       }
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-900/30 focus:border-blue-900 transition shadow-sm"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
@@ -326,7 +324,7 @@ export default function App() {
                           shortName: e.target.value,
                         })
                       }
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold uppercase text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-900/30 focus:border-blue-900 transition shadow-sm"
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold uppercase text-slate-800"
                     />
                   </div>
                 </div>
@@ -344,7 +342,7 @@ export default function App() {
                         systemSubtitle: e.target.value,
                       })
                     }
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-900/30 focus:border-blue-900 transition shadow-sm"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800"
                   />
                 </div>
 
@@ -394,7 +392,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Caja de Logotipo */}
                 <div className="flex flex-col gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm">
                   <div className="flex justify-between items-center">
                     <label className="font-bold text-slate-800 text-[11px]">
@@ -416,122 +413,16 @@ export default function App() {
                     type="file"
                     accept=".png,image/png"
                     onChange={(e) => handleImageUpload(e, "logoUrl")}
-                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-950 file:text-white hover:file:bg-blue-900 border border-slate-300 rounded-xl p-1.5 bg-white cursor-pointer shadow-sm transition"
+                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-950 file:text-white"
                   />
-                  {formConfig.logoUrl && (
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200 mt-1">
-                      <span className="text-[10px] font-semibold text-slate-500">
-                        Vista previa:
-                      </span>
-                      <img
-                        src={formConfig.logoUrl}
-                        alt="Logo Preview"
-                        className="w-8 h-8 object-contain bg-white rounded-lg border border-slate-300 p-1 shadow-inner"
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Sección 2: Perfil de Usuario */}
-              <div className="space-y-3.5 pt-2">
-                <div className="flex items-center gap-2 border-b border-slate-200 pb-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-900"></span>
-                  <span className="font-extrabold text-slate-900 uppercase tracking-wider text-[11px]">
-                    2. Perfil de Usuario y Rol RBAC
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="font-bold text-slate-700 text-[11px]">
-                      Nombre de Usuario
-                    </label>
-                    <input
-                      type="text"
-                      value={formConfig.name}
-                      onChange={(e) =>
-                        setFormConfig({ ...formConfig, name: e.target.value })
-                      }
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-900/30 focus:border-blue-900 transition shadow-sm"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="font-bold text-slate-700 text-[11px]">
-                      Rol Activo
-                    </label>
-                    <select
-                      value={formConfig.roleCode}
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        const roleNames = {
-                          ADMIN: "Super Administrador",
-                          CONTROL_ESCOLAR: "Control Escolar",
-                          CAE: "Atención Estudiantil",
-                          FINANZAS: "Caja y Cobranza",
-                        };
-                        setFormConfig({
-                          ...formConfig,
-                          roleCode: code,
-                          role: roleNames[code] || code,
-                        });
-                      }}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-900/30 focus:border-blue-900 transition cursor-pointer shadow-sm"
-                    >
-                      <option value="ADMIN">Super Administrador</option>
-                      <option value="CONTROL_ESCOLAR">Control Escolar</option>
-                      <option value="CAE">Personal CAE</option>
-                      <option value="FINANZAS">Caja y Finanzas</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Caja de Avatar */}
-                <div className="flex flex-col gap-2 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl shadow-sm">
-                  <div className="flex justify-between items-center">
-                    <label className="font-bold text-slate-800 text-[11px]">
-                      Fotografía de Avatar (Exclusivo PNG)
-                    </label>
-                    {formConfig.avatarUrl && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormConfig({ ...formConfig, avatarUrl: "" })
-                        }
-                        className="text-[10px] text-red-600 hover:text-red-800 hover:underline font-bold transition"
-                      >
-                        Quitar Avatar
-                      </button>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept=".png,image/png"
-                    onChange={(e) => handleImageUpload(e, "avatarUrl")}
-                    className="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-950 file:text-white hover:file:bg-blue-900 border border-slate-300 rounded-xl p-1.5 bg-white cursor-pointer shadow-sm transition"
-                  />
-                  {formConfig.avatarUrl && (
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200 mt-1">
-                      <span className="text-[10px] font-semibold text-slate-500">
-                        Vista previa:
-                      </span>
-                      <img
-                        src={formConfig.avatarUrl}
-                        alt="Avatar Preview"
-                        className="w-8 h-8 object-cover rounded-xl border border-slate-300 shadow-inner"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Botones de Acción Estilizados */}
               <div className="p-4 bg-slate-100 border-t border-slate-200 flex justify-between items-center -mx-6 -mb-6 mt-6 rounded-b-2xl">
                 <button
                   type="button"
                   onClick={handleResetDefaults}
-                  className="px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-xl transition shadow-sm"
+                  className="px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-xl transition"
                 >
                   ↺ Restablecer Valores
                 </button>
@@ -540,13 +431,13 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setIsConfigOpen(false)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs transition shadow-sm"
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl font-bold text-xs transition shadow-md"
+                    className="px-5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl font-bold text-xs"
                   >
                     Aplicar Cambios
                   </button>
