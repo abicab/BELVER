@@ -29,7 +29,7 @@ app.use("/api/controlescolar", alumnosCERouter);
 app.use("/api/controlescolar", validacionaspirantesRoute);
 
 // Ruta de Catálogos
-app.use("/api/catalogos", catalogoRoute);
+app.use("/api/catalogo", catalogoRoute);
 
 // Montar las rutas de inscripción
 app.use("/api/admission", admissionRoute);

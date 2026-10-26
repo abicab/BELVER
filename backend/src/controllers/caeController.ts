@@ -7,10 +7,10 @@ export const obtenerExpedientesCAE = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const aspirantes = await prisma.aspirantes.findMany({
+    const aspirantes = await prisma.aspirante.findMany({
       orderBy: { created_at: "desc" },
       include: {
-        documentos_aspirante: true,
+        documento: true,
       },
     });
 
@@ -36,7 +36,7 @@ export const actualizarEstatusExpediente = async (
     const { id } = req.params;
     const { estatus_expediente, matricula_asignada, password_unica } = req.body;
 
-    const aspiranteActualizado = await prisma.aspirantes.update({
+    const aspiranteActualizado = await prisma.aspirante.update({
       where: { id: Number(id) },
       data: {
         estatus_expediente,
