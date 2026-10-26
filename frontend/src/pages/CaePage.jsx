@@ -1,319 +1,202 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-// Catálogo de alumnos matriculados activos en el sistema BELVER (con datos demográficos completos)
-const INITIAL_STUDENTS = [
-  {
-    id: 1,
-    matricula: "B26000001",
-    curp: "RUAM050819MVERRL02",
-    nombre: "María Fernanda",
-    apellidos: "Ruiz Morales",
-    email: "maria.ruiz@gmail.com",
-    telefono: "2281456789",
-    genderIdentity: "Femenino",
-    hasDisability: "No",
-    employmentStatus: "No trabaja",
-    hasComputer: "Sí",
-    hasInternet: "Sí",
-    emergenciaContacto: "Roberto Ruiz (Padre)",
-    emergenciaTelefono: "2289876543",
-    direccion: {
-      calle: "Av. Xalapa #123",
-      colonia: "Progreso",
-      municipio: "Xalapa",
-      estado: "Veracruz",
-      cp: "91000",
-    },
-    modalidadIngreso: "Nuevo Ingreso",
-    semestreActual: 1,
-    estatusAcademico: "ACTIVO_REGULAR", // 'ACTIVO_REGULAR' | 'RECURSAMIENTO' | 'BAJA_TEMPORAL'
-    materiasInscritas: [
-      { codigo: "MAT-101", nombre: "Matemáticas I", estatus: "Cursando" },
-      { codigo: "QUI-101", nombre: "Química I", estatus: "Cursando" },
-      { codigo: "ETI-101", nombre: "Ética y Valores I", estatus: "Cursando" },
-    ],
-    historialCalificaciones: [],
-  },
-  {
-    id: 2,
-    matricula: "B26000002",
-    curp: "DOEC040112HDFRNR09",
-    nombre: "Carlos Eduardo",
-    apellidos: "Domínguez Solís",
-    email: "carlos.dominguez@outlook.com",
-    telefono: "2288901234",
-    genderIdentity: "Masculino",
-    hasDisability: "No",
-    employmentStatus: "Medio tiempo",
-    hasComputer: "Sí",
-    hasInternet: "Sí",
-    emergenciaContacto: "Elena Solís (Madre)",
-    emergenciaTelefono: "2283344556",
-    direccion: {
-      calle: "C. Juárez #45",
-      colonia: "Centro",
-      municipio: "Coatepec",
-      estado: "Veracruz",
-      cp: "91500",
-    },
-    modalidadIngreso: "Revalidación / Equivalencia",
-    semestreActual: 2,
-    estatusAcademico: "ACTIVO_REGULAR",
-    materiasInscritas: [
-      { codigo: "MAT-201", nombre: "Matemáticas II", estatus: "Cursando" },
-      { codigo: "QUI-201", nombre: "Química II", estatus: "Cursando" },
-      {
-        codigo: "TLR-201",
-        nombre: "Taller de Lectura y Redacción II",
-        estatus: "Cursando",
-      },
-    ],
-    historialCalificaciones: [
-      {
-        materia: "Matemáticas I",
-        calificacion: 8.5,
-        origen: "Revalidada (COBAEV 35)",
-      },
-      {
-        materia: "Química I",
-        calificacion: 9.0,
-        origen: "Revalidada (COBAEV 35)",
-      },
-      {
-        materia: "Ética y Valores I",
-        calificacion: 10.0,
-        origen: "Revalidada (COBAEV 35)",
-      },
-    ],
-  },
-  {
-    id: 3,
-    matricula: "B25000140",
-    curp: "HERA020411MVERND03",
-    nombre: "Alejandro",
-    apellidos: "Hernández Rivas",
-    email: "alejandro.hr@gmail.com",
-    telefono: "2299887766",
-    genderIdentity: "Masculino",
-    hasDisability: "No",
-    employmentStatus: "No trabaja",
-    hasComputer: "Sí",
-    hasInternet: "Sí",
-    emergenciaContacto: "Martha Rivas (Madre)",
-    emergenciaTelefono: "2291234567",
-    direccion: {
-      calle: "Av. Díaz Mirón #789",
-      colonia: "Moderno",
-      municipio: "Veracruz",
-      estado: "Veracruz",
-      cp: "91910",
-    },
-    modalidadIngreso: "Nuevo Ingreso",
-    semestreActual: 3,
-    estatusAcademico: "RECURSAMIENTO",
-    materiasInscritas: [
-      {
-        codigo: "FIS-101",
-        nombre: "Física I (Recurse)",
-        estatus: "Recursando",
-      },
-      {
-        codigo: "HIS-301",
-        nombre: "Historia de México I",
-        estatus: "Cursando",
-      },
-      { codigo: "LIT-301", nombre: "Literatura I", estatus: "Cursando" },
-    ],
-    historialCalificaciones: [
-      { materia: "Matemáticas I", calificacion: 7.0, origen: "BELVER" },
-      { materia: "Matemáticas II", calificacion: 8.0, origen: "BELVER" },
-      {
-        materia: "Física I",
-        calificacion: 5.0,
-        origen: "BELVER (No Acreditada)",
-      },
-    ],
-  },
-];
+const traducirTipoDocumento = (tipo) => {
+  const diccionario = {
+    photo: "FOTOGRAFÍA",
+    actaNacimiento: "ACTA DE NACIMIENTO",
+    curpFile: "CURP (PDF)",
+    studyCert: "CERTIFICADO DE SECUNDARIA",
+    constanciaEstudios: "CONSTANCIA DE ESTUDIOS",
+    ineDocument: "IDENTIFICACIÓN OFICIAL (INE / TUTOR)",
+  };
+  return diccionario[tipo] || tipo.toUpperCase();
+};
 
 export default function CaePage() {
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterEstatus, setFilterEstatus] = useState("TODOS");
-  const [filterSemestre, setFilterSemestre] = useState("TODOS");
+  const [alumnos, setAlumnos] = useState([]);
+  const [alumnoSeleccionado, setAlumnoSeleccionado] = useState(null);
 
-  // Modales
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editFormData, setEditFormData] = useState(null);
+  // Estados para calificaciones conectados a la BD
+  const [modalCalificaciones, setModalCalificaciones] = useState(null);
+  const [historialAcademico, setHistorialAcademico] = useState(null);
+  const [cargandoCalificaciones, setCargandoCalificaciones] = useState(false);
 
-  // Filtrado reactivo de estudiantes
-  const filteredStudents = students.filter((st) => {
-    const fullName = `${st.nombre} ${st.apellidos}`.toLowerCase();
-    const matchesSearch =
-      fullName.includes(searchTerm.toLowerCase()) ||
-      st.matricula.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      st.curp.toLowerCase().includes(searchTerm.toLowerCase());
+  const [busqueda, setBusqueda] = useState("");
+  const [cargando, setCargando] = useState(false);
 
-    const matchesEstatus =
-      filterEstatus === "TODOS" || st.estatusAcademico === filterEstatus;
-    const matchesSemestre =
-      filterSemestre === "TODOS" ||
-      st.semestreActual.toString() === filterSemestre;
-
-    return matchesSearch && matchesEstatus && matchesSemestre;
+  const [modalNotificacion, setModalNotificacion] = useState({
+    isOpen: false,
+    titulo: "",
+    mensaje: "",
+    tipo: "exito",
   });
 
-  // Abrir vista detallada de expediente
-  const handleViewExpediente = (student) => {
-    setSelectedStudent(student);
-    setIsEditing(false);
+  const mostrarNotificacion = (titulo, mensaje, tipo = "exito") => {
+    setModalNotificacion({ isOpen: true, titulo, mensaje, tipo });
   };
 
-  // Iniciar edición de información personal
-  const handleStartEdit = (student) => {
-    setEditFormData({
-      id: student.id,
-      nombre: student.nombre,
-      apellidos: student.apellidos,
-      email: student.email,
-      telefono: student.telefono,
-      emergenciaContacto: student.emergenciaContacto,
-      emergenciaTelefono: student.emergenciaTelefono,
-      calle: student.direccion.calle,
-      colonia: student.direccion.colonia,
-      municipio: student.direccion.municipio,
-      estado: student.direccion.estado,
-      cp: student.direccion.cp,
-    });
-    setIsEditing(true);
-  };
-
-  // Guardar cambios en el expediente
-  const handleSaveEdit = (e) => {
-    e.preventDefault();
-    const updatedList = students.map((st) => {
-      if (st.id === editFormData.id) {
-        return {
-          ...st,
-          nombre: editFormData.nombre,
-          apellidos: editFormData.apellidos,
-          email: editFormData.email,
-          telefono: editFormData.telefono,
-          emergenciaContacto: editFormData.emergenciaContacto,
-          emergenciaTelefono: editFormData.emergenciaTelefono,
-          direccion: {
-            calle: editFormData.calle,
-            colonia: editFormData.colonia,
-            municipio: editFormData.municipio,
-            estado: editFormData.estado,
-            cp: editFormData.cp,
-          },
-        };
+  const cargarAlumnos = async () => {
+    setCargando(true);
+    try {
+      const res = await fetch(
+        "http://localhost:4000/api/controlescolar/alumnos",
+      );
+      const resultado = await res.json();
+      if (res.ok && resultado.ok) {
+        setAlumnos(resultado.data || []);
       }
-      return st;
-    });
-
-    setStudents(updatedList);
-
-    if (selectedStudent && selectedStudent.id === editFormData.id) {
-      setSelectedStudent(updatedList.find((s) => s.id === editFormData.id));
+    } catch (error) {
+      console.error("Error al cargar la lista de alumnos:", error);
+    } finally {
+      setCargando(false);
     }
-
-    alert(
-      "Información personal del estudiante actualizada exitosamente en el CAE.",
-    );
-    setIsEditing(false);
   };
+
+  useEffect(() => {
+    cargarAlumnos();
+  }, []);
+
+  const abrirModalCalificaciones = async (alumn) => {
+    setModalCalificaciones(alumn);
+    setCargandoCalificaciones(true);
+    setHistorialAcademico(null);
+    try {
+      const res = await fetch(
+        `http://localhost:4000/api/controlescolar/alumnos/${alumn.id}/calificaciones`,
+      );
+      const resultado = await res.json();
+      if (res.ok && resultado.ok) {
+        setHistorialAcademico(resultado.data);
+      } else {
+        mostrarNotificacion(
+          "Aviso",
+          resultado.mensaje || "No se pudo obtener el historial académico.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error al cargar calificaciones:", error);
+      mostrarNotificacion(
+        "Error de Red",
+        "No se pudo conectar con el servidor para consultar el historial.",
+        "error",
+      );
+    } finally {
+      setCargandoCalificaciones(false);
+    }
+  };
+
+  const handleSubirDocumentoManual = async (documentoId, nuevoArchivo) => {
+    if (!nuevoArchivo) return;
+    try {
+      const dataToSend = new FormData();
+      dataToSend.append("archivo", nuevoArchivo);
+
+      const response = await fetch(
+        `http://localhost:4000/api/admission/documentos/${documentoId}/modificar`,
+        {
+          method: "PATCH",
+          body: dataToSend,
+        },
+      );
+      const resultado = await response.json();
+
+      if (response.ok && resultado.ok) {
+        mostrarNotificacion(
+          "Archivo Actualizado",
+          "El documento ha sido cargado y actualizado con éxito en el expediente del alumno.",
+          "exito",
+        );
+        const resActualizada = await fetch(
+          "http://localhost:4000/api/controlescolar/alumnos",
+        );
+        const resultadoActualizado = await resActualizada.json();
+        if (resActualizada.ok && resultadoActualizado.ok) {
+          setAlumnos(resultadoActualizado.data || []);
+          const alumnoActualizado = resultadoActualizado.data.find(
+            (a) => a.id === alumnoSeleccionado.id,
+          );
+          if (alumnoActualizado) {
+            setAlumnoSeleccionado(alumnoActualizado);
+          }
+        }
+      } else {
+        mostrarNotificacion(
+          "Error",
+          resultado.mensaje || "No se pudo actualizar el archivo.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error al subir documento:", error);
+      mostrarNotificacion(
+        "Error de Red",
+        "Error de conexión al intentar subir el documento.",
+        "error",
+      );
+    }
+  };
+
+  const alumnosFiltrados = alumnos
+    .filter((alumn) => {
+      const nombreCompleto =
+        `${alumn.nombres} ${alumn.apellidoPaterno} ${alumn.apellidoMaterno || ""}`.toLowerCase();
+
+      const cumpleBusqueda =
+        busqueda.trim() === "" ||
+        alumn.folio.toLowerCase().includes(busqueda.toLowerCase()) ||
+        (alumn.matricula &&
+          alumn.matricula.toLowerCase().includes(busqueda.toLowerCase())) ||
+        nombreCompleto.includes(busqueda.toLowerCase()) ||
+        alumn.curp.toLowerCase().includes(busqueda.toLowerCase());
+
+      return cumpleBusqueda;
+    })
+    .slice(0, 10);
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Encabezado del Módulo CAE */}
+        {/* Cabecera Institucional del CAE */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-950 text-white px-2.5 py-1 rounded-md">
-              Centro de Atención Estudiantil (CAE)
+            <span className="text-[10px] font-bold tracking-wider uppercase bg-slate-900 text-white px-2.5 py-1 rounded-md">
+              CENTRO DE ATENCIÓN ESTUDIANTIL (CAE)
             </span>
             <h1 className="text-2xl font-bold text-slate-900 mt-2">
-              Consultas y Seguimiento de Expedientes de Alumnos
+              Seguimiento y Consulta de Expedientes
             </h1>
             <p className="text-xs text-slate-500">
               Módulo de soporte interno para consulta de trayectoria académica y
-              actualización de datos personales.
+              expedientes de alumnos.
             </p>
-          </div>
-
-          <div className="flex items-center gap-4 self-start md:self-auto bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <div className="text-right">
-              <span className="text-[10px] text-slate-400 block uppercase font-bold">
-                Matrícula Activa Total
-              </span>
-              <span className="text-lg font-black text-slate-900">
-                {students.length} Estudiantes
-              </span>
-            </div>
           </div>
         </div>
 
-        {/* Barra de Filtros y Búsqueda */}
+        {/* Barra de Búsqueda y Actualización */}
         <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-3">
-          {/* Buscador */}
           <div className="relative w-full lg:w-96">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
               🔍
             </span>
             <input
               type="text"
-              placeholder="Buscar por Matrícula, CURP o Nombre..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-800 focus:bg-white transition"
+              placeholder="Buscar por Matrícula, Folio, CURP o Nombre..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
             />
           </div>
 
-          {/* Filtros */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 w-full lg:w-auto justify-end">
-            {/* Filtro Estatus Académico */}
-            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs w-full sm:w-auto">
-              <span className="text-[10px] font-bold text-slate-500 uppercase px-2">
-                Situación:
-              </span>
-              <select
-                value={filterEstatus}
-                onChange={(e) => setFilterEstatus(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer focus:ring-1 focus:ring-slate-800"
-              >
-                <option value="TODOS">Todos</option>
-                <option value="ACTIVO_REGULAR">Regular</option>
-                <option value="RECURSAMIENTO">Recursamiento</option>
-                <option value="BAJA_TEMPORAL">Baja Temporal</option>
-              </select>
-            </div>
-
-            {/* Filtro Semestre */}
-            <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs w-full sm:w-auto">
-              <span className="text-[10px] font-bold text-slate-500 uppercase px-2">
-                Semestre:
-              </span>
-              <select
-                value={filterSemestre}
-                onChange={(e) => setFilterSemestre(e.target.value)}
-                className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer focus:ring-1 focus:ring-slate-800"
-              >
-                <option value="TODOS">Todos los Semestres</option>
-                <option value="1">1° Semestre</option>
-                <option value="2">2° Semestre</option>
-                <option value="3">3° Semestre</option>
-                <option value="4">4° Semestre</option>
-                <option value="5">5° Semestre</option>
-                <option value="6">6° Semestre</option>
-              </select>
-            </div>
-          </div>
+          <button
+            onClick={cargarAlumnos}
+            className="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition"
+          >
+            🔄 Actualizar
+          </button>
         </div>
 
-        {/* Tabla de Alumnos */}
+        {/* Tabla de Alumnos con las columnas requeridas */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -322,309 +205,316 @@ export default function CaePage() {
                   <th className="p-4">Matrícula / CURP</th>
                   <th className="p-4">Nombre del Estudiante</th>
                   <th className="p-4">Semestre / Modalidad</th>
-                  <th className="p-4">Contacto Directo</th>
-                  <th className="p-4 text-center">Situación Escolar</th>
-                  <th className="p-4 text-right">Acciones CAE</th>
+                  <th className="p-4">Situación Escolar</th>
+                  <th className="p-4 text-center">Acciones CAE</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredStudents.length === 0 ? (
+                {cargando ? (
                   <tr>
-                    <td
-                      colSpan="6"
-                      className="p-8 text-center text-slate-400 text-xs"
-                    >
-                      No se encontraron estudiantes con los criterios de
-                      búsqueda especificados.
+                    <td colSpan="5" className="p-8 text-center text-slate-400">
+                      Cargando alumnos...
+                    </td>
+                  </tr>
+                ) : alumnosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="p-8 text-center text-slate-400">
+                      No se encontraron alumnos registrados.
                     </td>
                   </tr>
                 ) : (
-                  filteredStudents.map((st) => (
-                    <tr key={st.id} className="hover:bg-slate-50 transition">
-                      <td className="p-4">
-                        <span className="font-mono font-bold text-blue-950 block">
-                          {st.matricula}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {st.curp}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className="font-bold text-slate-900 block">
-                          {st.nombre} {st.apellidos}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {st.direccion.municipio}, {st.direccion.estado}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className="font-semibold text-slate-800 block">
-                          {st.semestreActual}° Semestre
-                        </span>
-                        <span className="text-[10px] text-slate-500 uppercase">
-                          {st.modalidadIngreso}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className="text-slate-800 block">{st.email}</span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {st.telefono}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            st.estatusAcademico === "ACTIVO_REGULAR"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : st.estatusAcademico === "RECURSAMIENTO"
-                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                  alumnosFiltrados.map((alumn) => {
+                    const esBaja =
+                      alumn.estatusAcademico === "BAJA" ||
+                      alumn.estatusAcademico === "BAJA_TEMPORAL";
+                    return (
+                      <tr
+                        key={alumn.id}
+                        className="hover:bg-slate-50 transition"
+                      >
+                        <td className="p-4">
+                          <span className="font-mono font-extrabold text-slate-900 block">
+                            {alumn.matricula || "S/M"}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-500">
+                            {alumn.curp}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="font-bold text-slate-900 block uppercase">
+                            {`${alumn.apellidoPaterno} ${alumn.apellidoMaterno || ""} ${alumn.nombres}`}
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            {alumn.municipio || "Veracruz"},{" "}
+                            {alumn.estado || "Veracruz"}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-semibold text-slate-800">
+                            1° Semestre
+                          </div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-blue-100 text-blue-900">
+                            {alumn.tipoAdmision}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              !esBaja
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                 : "bg-red-50 text-red-700 border border-red-200"
-                          }`}
-                        >
-                          {st.estatusAcademico === "ACTIVO_REGULAR"
-                            ? "Regular"
-                            : st.estatusAcademico === "RECURSAMIENTO"
-                              ? "En Recursamiento"
-                              : "Baja Temporal"}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right space-x-1.5">
-                        <button
-                          onClick={() => handleViewExpediente(st)}
-                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition"
-                        >
-                          👁️ Expediente
-                        </button>
-                        <button
-                          onClick={() => handleStartEdit(st)}
-                          className="px-2.5 py-1.5 bg-blue-950 hover:bg-blue-900 text-white font-semibold rounded-lg text-xs transition shadow-xs"
-                        >
-                          ✏️ Modificar
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                            }`}
+                          >
+                            {esBaja ? "Baja" : "Regular"}
+                          </span>
+                        </td>
+                        <td className="p-4 text-center space-x-2">
+                          <button
+                            onClick={() => setAlumnoSeleccionado(alumn)}
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-xs transition shadow-sm inline-block"
+                          >
+                            Expediente
+                          </button>
+
+                          <button
+                            onClick={() => abrirModalCalificaciones(alumn)}
+                            className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition shadow-sm inline-block"
+                          >
+                            Calificaciones
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* MODAL 1: CONSULTA DETALLADA DE EXPEDIENTE (DISEÑO ESTILIZADO 3 TARJETAS) */}
-        {selectedStudent && (
+        {/* Modal de Expediente */}
+        {alumnoSeleccionado && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[90vh]">
-              {/* Cabecera Estilizada Idéntica */}
+            <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[92vh]">
               <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center text-blue-300 font-bold text-base shadow-inner">
-                    📂
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <h3 className="font-extrabold text-base tracking-tight text-white">
-                        Expediente Escolar CAE
-                      </h3>
-                      <span className="font-mono text-xs bg-blue-900/90 text-blue-200 px-2.5 py-0.5 rounded-md border border-blue-600/60 font-bold shadow-xs">
-                        {selectedStudent.matricula}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-200 mt-1 flex items-center gap-2 font-semibold">
-                      <span className="text-white text-sm tracking-wide">
-                        👤 {selectedStudent.nombre} {selectedStudent.apellidos}
-                      </span>
-                      <span className="text-blue-400">•</span>
-                      <span className="font-mono text-cyan-300 tracking-wider">
-                        CURP: {selectedStudent.curp}
-                      </span>
-                    </div>
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white">
+                    Expediente del Alumno: {alumnoSeleccionado.folio}
+                  </h3>
+                  <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
+                    <span className="text-white text-sm">
+                      {`${alumnoSeleccionado.apellidoPaterno} ${alumnoSeleccionado.apellidoMaterno || ""} ${alumnoSeleccionado.nombres}`}
+                    </span>
+                    <span className="font-mono text-cyan-300">
+                      CURP: {alumnoSeleccionado.curp}
+                    </span>
+                    <span className="font-mono bg-emerald-800/80 text-emerald-200 px-2 py-0.5 rounded text-[11px]">
+                      Matrícula: {alumnoSeleccionado.matricula}
+                    </span>
                   </div>
                 </div>
-
                 <button
-                  onClick={() => setSelectedStudent(null)}
-                  className="w-8 h-8 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700 shadow-sm"
-                  title="Cerrar ventana"
+                  onClick={() => setAlumnoSeleccionado(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6 space-y-6 overflow-y-auto text-xs text-slate-700">
-                {/* Perfil Demográfico, Inclusión y Tecnológico (3 Tarjetas Estilizadas) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {/* Tarjeta 1: Identidad e Inclusión */}
-                  <div className="bg-gradient-to-br from-slate-50 to-blue-50/40 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
-                    <div className="flex items-center gap-1.5 text-blue-950 font-bold text-[10px] uppercase tracking-wider border-b border-slate-200/60 pb-1.5">
-                      <span>🧬</span> Identidad e Inclusión
-                    </div>
-                    <div className="space-y-1 text-slate-700">
-                      <p className="flex justify-between">
-                        <span className="text-slate-500 font-medium">
-                          Género:
-                        </span>
-                        <span className="font-semibold text-slate-900">
-                          {selectedStudent.genderIdentity || "No especificado"}
-                        </span>
-                      </p>
-                      <p className="flex justify-between">
-                        <span className="text-slate-500 font-medium">
-                          Discapacidad:
-                        </span>
-                        <span
-                          className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${selectedStudent.hasDisability !== "No" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"}`}
-                        >
-                          {selectedStudent.hasDisability}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+              <div className="p-6 space-y-6 overflow-y-auto text-xs text-slate-700 bg-slate-50/50">
+                <div className="space-y-3">
+                  <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b pb-1">
+                    1. Información General del Estudiante
+                  </h4>
 
-                  {/* Tarjeta 2: Perfil En Línea */}
-                  <div className="bg-gradient-to-br from-slate-50 to-indigo-50/40 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
-                    <div className="flex items-center gap-1.5 text-indigo-950 font-bold text-[10px] uppercase tracking-wider border-b border-slate-200/60 pb-1.5">
-                      <span>💻</span> Perfil En Línea
-                    </div>
-                    <div className="space-y-1 text-slate-700">
-                      <p className="flex justify-between">
-                        <span className="text-slate-500 font-medium">
-                          Laboral:
-                        </span>
-                        <span className="font-semibold text-slate-900">
-                          {selectedStudent.employmentStatus}
-                        </span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
+                        Domicilio y Contacto
+                      </span>
+                      <p>
+                        <strong className="text-slate-500">Celular:</strong>{" "}
+                        {alumnoSeleccionado.telefonoCelular}
                       </p>
-                      <p className="flex justify-between">
-                        <span className="text-slate-500 font-medium">
-                          PC / Internet:
-                        </span>
-                        <span className="font-semibold text-indigo-950 font-mono">
-                          {selectedStudent.hasComputer} /{" "}
-                          {selectedStudent.hasInternet}
-                        </span>
+                      <p>
+                        <strong className="text-slate-500">
+                          Tel. Particular:
+                        </strong>{" "}
+                        {alumnoSeleccionado.telefonoParticular || "N/A"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Correo Principal:
+                        </strong>{" "}
+                        {alumnoSeleccionado.correoElectronico1}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Correo Alternativo:
+                        </strong>{" "}
+                        {alumnoSeleccionado.correoElectronico2 || "N/A"}
+                      </p>
+                      <p className="pt-1">
+                        <strong className="text-slate-500">Dirección:</strong>{" "}
+                        {alumnoSeleccionado.calle} #
+                        {alumnoSeleccionado.numeroExterior || "S/N"}{" "}
+                        {alumnoSeleccionado.numeroInterior
+                          ? `Int. ${alumnoSeleccionado.numeroInterior}`
+                          : ""}
+                        , Col. {alumnoSeleccionado.colonia}, C.P.{" "}
+                        {alumnoSeleccionado.codigoPostal},{" "}
+                        {alumnoSeleccionado.municipio},{" "}
+                        {alumnoSeleccionado.estado}, {alumnoSeleccionado.pais}
                       </p>
                     </div>
-                  </div>
 
-                  {/* Tarjeta 3: Contacto y Emergencia */}
-                  <div className="bg-gradient-to-br from-slate-50 to-amber-50/40 p-3.5 rounded-2xl border border-slate-200/80 shadow-xs space-y-2">
-                    <div className="flex items-center gap-1.5 text-amber-950 font-bold text-[10px] uppercase tracking-wider border-b border-slate-200/60 pb-1.5">
-                      <span>🛡️</span> Contacto Directo
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
+                        Datos Personales
+                      </span>
+                      <p>
+                        <strong className="text-slate-500">
+                          F. Nacimiento:
+                        </strong>{" "}
+                        {alumnoSeleccionado.fechaNacimiento
+                          ? new Date(
+                              alumnoSeleccionado.fechaNacimiento,
+                            ).toLocaleDateString()
+                          : "N/A"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">Género:</strong>{" "}
+                        {alumnoSeleccionado.generoRel?.nombre ||
+                          "No especificado"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Identidad Cultural:
+                        </strong>{" "}
+                        {alumnoSeleccionado.identidadCulturalTexto ||
+                          alumnoSeleccionado.identidadCultural?.nombre ||
+                          "NINGUNO"}
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Discapacidades:
+                        </strong>{" "}
+                        {alumnoSeleccionado.discapacidadesTexto || "Ninguna"}
+                      </p>
                     </div>
-                    <div className="space-y-1 text-slate-700">
-                      <p className="flex justify-between">
-                        <span className="text-slate-500 font-medium">
-                          Móvil:
-                        </span>
-                        <span className="font-semibold text-slate-900 font-mono">
-                          {selectedStudent.telefono}
+
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                      <span className="font-extrabold text-blue-950 uppercase tracking-wider block border-b pb-1 text-[10px]">
+                        Académico y Tutor
+                      </span>
+                      <p>
+                        <strong className="text-slate-500">Modalidad:</strong>{" "}
+                        <span className="font-bold uppercase text-blue-900">
+                          {alumnoSeleccionado.tipoAdmision}
                         </span>
                       </p>
-                      <p className="truncate">
-                        <span className="text-slate-500 font-medium block">
-                          Emergencia:
-                        </span>
-                        <span className="font-semibold text-slate-900 truncate block">
-                          {selectedStudent.emergenciaContacto} (
-                          {selectedStudent.emergenciaTelefono})
-                        </span>
+                      <p>
+                        <strong className="text-slate-500">
+                          Escuela Procedencia:
+                        </strong>{" "}
+                        {alumnoSeleccionado.nombreEscuelaProcedencia || "N/A"}{" "}
+                        (CCT:{" "}
+                        {alumnoSeleccionado.cctEscuelaProcedencia || "N/A"})
+                      </p>
+                      <p>
+                        <strong className="text-slate-500">
+                          Semestres a Cursar:
+                        </strong>{" "}
+                        {alumnoSeleccionado.semestresSeleccionados
+                          ? JSON.parse(
+                              JSON.stringify(
+                                alumnoSeleccionado.semestresSeleccionados,
+                              ),
+                            ).join(", ")
+                          : "N/A"}
+                      </p>
+                      <p className="pt-1">
+                        <strong className="text-slate-500">Tutor:</strong>{" "}
+                        {alumnoSeleccionado.tutorNombres
+                          ? `${alumnoSeleccionado.tutorApellidoPaterno || ""} ${alumnoSeleccionado.tutorApellidoMaterno || ""} ${alumnoSeleccionado.tutorNombres}`.trim() +
+                            ` (${alumnoSeleccionado.tutorParentescoRel?.nombre || "PARENTESCO NO ESPECIFICADO"}) — Tel: ${alumnoSeleccionado.tutorTelefono || "N/A"}`
+                          : "N/A"}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Domicilio Registrado */}
-                <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
-                    Domicilio Registrado
-                  </span>
-                  <span className="text-slate-800 font-medium text-xs">
-                    {selectedStudent.direccion.calle}, Col.{" "}
-                    {selectedStudent.direccion.colonia},{" "}
-                    {selectedStudent.direccion.municipio},{" "}
-                    {selectedStudent.direccion.estado} (
-                    <span className="font-mono">
-                      C.P. {selectedStudent.direccion.cp}
-                    </span>
-                    )
-                  </span>
-                </div>
-
-                {/* Materias Cursando Actualmente */}
-                <div className="space-y-2.5">
-                  <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider block">
-                    Materias Activas del Mes (Semestre{" "}
-                    {selectedStudent.semestreActual})
-                  </span>
+                <div className="space-y-3 pt-2">
+                  <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] border-b pb-1">
+                    2. Expediente Digital
+                  </h4>
                   <div className="space-y-2">
-                    {selectedStudent.materiasInscritas.map((m, i) => (
+                    {alumnoSeleccionado.documentos?.map((doc) => (
                       <div
-                        key={i}
-                        className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-200 shadow-2xs"
+                        key={doc.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white border border-slate-200 rounded-xl shadow-2xs"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-1 rounded-lg border border-slate-200">
-                            {m.codigo}
+                        <div>
+                          <span className="font-bold text-slate-900 block uppercase">
+                            {traducirTipoDocumento(doc.tipoDoc)}
                           </span>
-                          <span className="font-semibold text-slate-800 text-xs">
-                            {m.nombre}
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            Archivo:{" "}
+                            {doc.nombreArchivo || "Sin archivo cargado"}
                           </span>
                         </div>
-                        <span className="px-2.5 py-1 bg-blue-50 text-blue-900 font-bold text-[10px] rounded-lg border border-blue-200">
-                          {m.estatus}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {doc.archivoBlob ? (
+                            <a
+                              href={`http://localhost:4000/api/controlescolar/documentos/${doc.id}/ver`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                            >
+                              Ver Archivo
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-1 rounded border border-amber-200 font-semibold">
+                              Sin Archivo Digital
+                            </span>
+                          )}
+
+                          <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold">
+                            {doc.estatusDoc || "APROBADO"}
+                          </span>
+
+                          <label className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
+                            {doc.archivoBlob
+                              ? "Editar / Subir"
+                              : "Subir Archivo"}
+                            <input
+                              type="file"
+                              accept=".pdf,image/jpeg,image/png"
+                              className="hidden"
+                              onChange={(e) => {
+                                e.preventDefault();
+                                const nuevoArchivo = e.target.files[0];
+                                if (nuevoArchivo) {
+                                  handleSubirDocumentoManual(
+                                    doc.id,
+                                    nuevoArchivo,
+                                  );
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-
-                {/* Historial / Antecedentes */}
-                {selectedStudent.historialCalificaciones.length > 0 && (
-                  <div className="space-y-2.5">
-                    <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider block">
-                      Historial y Acreditaciones Previas
-                    </span>
-                    <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-2xs">
-                      {selectedStudent.historialCalificaciones.map((h, i) => (
-                        <div
-                          key={i}
-                          className="p-3 flex justify-between items-center hover:bg-slate-50 transition"
-                        >
-                          <div>
-                            <span className="font-semibold text-slate-800 block">
-                              {h.materia}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              {h.origen}
-                            </span>
-                          </div>
-                          <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                            {h.calificacion.toFixed(1)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Pie del Modal con botones corporativos */}
-              <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center shrink-0">
+              <div className="p-4 bg-white border-t border-slate-200 flex justify-end shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    handleStartEdit(selectedStudent);
-                    setSelectedStudent(null);
-                  }}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-xs transition shadow-sm flex items-center gap-1.5"
-                >
-                  <span>✏️</span> Editar Datos Personales
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedStudent(null)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold text-xs transition"
+                  onClick={() => setAlumnoSeleccionado(null)}
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition shadow-2xs"
                 >
                   Cerrar
                 </button>
@@ -633,250 +523,106 @@ export default function CaePage() {
           </div>
         )}
 
-        {/* MODAL 2: EDICIÓN DE INFORMACIÓN PERSONAL (CAE) */}
-        {isEditing && editFormData && (
+        {/* Modal de Calificaciones */}
+        {modalCalificaciones && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[90vh]">
-              <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-xs">
-                  Modificar Información del Alumno (CAE)
-                </h3>
+            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[92vh]">
+              <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white flex justify-between items-center shrink-0 border-b border-slate-800">
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white uppercase">
+                    Historial Académico y Calificaciones
+                  </h3>
+                  <div className="text-xs text-slate-200 mt-1 flex items-center gap-3 font-semibold">
+                    <span className="text-white text-sm uppercase">
+                      {`${modalCalificaciones.apellidoPaterno} ${modalCalificaciones.apellidoMaterno || ""} ${modalCalificaciones.nombres}`}
+                    </span>
+                    <span className="font-mono text-cyan-300">
+                      CURP: {modalCalificaciones.curp}
+                    </span>
+                    <span className="font-mono bg-emerald-800/80 text-emerald-200 px-2 py-0.5 rounded text-[11px]">
+                      Matrícula: {modalCalificaciones.matricula}
+                    </span>
+                  </div>
+                </div>
                 <button
-                  onClick={() => setIsEditing(false)}
-                  className="text-slate-400 hover:text-white font-bold text-sm"
+                  onClick={() => setModalCalificaciones(null)}
+                  className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center font-bold"
                 >
                   ✕
                 </button>
               </div>
 
-              <form
-                onSubmit={handleSaveEdit}
-                className="p-6 space-y-4 text-xs text-slate-700 overflow-y-auto"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">
-                      Nombre(s)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editFormData.nombre}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          nombre: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                    />
+              <div className="p-6 space-y-4 bg-slate-50/50 overflow-y-auto flex-1">
+                {cargandoCalificaciones ? (
+                  <div className="p-12 text-center text-slate-400 text-xs font-medium animate-pulse">
+                    Consultando plan de estudios e historial en la base de
+                    datos...
                   </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">
-                      Apellidos
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={editFormData.apellidos}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          apellidos: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">
-                      Correo Electrónico
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={editFormData.email}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          email: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">
-                      Teléfono Móvil
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={editFormData.telefono}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          telefono: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                    />
-                  </div>
-                </div>
-
-                {/* Contacto de Emergencia */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">
-                      Contacto de Emergencia
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.emergenciaContacto}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          emergenciaContacto: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800 bg-white"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-800">
-                      Teléfono de Emergencia
-                    </label>
-                    <input
-                      type="tel"
-                      value={editFormData.emergenciaTelefono}
-                      onChange={(e) =>
-                        setEditFormData({
-                          ...editFormData,
-                          emergenciaTelefono: e.target.value,
-                        })
-                      }
-                      className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800 bg-white"
-                    />
-                  </div>
-                </div>
-
-                {/* Domicilio */}
-                <div className="space-y-3 pt-2 border-t border-slate-200">
-                  <span className="font-bold text-slate-900 uppercase tracking-wider text-[10px]">
-                    Actualización de Domicilio
-                  </span>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="col-span-2 flex flex-col gap-1">
-                      <label className="font-semibold text-slate-800">
-                        Calle y Número
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.calle}
-                        onChange={(e) =>
-                          setEditFormData({
-                            ...editFormData,
-                            calle: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                      />
+                ) : historialAcademico?.planEstudios ? (
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    <div className="p-3 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-700">
+                      Plan de Estudios Asignado:{" "}
+                      <span className="text-blue-950">
+                        {historialAcademico.planEstudios}
+                      </span>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="font-semibold text-slate-800">
-                        Código Postal
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.cp}
-                        onChange={(e) =>
-                          setEditFormData({
-                            ...editFormData,
-                            cp: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                      />
-                    </div>
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
+                        <tr>
+                          <th className="p-4">Materia / Asignatura</th>
+                          <th className="p-4 text-center">Semestre</th>
+                          <th className="p-4 text-center">Calificación</th>
+                          <th className="p-4 text-center">Estatus</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {historialAcademico.calificaciones.map((mat, idx) => (
+                          <tr
+                            key={idx}
+                            className="hover:bg-slate-50/60 transition"
+                          >
+                            <td className="p-4 text-slate-900 font-bold">
+                              {mat.materia}
+                            </td>
+                            <td className="p-4 text-center font-mono">
+                              {mat.semestre}°
+                            </td>
+                            <td className="p-4 text-center font-mono font-extrabold text-blue-950">
+                              {mat.final}
+                            </td>
+                            <td className="p-4 text-center">
+                              <span
+                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${
+                                  mat.estatus === "ACREDITADA" ||
+                                  mat.estatus === "APROBADO"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                {mat.estatus}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="font-semibold text-slate-800">
-                        Colonia
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.colonia}
-                        onChange={(e) =>
-                          setEditFormData({
-                            ...editFormData,
-                            colonia: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="font-semibold text-slate-800">
-                        Municipio
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.municipio}
-                        onChange={(e) =>
-                          setEditFormData({
-                            ...editFormData,
-                            municipio: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <label className="font-semibold text-slate-800">
-                        Estado
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.estado}
-                        onChange={(e) =>
-                          setEditFormData({
-                            ...editFormData,
-                            estado: e.target.value,
-                          })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-slate-800"
-                      />
-                    </div>
+                ) : (
+                  <div className="p-10 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-slate-500 text-xs">
+                    Este alumno es de revalidación o aún no tiene un plan de
+                    estudios asignado para mostrar su historial académico.
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 shrink-0 -mx-6 -mb-4 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold text-xs transition"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-md"
-                  >
-                    Guardar Cambios
-                  </button>
-                </div>
-              </form>
+              <div className="p-4 bg-white border-t border-slate-200 flex justify-end shrink-0">
+                <button
+                  onClick={() => setModalCalificaciones(null)}
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition shadow-2xs"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         )}
