@@ -1,76 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-// Ejemplo de datos provenientes del perfil del alumno en backend
-const DEFAULT_STUDENT = {
-  matricula: 'B26000002',
-  curp: 'DOEC040112HDFRNR09',
-  nombre: 'Carlos Eduardo',
-  apellidos: 'Domínguez Solís',
-  direccion: 'C. Juárez #45, Col. Centro, Coatepec, Veracruz. C.P. 91500',
-  modalidadIngreso: 'Revalidación / Equivalencia',
-  esRevalidante: true,
-  planEstudiosNombre: 'Plan de Estudios Bachillerato General SEP (Acuerdo 442)',
-};
-
-const MATERIAS_CURSANDO = [
-  { id: 1, codigo: 'MAT-201', nombre: 'Matemáticas II', creditos: 8, calificacion: 9.5 },
-  { id: 2, codigo: 'QUI-201', nombre: 'Química II', creditos: 8, calificacion: 8.8 },
-  { id: 3, codigo: 'TLR-201', nombre: 'Taller de Lectura y Redacción II', creditos: 6, calificacion: 9.0 },
-];
-
-const DOCUMENTOS_EXPEDIENTE = [
-  { id: 'doc1', nombre: 'Acta de nacimiento certificada en original', subido: true, fecha: '2026-08-15', formato: 'PDF' },
-  { id: 'doc2', nombre: 'Certificado de secundaria original y completo', subido: true, fecha: '2026-08-15', formato: 'PDF' },
-  { id: 'doc3', nombre: 'CURP actualizada original', subido: true, fecha: '2026-08-16', formato: 'PDF' },
-  { id: 'doc4', nombre: 'Credencial de elector (INE)', subido: true, fecha: '2026-08-16', formato: 'PDF' },
-  { id: 'doc5', nombre: 'Boleta de equivalencia / revalidación de materias institucionales', subido: true, fecha: '2026-08-22', formato: 'PDF', esRevalidacion: true },
-];
-
-const KARDEX_PLAN_COMPLETO = [
-  {
-    semestre: '1° Semestre',
-    materias: [
-      { codigo: 'MAT-101', nombre: 'Matemáticas I', creditos: 8, calificacion: 8.5, estatus: 'Acreditada (Revalidación)' },
-      { codigo: 'QUI-101', nombre: 'Química I', creditos: 8, calificacion: 9.0, estatus: 'Acreditada (Revalidación)' },
-      { codigo: 'ETI-101', nombre: 'Ética y Valores I', creditos: 6, calificacion: 10.0, estatus: 'Acreditada (Revalidación)' },
-    ],
-  },
-  {
-    semestre: '2° Semestre (En Cursamiento)',
-    materias: [
-      { codigo: 'MAT-201', nombre: 'Matemáticas II', creditos: 8, calificacion: 9.5, estatus: 'Cursando' },
-      { codigo: 'QUI-201', nombre: 'Química II', creditos: 8, calificacion: 8.8, estatus: 'Cursando' },
-      { codigo: 'TLR-201', nombre: 'Taller de Lectura y Redacción II', creditos: 6, calificacion: 9.0, estatus: 'Cursando' },
-    ],
-  },
-  {
-    semestre: '3° Semestre (Pendiente por Cursar)',
-    materias: [
-      { codigo: 'HIS-301', nombre: 'Historia de México I', creditos: 6, calificacion: 0, estatus: 'Por Cursar' },
-      { codigo: 'FIS-301', nombre: 'Física I', creditos: 8, calificacion: 0, estatus: 'Por Cursar' },
-      { codigo: 'BIO-301', nombre: 'Biología I', creditos: 8, calificacion: 0, estatus: 'Por Cursar' },
-    ],
-  },
-  {
-    semestre: '4° Semestre (Permite hasta 4 materias)',
-    materias: [
-      { codigo: 'LIT-401', nombre: 'Literatura I', creditos: 6, calificacion: 0, estatus: 'Por Cursar' },
-      { codigo: 'MAT-401', nombre: 'Matemáticas IV', creditos: 8, calificacion: 0, estatus: 'Por Cursar' },
-      { codigo: 'SOC-401', nombre: 'Sociología I', creditos: 6, calificacion: 0, estatus: 'Por Cursar' },
-      { codigo: 'INF-401', nombre: 'Informática Aplicada', creditos: 6, calificacion: 0, estatus: 'Por Cursar' },
-    ],
-  },
-];
-
-export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTROL_ESCOLAR' }) {
+export default function AlumnoPage({ alumno: alumnoProp }) {
   const [activeTab, setActiveTab] = useState('inicio');
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [documentoAbriendo, setDocumentoAbriendo] = useState(null);
 
-  // Estado para controlar qué semestres están desplegados (por defecto el semestre 2 en cursamiento)
-  const [openSemestres, setOpenSemestres] = useState({ 1: true });
+  // Datos dinámicos cargados del backend
+  const [alumnoData, setAlumnoData] = useState(null);
+  const [materiasCursando, setMateriasCursando] = useState([]);
+  const [documentosExpediente, setDocumentosExpediente] = useState([]);
+  const [kardexPlanCompleto, setKardexPlanCompleto] = useState([]);
 
-  // Puntos de control de rol
-  const rolesPermitidosDescarga = ['ADMIN', 'CONTROL_ESCOLAR'];
-  const puedeDescargarKardex = rolesPermitidosDescarga.includes(roleCode?.toUpperCase());
+  // Estado para controlar qué semestres están desplegados
+  const [openSemestres, setOpenSemestres] = useState({ 1: true, 2: true });
 
   const toggleSemestre = (index) => {
     setOpenSemestres((prev) => ({
@@ -79,21 +22,121 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
     }));
   };
 
+  // El ID debe venir del alumno seleccionado; no usar un ID fijo como respaldo.
+  const alumnoId = alumnoProp?.rawId ?? alumnoProp?.id ?? null;
+
+  useEffect(() => {
+    const fetchAlumnoData = async () => {
+      if (!alumnoId || !Number.isInteger(Number(alumnoId)) || Number(alumnoId) <= 0) {
+        setErrorMsg('No se recibió un ID válido del alumno.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setErrorMsg('');
+        const res = await fetch(`http://localhost:4000/api/alumno/${alumnoId}`);
+        if (!res.ok) throw new Error('No se pudo cargar la información del alumno.');
+        
+        const data = await res.json();
+        if (data.ok) {
+          setAlumnoData(data.alumno);
+          setMateriasCursando(data.materiasCursando);
+          setDocumentosExpediente(data.documentosExpediente);
+          setKardexPlanCompleto(data.kardexPlanCompleto);
+        } else {
+          throw new Error(data.error || 'Error al obtener datos.');
+        }
+      } catch (err) {
+        console.error('Error al conectar con la API de alumno:', err);
+        setErrorMsg('Error al sincronizar los datos del estudiante con el servidor.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlumnoData();
+  }, [alumnoId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <p className="text-sm font-semibold text-slate-600 animate-pulse">Cargando portal del estudiante...</p>
+      </div>
+    );
+  }
+
+  if (errorMsg || !alumnoData) {
+    return (
+      <div className="min-h-screen bg-slate-100 p-8 flex items-center justify-center">
+        <div className="bg-white p-6 rounded-2xl border border-rose-200 shadow-sm text-center space-y-2">
+          <p className="text-xs font-bold text-rose-600">{errorMsg || 'No se encontró información del alumno.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleVisualizarDocumento = async (docId, nombreDoc) => {
+    // Abrir la pestaña durante el clic para evitar que el navegador bloquee la ventana.
+    const nuevaVentana = window.open('', '_blank');
+
+    if (!nuevaVentana) {
+      alert('Permite las ventanas emergentes para visualizar el documento.');
+      return;
+    }
+
+    nuevaVentana.document.title = `Cargando: ${nombreDoc}`;
+    nuevaVentana.document.body.innerHTML =
+      '<p style="font-family: sans-serif; padding: 20px">Cargando documento...</p>';
+    setDocumentoAbriendo(String(docId));
+
+    try {
+      const response = await fetch(
+        `http://localhost:4000/api/alumno/documento/${encodeURIComponent(docId)}`
+      );
+
+      if (!response.ok) {
+        let mensaje = 'No se pudo cargar el archivo desde el servidor.';
+        try {
+          const data = await response.json();
+          mensaje = data.mensaje || data.error || mensaje;
+        } catch {
+          // La respuesta puede no ser JSON.
+        }
+        throw new Error(mensaje);
+      }
+
+      const blob = await response.blob();
+      if (!blob.size) throw new Error('El documento está vacío.');
+
+      const url = window.URL.createObjectURL(blob);
+      nuevaVentana.location.href = url;
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      console.error('Error al abrir el documento:', error);
+      nuevaVentana.close();
+      alert(error.message || 'No se pudo visualizar el documento. Intenta de nuevo.');
+    } finally {
+      setDocumentoAbriendo(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
 
-        {/* Encabezado sin botón redundante */}
+        {/* Encabezado Principal */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-950 text-white px-2.5 py-1 rounded-md">
               Portal Oficial del Estudiante - BELVER
             </span>
             <h1 className="text-2xl font-bold text-slate-900 mt-2">
-              {alumno.nombre} {alumno.apellidos}
+              {alumnoData.nombre} {alumnoData.apellidos}
             </h1>
             <p className="text-xs text-slate-500 font-mono mt-0.5">
-              Matrícula: <strong className="text-slate-900">{alumno.matricula}</strong> | Modalidad: {alumno.modalidadIngreso}
+              Matrícula: <strong className="text-slate-900">{alumnoData.matricula}</strong> | Modalidad: {alumnoData.modalidadIngreso}
             </p>
           </div>
 
@@ -126,29 +169,35 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
             <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center">
               <div>
                 <h2 className="text-sm font-bold text-slate-900">Materias Activas en Cursamiento</h2>
-                <p className="text-xs text-slate-500">Carga académica de 3 materias simultáneas.</p>
+                <p className="text-xs text-slate-500">Carga académica actual registrada en sistema.</p>
               </div>
               <span className="text-xs font-bold text-blue-950 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                {MATERIAS_CURSANDO.length} Materias Registradas
+                {materiasCursando.length} Materias Registradas
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {MATERIAS_CURSANDO.map((materia) => (
-                <div key={materia.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex justify-between items-center">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
-                      {materia.codigo}
-                    </span>
-                    <h3 className="text-base font-bold text-slate-900">{materia.nombre}</h3>
-                    <p className="text-xs text-slate-500">Créditos: <strong>{materia.creditos} SATCA</strong></p>
-                  </div>
-                  <div className="text-right border-l border-slate-100 pl-4">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Calificación</span>
-                    <span className="text-2xl font-black text-slate-900 font-mono">{materia.calificacion.toFixed(1)}</span>
-                  </div>
+              {materiasCursando.length === 0 ? (
+                <div className="col-span-3 bg-white p-6 rounded-2xl border border-slate-200 text-center text-xs text-slate-400">
+                  No hay materias activas en cursamiento actualmente.
                 </div>
-              ))}
+              ) : (
+                materiasCursando.map((materia) => (
+                  <div key={materia.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex justify-between items-center">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
+                        {materia.codigo}
+                      </span>
+                      <h3 className="text-base font-bold text-slate-900">{materia.nombre}</h3>
+                      <p className="text-xs text-slate-500">Créditos: <strong>{materia.creditos} SATCA</strong></p>
+                    </div>
+                    <div className="text-right border-l border-slate-100 pl-4">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Calificación</span>
+                      <span className="text-2xl font-black text-slate-900 font-mono">{materia.calificacion > 0 ? materia.calificacion.toFixed(1) : '-'}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -162,23 +211,23 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-[10px] text-slate-400 font-bold uppercase block">Nombre Completo</span>
-                <span className="font-bold text-slate-900 text-sm">{alumno.nombre} {alumno.apellidos}</span>
+                <span className="font-bold text-slate-900 text-sm">{alumnoData.nombre} {alumnoData.apellidos}</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-[10px] text-slate-400 font-bold uppercase block">CURP</span>
-                <span className="font-mono font-bold text-slate-800">{alumno.curp}</span>
+                <span className="font-mono font-bold text-slate-800">{alumnoData.curp}</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-[10px] text-slate-400 font-bold uppercase block">Matrícula BELVER</span>
-                <span className="font-mono font-bold text-blue-950">{alumno.matricula}</span>
+                <span className="font-mono font-bold text-blue-950">{alumnoData.matricula}</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <span className="text-[10px] text-slate-400 font-bold uppercase block">Estatus de Ingreso</span>
-                <span className="font-semibold text-amber-900">{alumno.modalidadIngreso}</span>
+                <span className="font-semibold text-amber-900">{alumnoData.modalidadIngreso}</span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 lg:col-span-2">
                 <span className="text-[10px] text-slate-400 font-bold uppercase block">Domicilio Particular</span>
-                <span className="font-semibold text-slate-800">{alumno.direccion}</span>
+                <span className="font-semibold text-slate-800">{alumnoData.direccion}</span>
               </div>
             </div>
           </div>
@@ -191,12 +240,12 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 Expediente Único Digital (BELVER)
               </h2>
-              <p className="text-xs text-slate-500">Documentación de ingreso resguardada.</p>
+              <p className="text-xs text-slate-500">Documentación de ingreso resguardada en el sistema.</p>
             </div>
 
             <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
-              {DOCUMENTOS_EXPEDIENTE.map((doc) => {
-                const esBoletaNoAplica = doc.esRevalidacion && !alumno.esRevalidante;
+              {documentosExpediente.map((doc) => {
+                const esBoletaNoAplica = doc.esRevalidacion && !alumnoData.esRevalidante;
 
                 return (
                   <div key={doc.id} className="p-4 bg-white hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -205,7 +254,7 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
                       <div>
                         <span className="font-bold text-slate-900 block">{doc.nombre}</span>
                         <span className="text-[10px] text-slate-400 font-mono">
-                          {esBoletaNoAplica ? 'No requiere equivalencia (Ingreso Regular desde cero)' : `Formato: ${doc.formato} • Subido el: ${doc.fecha}`}
+                          {esBoletaNoAplica ? 'No requiere equivalencia' : `Formato: ${doc.formato} • Subido el: ${doc.fecha}`}
                         </span>
                       </div>
                     </div>
@@ -221,10 +270,12 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
                             ✓ Registrado y Resguardado
                           </span>
                           <button
-                            onClick={() => alert(`Visualizando: ${doc.nombre}`)}
-                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg transition"
+                            type="button"
+                            onClick={() => handleVisualizarDocumento(doc.id, doc.nombre)}
+                            disabled={documentoAbriendo === String(doc.id)}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-wait text-slate-800 font-bold rounded-lg transition"
                           >
-                            Visualizar
+                            {documentoAbriendo === String(doc.id) ? 'Abriendo...' : 'Visualizar'}
                           </button>
                         </>
                       )}
@@ -236,34 +287,22 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
           </div>
         )}
 
-        {/* 4. KÁRDEX CON PLAN COMPLETO */}
+        {/* 4. KÁRDEX CON PLAN COMPLETO (Sin botón de descarga) */}
         {activeTab === 'kardex' && (
           <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 gap-2">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Historial Académico (Kárdex Plan Completo)</h2>
-                <p className="text-xs text-slate-500">{alumno.planEstudiosNombre}</p>
+                <p className="text-xs text-slate-500">{alumnoData.planEstudiosNombre}</p>
               </div>
-
-              {/* PUNTO 1: El botón solo se muestra si el usuario es Administrador o Control Escolar */}
-              {puedeDescargarKardex && (
-                <button
-                  onClick={() => alert('Descargando Kárdex en PDF...')}
-                  className="px-4 py-2 bg-blue-950 hover:bg-blue-900 text-white text-xs font-bold rounded-xl transition shadow-xs self-start md:self-auto"
-                >
-                  📥 Descargar Kárdex Oficial PDF
-                </button>
-              )}
             </div>
 
-            {/* PUNTO 2: Lista desplegable de materias por semestre */}
             <div className="space-y-3">
-              {KARDEX_PLAN_COMPLETO.map((bloque, idx) => {
+              {kardexPlanCompleto.map((bloque, idx) => {
                 const isOpen = !!openSemestres[idx];
 
                 return (
                   <div key={idx} className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-                    {/* Encabezado colapsable */}
                     <button
                       onClick={() => toggleSemestre(idx)}
                       className="w-full flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100 transition text-left"
@@ -281,7 +320,6 @@ export default function AlumnoPage({ alumno = DEFAULT_STUDENT, roleCode = 'CONTR
                       </span>
                     </button>
 
-                    {/* Contenido desplegable */}
                     {isOpen && (
                       <div className="p-3 bg-white border-t border-slate-200">
                         <div className="overflow-x-auto">

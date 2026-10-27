@@ -51,7 +51,7 @@ export default function CatalogosPage({ branding }) {
     setCargando(true);
     try {
       const response = await fetch(
-        `http://localhost:4000/api/catalogos/${endpoint}`,
+        `http://localhost:4000/api/catalogo/${endpoint}`,
       );
       const textResponse = await response.text();
 

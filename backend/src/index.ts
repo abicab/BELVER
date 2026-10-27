@@ -9,6 +9,7 @@ import alumnosCERouter from "./routes/alumnosCERouter";
 import reportesRoutes from "./routes/reportesRoutes";
 import cicloRoutes from "./routes/cicloRoute.js";
 import catalogoRoute from "./routes/catalogoRoute.js";
+import alumnoRoute from "./routes/alumnoRoute.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -42,6 +43,9 @@ app.use("/api/usuarios", userRoutes);
 
 // Ruta Historial
 app.use("/api/historial", historialRoutes);
+
+// Ruta alumno
+app.use("/api/alumno", alumnoRoute);
 
 app.get("/", (req, res) => {
   res.json({ ok: true, mensaje: "API de BELVER funcionando correctamente" });
