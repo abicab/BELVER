@@ -17,9 +17,8 @@ export class StudyPlanService {
     return await prisma.planEstudio.findMany({
       include: {
         materias: {
-          orderBy: [
-            { semestre: 'asc' },
-          ],
+          orderBy: [{ semestre: 'asc' }],
+          include: { prerrequisitos: true },
         },
       },
     });

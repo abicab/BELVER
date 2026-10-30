@@ -7,6 +7,9 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [pasoModal, setPasoModal] = useState(1); // 1: Datos y Materias, 2: Seriación
+  const [planEditando, setPlanEditando] = useState(null);
+  const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
   // Estado del formulario de nuevo plan
   const [formData, setFormData] = useState({
@@ -75,37 +78,76 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
     setSeriacionesForm(seriacionesForm.filter((_, i) => i !== index));
   };
 
-  // Guardar nuevo plan con materias y seriación todo en uno (Solo se ejecuta al dar clic en el botón final)
-  const handleCreatePlan = async (e) => {
+  // Abre el formulario en modo edición y recupera las materias y seriaciones existentes.
+  const handleEditPlan = (plan) => {
+    setPlanEditando(plan);
+    setFormData({ clave: plan.clave || '', nombre: plan.nombre || '', descripcion: plan.descripcion || '' });
+    setMateriasForm((plan.materias || []).map((m) => ({
+      id: m.id,
+      codigo: m.codigo,
+      nombreCompleto: m.nombreCompleto,
+      nombreCorto: m.nombreCorto,
+      semestre: m.semestre,
+    })));
+    const seriaciones = (plan.materias || []).flatMap((materia) =>
+      (materia.prerrequisitos || []).map((s) => ({
+        codigoMateria: materia.codigo,
+        codigoPrerrequisito: (plan.materias || []).find((m) => m.id === s.prerrequisitoMateriaId)?.codigo || '',
+      }))
+    );
+    setSeriacionesForm(seriaciones.length ? seriaciones : [{ codigoMateria: '', codigoPrerrequisito: '' }]);
+    setPasoModal(1);
+    setErrorMsg('');
+    setIsModalOpen(true);
+  };
+
+  const resetFormulario = () => {
+    setPlanEditando(null);
+    setFormData({ clave: '', nombre: '', descripcion: '' });
+    setMateriasForm([{ codigo: '', nombreCompleto: '', nombreCorto: '', semestre: 1 }]);
+    setSeriacionesForm([{ codigoMateria: '', codigoPrerrequisito: '' }]);
+    setPasoModal(1);
+    setConfirmacionAbierta(false);
+    setErrorMsg('');
+  };
+
+  // El formulario solo solicita confirmación; el guardado ocurre al confirmar.
+  const handleSolicitarGuardado = (e) => {
     e.preventDefault();
     setErrorMsg('');
+    setConfirmacionAbierta(true);
+  };
 
+  const handleCreatePlan = async () => {
+    setGuardando(true);
+    setErrorMsg('');
     try {
       const payload = {
         ...formData,
         materias: materiasForm,
-        seriaciones: seriacionesForm.filter(s => s.codigoMateria && s.codigoPrerrequisito)
+        seriaciones: seriacionesForm.filter((s) => s.codigoMateria && s.codigoPrerrequisito),
       };
-
-      const res = await fetch("http://localhost:4000/api/planes", {
-        method: 'POST',
+      const url = planEditando
+        ? `http://localhost:4000/api/planes/${planEditando.id}`
+        : 'http://localhost:4000/api/planes';
+      const res = await fetch(url, {
+        method: planEditando ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Error al guardar el plan de estudios');
+        throw new Error(err.error || 'No fue posible guardar el plan de estudios.');
       }
-
-      await fetchPlanes();
+      setConfirmacionAbierta(false);
       setIsModalOpen(false);
-      setPasoModal(1);
-      setFormData({ clave: '', nombre: '', descripcion: '' });
-      setMateriasForm([{ codigo: '', nombreCompleto: '', nombreCorto: '', semestre: 1 }]);
-      setSeriacionesForm([{ codigoMateria: '', codigoPrerrequisito: '' }]);
+      resetFormulario();
+      await fetchPlanes();
     } catch (err) {
-      setErrorMsg(err.message);
+      setConfirmacionAbierta(false);
+      setErrorMsg(err.message || 'Ocurrió un error al guardar.');
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -129,10 +171,10 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
 
           {esAdministrador && (
             <button
-              onClick={() => { setIsModalOpen(true); setPasoModal(1); }}
+              onClick={() => { resetFormulario(); setIsModalOpen(true); }}
               className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition shadow-md self-start md:self-auto"
             >
-              + Agregar Nuevo Plan (Todo en Uno)
+              + Agregar Nuevo Plan
             </button>
           )}
         </div>
@@ -164,9 +206,16 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                       </span>
                       <h2 className="text-lg font-bold text-slate-900 mt-1">{plan.nombre}</h2>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {plan.activo ? 'Vigente' : 'Inactivo'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {plan.activo ? 'Vigente' : 'Inactivo'}
+                      </span>
+                      {esAdministrador && (
+                        <button type="button" onClick={() => handleEditPlan(plan)} className="px-3 py-1.5 rounded-lg bg-blue-950 text-white text-[10px] font-bold hover:bg-blue-900 transition">
+                          ✎ Editar
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <p className="text-xs text-slate-600">{plan.descripcion}</p>
@@ -217,7 +266,7 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
             <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col my-8 max-h-[90vh]">
               
               <div className="p-4 bg-slate-900 text-white flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-xs">Alta Integral de Plan de Estudios y Seriación</h3>
+                <h3 className="font-bold text-xs">{planEditando ? 'Editar Plan de Estudios' : 'Alta de Plan de Estudios'}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
               </div>
 
@@ -240,7 +289,7 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
               </div>
 
               {/* Contenedor del Formulario con scroll independiente */}
-              <form onSubmit={handleCreatePlan} className="p-6 space-y-5 text-xs text-slate-700 overflow-y-auto flex-1">
+              <form onSubmit={handleSolicitarGuardado} className="p-6 space-y-5 text-xs text-slate-700 overflow-y-auto flex-1">
                 {errorMsg && (
                   <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 font-semibold rounded-lg">
                     {errorMsg}
@@ -411,26 +460,65 @@ export default function PlanEstudiosPage({ userRole = 'ADMIN' }) {
                 )}
 
 
-<div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2 -mx-6 -mb-6 mt-4 shrink-0">
+<div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between gap-2 -mx-6 -mb-6 mt-4 shrink-0">
   <button
     type="button"
-    onClick={() => setIsModalOpen(false)}
+    onClick={() => pasoModal === 2 ? setPasoModal(1) : (setIsModalOpen(false), resetFormulario())}
     className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold text-xs transition"
   >
-    Cancelar
+    {pasoModal === 2 ? '← Regresar' : 'Cancelar'}
   </button>
-
-  <button
-    type="submit"
-    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs transition shadow-md"
-  >
-    ✓ Guardar Plan, Materias y Seriación
-  </button>
+  {pasoModal === 1 ? (
+    <button
+      type="button"
+      onClick={() => setPasoModal(2)}
+      className="px-5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl font-bold text-xs transition shadow-md"
+    >
+      Siguiente →
+    </button>
+  ) : (
+    <button
+      type="submit"
+      className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs transition shadow-md"
+    >
+      ✓ {planEditando ? 'Guardar cambios' : 'Guardar Plan'}
+    </button>
+  )}
 </div>
 </form>
 </div>
 </div>
 )}
+
+        {confirmacionAbierta && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xl">?</div>
+                <div>
+                  <h3 className="font-bold text-slate-900">¿Confirmas que deseas {planEditando ? 'guardar los cambios' : 'guardar el plan'}?</h3>
+                  <p className="text-xs text-slate-500 mt-1">Verifica la información antes de continuar.</p>
+                </div>
+              </div>
+              <div className="p-5 space-y-3 text-xs text-slate-600">
+                <div className="bg-slate-50 rounded-xl p-3 space-y-1">
+                  <p><strong className="text-slate-800">Plan:</strong> {formData.nombre || 'Sin nombre'}</p>
+                  <p><strong className="text-slate-800">Clave:</strong> {formData.clave || 'Sin clave'}</p>
+                  <p><strong className="text-slate-800">Materias:</strong> {materiasForm.length}</p>
+                  <p><strong className="text-slate-800">Seriaciones:</strong> {seriacionesForm.filter((s) => s.codigoMateria && s.codigoPrerrequisito).length}</p>
+                </div>
+                <p className="text-slate-500">{planEditando ? 'Los cambios se aplicarán al plan existente.' : 'Una vez guardado, el plan aparecerá en la lista de planes de estudio.'}</p>
+                {errorMsg && <p className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">{errorMsg}</p>}
+              </div>
+              <div className="p-4 bg-slate-50 flex justify-end gap-2">
+                <button type="button" disabled={guardando} onClick={() => setConfirmacionAbierta(false)} className="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 text-xs font-semibold disabled:opacity-50">Revisar</button>
+                <button type="button" disabled={guardando} onClick={handleCreatePlan} className="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold disabled:opacity-50">
+                  {guardando ? 'Guardando...' : 'Sí, guardar plan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 </div>
 </div>
 );
