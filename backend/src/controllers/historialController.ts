@@ -1,19 +1,28 @@
+// historialController.ts
+
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Obtener lista de alumnos (todos o filtrados por revalidación)
+// Normaliza acentos y mayúsculas para reconocer cualquier variante de revalidación.
+const esTipoRevalidacion = (tipo: string | null | undefined): boolean => {
+  return String(tipo || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .includes("revalidacion");
+};
+
 export const getAlumnosHistorial = async (req: Request, res: Response) => {
   try {
-    const { tipo } = req.query; // 'revalidacion' o undefined
-    
-    const whereCondition: any = {};
-    if (tipo === "revalidacion") {
-      whereCondition.tipoAdmision = {
-        contains: "revalidación",
-      };
-    }
+    const tipo = String(req.query.tipo || "").toLowerCase();
+
+    // 'revalid' permite encontrar Revalidación y Revalidacion en MySQL
+    // cuando la columna utiliza una intercalación habitual case-insensitive.
+    const whereCondition = tipo === "revalidacion"
+      ? { tipoAdmision: { contains: "revalid" } }
+      : {};
 
     const alumnos = await prisma.aspirante.findMany({
       where: whereCondition,
@@ -31,6 +40,7 @@ export const getAlumnosHistorial = async (req: Request, res: Response) => {
       },
       orderBy: { id: "desc" },
     });
+
     return res.json(alumnos);
   } catch (error) {
     console.error("Error al obtener alumnos para historial:", error);
@@ -38,8 +48,7 @@ export const getAlumnosHistorial = async (req: Request, res: Response) => {
   }
 };
 
-// Obtener planes de estudio con sus materias
-export const getPlanesEstudioConMaterias = async (req: Request, res: Response) => {
+export const getPlanesEstudioConMaterias = async (_req: Request, res: Response) => {
   try {
     const planes = await prisma.planEstudio.findMany({
       where: { activo: true },
@@ -49,6 +58,7 @@ export const getPlanesEstudioConMaterias = async (req: Request, res: Response) =
         },
       },
     });
+
     return res.json(planes);
   } catch (error) {
     console.error("Error al obtener planes de estudio:", error);
@@ -56,18 +66,23 @@ export const getPlanesEstudioConMaterias = async (req: Request, res: Response) =
   }
 };
 
-// Obtener el historial académico actual de un alumno específico
 export const getHistorialPorAlumno = async (req: Request, res: Response) => {
   try {
-    const { aspiranteId } = req.params;
+    const aspiranteId = Number(req.params.aspiranteId);
+
+    if (!Number.isInteger(aspiranteId) || aspiranteId <= 0) {
+      return res.status(400).json({ error: "El identificador del alumno no es válido." });
+    }
+
     const historial = await prisma.historialAcademico.findMany({
-      where: { aspiranteId: Number(aspiranteId) },
+      where: { aspiranteId },
       include: {
         materia: true,
         planEstudio: true,
       },
       orderBy: { materia: { semestre: "asc" } },
     });
+
     return res.json(historial);
   } catch (error) {
     console.error("Error al obtener historial del alumno:", error);
@@ -75,144 +90,210 @@ export const getHistorialPorAlumno = async (req: Request, res: Response) => {
   }
 };
 
-// Asignar materias y calificaciones enteras (5-10) validando que tenga matrícula
 export const asignarMateriasHistorial = async (req: Request, res: Response) => {
   try {
-    const { 
-      aspiranteId, 
-      planEstudioClave, 
-      materiasAsignadas 
-    } = req.body;
-
-    if (!aspiranteId || !planEstudioClave || !materiasAsignadas || !Array.isArray(materiasAsignadas)) {
-      return res.status(400).json({ error: "Datos incompletos para realizar la asignación." });
-    }
+    const { aspiranteId, planEstudioClave, materiasAsignadas } = req.body;
 
     const idAlumno = Number(aspiranteId);
 
-    // Validar que el alumno cuente con matrícula asignada
+    if (
+      !Number.isInteger(idAlumno) ||
+      idAlumno <= 0 ||
+      typeof planEstudioClave !== "string" ||
+      !planEstudioClave.trim() ||
+      !Array.isArray(materiasAsignadas) ||
+      materiasAsignadas.length === 0
+    ) {
+      return res.status(400).json({ error: "Datos incompletos para realizar la asignación." });
+    }
+
     const alumnoVerif = await prisma.aspirante.findUnique({
       where: { id: idAlumno },
       select: { matricula: true, tipoAdmision: true },
     });
 
-    if (!alumnoVerif || !alumnoVerif.matricula) {
-      return res.status(400).json({ 
-        error: "No se le puede asignar un plan de estudios ni historial a un alumno de nuevo ingreso sin matrícula." 
+    if (!alumnoVerif) {
+      return res.status(404).json({ error: "No se encontró el alumno seleccionado." });
+    }
+
+    // Los alumnos regulares/de nuevo ingreso necesitan matrícula.
+    // Los revalidantes pueden capturarse con su folio de aspirante.
+    if (!alumnoVerif.matricula && !esTipoRevalidacion(alumnoVerif.tipoAdmision)) {
+      return res.status(400).json({
+        error: "El alumno necesita matrícula para asignar su historial. La excepción aplica únicamente para alumnos de revalidación.",
       });
     }
 
     const planObj = await prisma.planEstudio.findUnique({
-      where: { clave: planEstudioClave },
+      where: { clave: planEstudioClave.trim() },
     });
 
     if (!planObj) {
       return res.status(404).json({ error: "El plan de estudios seleccionado no existe." });
     }
 
-    const planEstudioId = planObj.id;
+    const materiasIds = materiasAsignadas.map((item: any) => Number(item?.materiaId));
+    if (materiasIds.some((id: number) => !Number.isInteger(id) || id <= 0)) {
+      return res.status(400).json({ error: "Una o más materias tienen un identificador inválido." });
+    }
+    if (new Set(materiasIds).size !== materiasIds.length) {
+      return res.status(400).json({ error: "No debes enviar una materia más de una vez." });
+    }
+
+    // Verifica que todas las materias pertenezcan al plan seleccionado.
+    const materiasValidas = await prisma.materia.findMany({
+      where: {
+        id: { in: materiasIds },
+        planEstudioId: planObj.id,
+      },
+      select: { id: true, semestre: true },
+    });
+
+    if (materiasValidas.length !== materiasIds.length) {
+      return res.status(400).json({
+        error: "Una o más materias no pertenecen al plan de estudios seleccionado.",
+      });
+    }
+
+    const semestrePorMateria = new Map(materiasValidas.map((materia) => [materia.id, materia.semestre]));
     const fechaCapturaAutomatica = new Date();
-    const periodoPeriodoLectivo = fechaCapturaAutomatica.toISOString().split('T')[0];
+    const periodoPeriodoLectivo = fechaCapturaAutomatica.toISOString().split("T")[0];
+    const tiposExamenValidos = ["R1", "R2", "R3", "F", "RE", "TS", "AR", "AE"];
+
+    // Normaliza y valida antes de abrir la transacción.
+    const materiasNormalizadas = materiasAsignadas.map((item: any) => {
+      const materiaId = Number(item.materiaId);
+      const semestre = semestrePorMateria.get(materiaId);
+      const calificacionVacia = item.calificacion === undefined || item.calificacion === null || item.calificacion === "";
+      let notaFinal: number | null = null;
+
+      if (!calificacionVacia) {
+        const nota = Number(item.calificacion);
+        if (!Number.isInteger(nota) || nota < 5 || nota > 10) {
+          throw new Error(`Calificación inválida (${item.calificacion}). Solo se permiten enteros del 5 al 10.`);
+        }
+        notaFinal = nota;
+      }
+
+      const tipoExamen = String(item.tipoExamen || "F").toUpperCase();
+      if (!tiposExamenValidos.includes(tipoExamen)) {
+        throw new Error(`Tipo de examen inválido (${tipoExamen}).`);
+      }
+
+      const claveFolio = item.claveFolioProcedencia == null
+        ? null
+        : String(item.claveFolioProcedencia).trim();
+
+      if (claveFolio && claveFolio.length > 50) {
+        throw new Error("La clave/folio de procedencia no puede superar los 50 caracteres.");
+      }
+
+      let fechaInicio: Date | null = null;
+      if (item.fechaInicioEstudios) {
+        const fecha = new Date(item.fechaInicioEstudios);
+        if (Number.isNaN(fecha.getTime())) {
+          throw new Error("La fecha de inicio de estudios no es válida.");
+        }
+        fechaInicio = fecha;
+      }
+
+      const area = item.areaSemestre == null ? null : String(item.areaSemestre).trim();
+
+      return {
+        materiaId,
+        semestre,
+        notaFinal,
+        tipoExamen,
+        fechaInicio,
+        claveFolio: claveFolio || null,
+        area: area || null,
+        estatus: notaFinal !== null && notaFinal >= 6
+          ? "ACREDITADA"
+          : notaFinal === 5
+            ? "REPROBADA"
+            : "CURSANDO",
+      };
+    });
 
     await prisma.$transaction(async (tx) => {
-      // 1. Actualizar el plan de estudios del alumno
       await tx.aspirante.update({
         where: { id: idAlumno },
-        data: { planEstudios: planEstudioClave },
+        data: { planEstudios: planObj.clave },
       });
 
-      for (const item of materiasAsignadas) {
-        const { materiaId, calificacion, tipoExamen } = item;
-        
-        if (calificacion !== undefined && calificacion !== null && calificacion !== "") {
-          const nota = Number(calificacion);
-          if (isNaN(nota) || nota < 5 || nota > 10) {
-            throw new Error(`Calificación inválida (${nota}). Solo se permiten enteros del 5 al 10.`);
-          }
-        }
-
-        const notaFinal = calificacion !== undefined && calificacion !== null && calificacion !== "" ? Math.round(Number(calificacion)) : null;
-        const tipoEx = tipoExamen || "F";
-        const estatusMateria = notaFinal !== null && notaFinal >= 6 ? "ACREDITADA" : (notaFinal === 5 ? "REPROBADA" : "CURSANDO");
-
-        // 2. Historial Académico
+      for (const item of materiasNormalizadas) {
         await tx.historialAcademico.upsert({
           where: {
             aspiranteId_materiaId: {
               aspiranteId: idAlumno,
-              materiaId: Number(materiaId),
+              materiaId: item.materiaId,
             },
           },
           update: {
-            planEstudioId: planEstudioId,
-            calificacion: notaFinal,
-            tipoExamen: tipoEx,
-            estatus: estatusMateria,
+            planEstudioId: planObj.id,
+            calificacion: item.notaFinal,
+            tipoExamen: item.tipoExamen,
+            estatus: item.estatus,
+            fechaInicioEstudios: item.fechaInicio,
+            claveFolioProcedencia: item.claveFolio,
+            areaSemestre: item.area,
             planEstudiosCapturado: fechaCapturaAutomatica,
           },
           create: {
             aspiranteId: idAlumno,
-            materiaId: Number(materiaId),
-            planEstudioId: planEstudioId,
-            calificacion: notaFinal,
-            tipoExamen: tipoEx,
-            estatus: estatusMateria,
+            materiaId: item.materiaId,
+            planEstudioId: planObj.id,
+            calificacion: item.notaFinal,
+            tipoExamen: item.tipoExamen,
+            estatus: item.estatus,
+            fechaInicioEstudios: item.fechaInicio,
+            claveFolioProcedencia: item.claveFolio,
+            areaSemestre: item.area,
             planEstudiosCapturado: fechaCapturaAutomatica,
           },
         });
 
-        // 3. Materia Inscrita
-        await tx.materiaInscrita.upsert({
+        const materiaInscritaReg = await tx.materiaInscrita.upsert({
           where: {
             aspiranteId_materiaId: {
               aspiranteId: idAlumno,
-              materiaId: Number(materiaId),
+              materiaId: item.materiaId,
             },
           },
           update: {
-            planEstudioId: planEstudioId,
-            estatus: estatusMateria,
+            planEstudioId: planObj.id,
+            estatus: item.estatus,
           },
           create: {
             aspiranteId: idAlumno,
-            materiaId: Number(materiaId),
-            planEstudioId: planEstudioId,
-            estatus: estatusMateria,
+            materiaId: item.materiaId,
+            planEstudioId: planObj.id,
+            estatus: item.estatus,
           },
         });
 
-        // 4. Calificación
-        if (notaFinal !== null) {
-          const materiaInscritaReg = await tx.materiaInscrita.findUnique({
-            where: {
-              aspiranteId_materiaId: {
-                aspiranteId: idAlumno,
-                materiaId: Number(materiaId),
-              },
-            },
-          });
-
+        if (item.notaFinal !== null) {
           await tx.calificacion.upsert({
             where: {
               aspiranteId_materiaId_parcial_periodo: {
                 aspiranteId: idAlumno,
-                materiaId: Number(materiaId),
+                materiaId: item.materiaId,
                 parcial: 1,
                 periodo: periodoPeriodoLectivo,
               },
             },
             update: {
-              planEstudioId: planEstudioId,
-              calificacion: notaFinal,
-              materiaInscritaId: materiaInscritaReg?.id,
+              planEstudioId: planObj.id,
+              calificacion: item.notaFinal,
+              materiaInscritaId: materiaInscritaReg.id,
             },
             create: {
               aspiranteId: idAlumno,
-              materiaId: Number(materiaId),
-              planEstudioId: planEstudioId,
-              materiaInscritaId: materiaInscritaReg?.id,
+              materiaId: item.materiaId,
+              planEstudioId: planObj.id,
+              materiaInscritaId: materiaInscritaReg.id,
               parcial: 1,
-              calificacion: notaFinal,
+              calificacion: item.notaFinal,
               periodo: periodoPeriodoLectivo,
             },
           });
@@ -220,9 +301,11 @@ export const asignarMateriasHistorial = async (req: Request, res: Response) => {
       }
     });
 
-    return res.json({ message: "Historial académico actualizado correctamente con plan de estudios y calificaciones." });
+    return res.json({ message: "Historial académico actualizado correctamente." });
   } catch (error: any) {
     console.error("Error al asignar materias e historial:", error);
-    return res.status(500).json({ error: error.message || "Ocurrió un error al guardar los cambios en el historial." });
+    return res.status(400).json({
+      error: error?.message || "Ocurrió un error al guardar los cambios en el historial.",
+    });
   }
 };

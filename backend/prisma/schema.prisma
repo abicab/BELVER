@@ -365,10 +365,13 @@ model HistorialAcademico {
   materia               Materia      @relation(fields: [materiaId], references: [id], onDelete: Cascade)
   planEstudioId         Int
   planEstudio           PlanEstudio  @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
-  calificacion          Int?         // Entero de 5 a 10 (5 reprobatoria)
+  calificacion          Int?         
   tipoExamen            String?      @default("F") @db.VarChar(50)
   estatus               String       @default("CURSANDO") @db.VarChar(50)
-  planEstudiosCapturado DateTime?    // Fecha única de captura
+  fechaInicioEstudios   DateTime?    @db.Date 
+  claveFolioProcedencia String?      @db.VarChar(50) 
+  areaSemestre          String?      @db.VarChar(100) // <-- Nuevo campo para el área en 5° y 6° semestre
+  planEstudiosCapturado DateTime?    
 
   @@unique([aspiranteId, materiaId])
   @@map("historial_academico")
