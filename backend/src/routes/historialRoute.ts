@@ -1,3 +1,5 @@
+// historialRoute.ts
+
 import { Router } from "express";
 import {
   getAlumnosHistorial,

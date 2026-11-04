@@ -298,6 +298,9 @@ CREATE TABLE `historial_academico` (
     `calificacion` INTEGER NULL,
     `tipoExamen` VARCHAR(50) NULL DEFAULT 'F',
     `estatus` VARCHAR(50) NOT NULL DEFAULT 'CURSANDO',
+    `fechaInicioEstudios` DATE NULL,
+    `claveFolioProcedencia` VARCHAR(50) NULL,
+    `areaSemestre` VARCHAR(100) NULL,
     `planEstudiosCapturado` DATETIME(3) NULL,
 
     UNIQUE INDEX `historial_academico_aspiranteId_materiaId_key`(`aspiranteId`, `materiaId`),

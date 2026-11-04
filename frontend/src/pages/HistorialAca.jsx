@@ -1,31 +1,39 @@
+// HistorialAca.jsx
+
 import React, { useState, useEffect } from 'react';
 
 const API_HISTORIAL_URL = "http://localhost:4000/api/historial";
+
+// Reconoce 'revalidación' aunque esté guardado sin acento o en mayúsculas.
+const esTipoRevalidacion = (tipo) => {
+  return String(tipo || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .includes('revalidacion');
+};
 
 export default function HistorialAca() {
   const [alumnos, setAlumnos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Submenú: 'revalidacion' primero o 'todos'
   const [pestanaActiva, setPestanaActiva] = useState('revalidacion');
-
-  // Filtro de búsqueda
   const [busqueda, setBusqueda] = useState('');
 
-  // Estados del Modal y Asignación
   const [selectedAlumno, setSelectedAlumno] = useState(null);
   const [planes, setPlanes] = useState([]);
   const [planSeleccionado, setPlanSeleccionado] = useState('');
+  const [fechaInicioEstudios, setFechaInicioEstudios] = useState('');
   const [materiasDelPlan, setMateriasDelPlan] = useState([]);
+  const [claveFolioSemestre, setClaveFolioSemestre] = useState({}); // { [semestre]: 'CLAVE' }
+  const [areaSemestre, setAreaSemestre] = useState({ 5: '', 6: '' }); // { 5: '...', 6: '...' }
 
   const [guardando, setGuardando] = useState(false);
   const [modalError, setModalError] = useState('');
 
-  // Estructura: { [materiaId]: { seleccionada: boolean, calificacion: string|number, tipoExamen: string } }
   const [materiasSeleccionadas, setMateriasSeleccionadas] = useState({});
 
-  // 1. Cargar alumnos desde el servidor según la pestaña activa
   const fetchAlumnos = async (tipo = 'revalidacion') => {
     try {
       setLoading(true);
@@ -46,7 +54,6 @@ export default function HistorialAca() {
     }
   };
 
-  // 2. Cargar planes de estudio activos
   const fetchPlanes = async () => {
     try {
       const res = await fetch(`${API_HISTORIAL_URL}/planes`);
@@ -63,23 +70,32 @@ export default function HistorialAca() {
     fetchPlanes();
   }, [pestanaActiva]);
 
-  // 3. Abrir modal validando si cuenta con matrícula
   const handleOpenAssignModal = async (alumno) => {
-    // REGLA: Los alumnos de nuevo ingreso sin matrícula no pueden recibir planes de estudio
-    if (!alumno.matricula) {
-      setErrorMsg(`El alumno ${alumno.nombres} es de nuevo ingreso y aún no cuenta con matrícula generada. No se le puede asignar historial.`);
+    const esRevalidante = esTipoRevalidacion(alumno.tipoAdmision);
+
+    // Los alumnos de nuevo ingreso siguen requiriendo matrícula.
+    // Los alumnos de revalidación pueden capturarse usando su folio de aspirante.
+    if (!alumno.matricula && !esRevalidante) {
+      setErrorMsg(`El alumno ${alumno.nombres} es de nuevo ingreso y aún no cuenta con matrícula generada.`);
       return;
     }
 
     setSelectedAlumno(alumno);
     setModalError('');
     setPlanSeleccionado('');
+    setFechaInicioEstudios('');
     setMateriasDelPlan([]);
     setMateriasSeleccionadas({});
+    setClaveFolioSemestre({});
+    setAreaSemestre({ 5: '', 6: '' });
 
     try {
       const res = await fetch(`${API_HISTORIAL_URL}/alumno/${alumno.id}`);
       const historial = res.ok ? await res.json() : [];
+
+      if (historial.length > 0 && historial[0].fechaInicioEstudios) {
+        setFechaInicioEstudios(historial[0].fechaInicioEstudios.split('T')[0]);
+      }
 
       if (alumno.planEstudios) {
         const planExistente = planes.find((p) => p.clave === alumno.planEstudios);
@@ -92,7 +108,6 @@ export default function HistorialAca() {
     }
   };
 
-  // 4. Seleccionar plan de estudios y poblar materias
   const handleSelectPlan = (clavePlan, historial = []) => {
     setPlanSeleccionado(clavePlan);
     const planObj = planes.find((p) => p.clave === clavePlan);
@@ -101,6 +116,9 @@ export default function HistorialAca() {
       setMateriasDelPlan(planObj.materias);
 
       const seleccionInicial = {};
+      const semestresClaves = {};
+      const areasTemp = { 5: '', 6: '' };
+
       planObj.materias.forEach((m) => {
         const reg = historial.find((h) => h.materiaId === m.id);
         if (reg) {
@@ -109,15 +127,25 @@ export default function HistorialAca() {
             calificacion: reg.calificacion ?? '',
             tipoExamen: reg.tipoExamen || 'F',
           };
+          if (reg.claveFolioProcedencia) {
+            semestresClaves[m.semestre] = reg.claveFolioProcedencia;
+          }
+          if ((m.semestre === 5 || m.semestre === 6) && reg.areaSemestre) {
+            areasTemp[m.semestre] = reg.areaSemestre;
+          }
+          if (!fechaInicioEstudios && reg.fechaInicioEstudios) {
+            setFechaInicioEstudios(reg.fechaInicioEstudios.split('T')[0]);
+          }
         }
       });
       setMateriasSeleccionadas(seleccionInicial);
+      setClaveFolioSemestre(semestresClaves);
+      setAreaSemestre(areasTemp);
     } else {
       setMateriasDelPlan([]);
     }
   };
 
-  // 5. Manejar casillas, notas enteras (5-10) y tipo de examen
   const handleToggleMateria = (materiaId) => {
     setMateriasSeleccionadas((prev) => {
       const actual = prev[materiaId] || { seleccionada: false, calificacion: '', tipoExamen: 'F' };
@@ -160,17 +188,45 @@ export default function HistorialAca() {
     });
   };
 
-  // 6. Confirmar y guardar asignación
+  const handleClaveFolioSemestreChange = (semestre, val) => {
+    setClaveFolioSemestre((prev) => ({
+      ...prev,
+      [semestre]: val,
+    }));
+  };
+
+  const handleAreaSemestreChange = (semestre, val) => {
+    setAreaSemestre((prev) => ({
+      ...prev,
+      [semestre]: val,
+    }));
+  };
+
   const handleSaveHistorial = async () => {
     if (!selectedAlumno) return;
 
+    const esRevalidante = esTipoRevalidacion(selectedAlumno.tipoAdmision);
+
+    if (!planSeleccionado) {
+      setModalError('Debes seleccionar un plan de estudios.');
+      return;
+    }
+
     const materiasAEnviar = Object.entries(materiasSeleccionadas)
       .filter(([_, item]) => item.seleccionada)
-      .map(([materiaId, item]) => ({
-        materiaId: Number(materiaId),
-        calificacion: item.calificacion !== '' ? Number(item.calificacion) : null,
-        tipoExamen: item.tipoExamen || 'F',
-      }));
+      .map(([materiaId, item]) => {
+        const matObj = materiasDelPlan.find((m) => m.id === Number(materiaId));
+        const sem = matObj ? matObj.semestre : null;
+
+        return {
+          materiaId: Number(materiaId),
+          calificacion: item.calificacion !== '' ? Number(item.calificacion) : null,
+          tipoExamen: item.tipoExamen || 'F',
+          fechaInicioEstudios: fechaInicioEstudios || null,
+          claveFolioProcedencia: esRevalidante && sem ? (claveFolioSemestre[sem] || null) : null,
+          areaSemestre: (sem === 5 || sem === 6) ? (areaSemestre[sem] || null) : null,
+        };
+      });
 
     if (materiasAEnviar.length === 0) {
       setModalError('Debes seleccionar al menos una materia para asignar.');
@@ -200,13 +256,12 @@ export default function HistorialAca() {
       await fetchAlumnos(pestanaActiva);
     } catch (err) {
       console.error('Error al guardar asignación:', err);
-      setModalError(err.message);
+      setModalError(err instanceof Error ? err.message : 'Ocurrió un error al guardar el historial académico.');
     } finally {
       setGuardando(false);
     }
   };
 
-  // Filtro de búsqueda y limitación estricta a los primeros 20 registros
   const alumnosFiltrados = alumnos.filter((a) => {
     const query = busqueda.toLowerCase();
     const nombreCompleto = `${a.nombres} ${a.apellidoPaterno} ${a.apellidoMaterno || ''}`.toLowerCase();
@@ -214,6 +269,8 @@ export default function HistorialAca() {
     const fol = (a.folio || '').toLowerCase();
     return nombreCompleto.includes(query) || mat.includes(query) || fol.includes(query);
   }).slice(0, 20);
+
+  const esAlumnoRevalidante = esTipoRevalidacion(selectedAlumno?.tipoAdmision);
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
@@ -229,11 +286,10 @@ export default function HistorialAca() {
               Gestión de Historial Académico
             </h1>
             <p className="text-xs text-slate-500">
-              Asignación de planes de estudio, carga de materias y registro de calificaciones oficiales (enteros de 5 a 10).
+              Asignación de planes, fecha de inicio, materias, áreas (5° y 6°), clave de revalidación y calificaciones (R1-R3, F, RE, TS, AR, AE).
             </p>
           </div>
 
-          {/* Submenú de pestañas con Revalidación primero */}
           <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 shadow-2xs self-start md:self-auto">
             {[
               { id: 'revalidacion', label: 'Alumnos Revalidación' },
@@ -314,7 +370,7 @@ export default function HistorialAca() {
                     </tr>
                   ) : (
                     alumnosFiltrados.map((al) => {
-                      const tieneMatricula = Boolean(al.matricula);
+                      const puedeAsignar = Boolean(al.matricula) || esTipoRevalidacion(al.tipoAdmision);
 
                       return (
                         <tr key={al.id} className="hover:bg-slate-50 transition">
@@ -340,7 +396,7 @@ export default function HistorialAca() {
                             </span>
                           </td>
                           <td className="p-4 text-right">
-                            {tieneMatricula ? (
+                            {puedeAsignar ? (
                               <button
                                 onClick={() => handleOpenAssignModal(al)}
                                 className="px-3 py-1.5 bg-blue-950 hover:bg-blue-900 text-white rounded-lg font-semibold text-xs transition inline-block shadow-2xs"
@@ -348,7 +404,7 @@ export default function HistorialAca() {
                                 📝 Asignar / Historial
                               </button>
                             ) : (
-                              <span className="text-[10px] text-slate-400 italic bg-slate-100 px-2 py-1 rounded border border-slate-200" title="Requiere matrícula para cargar materias">
+                              <span className="text-[10px] text-slate-400 italic bg-slate-100 px-2 py-1 rounded border border-slate-200">
                                 🔒 Requiere Matrícula
                               </span>
                             )}
@@ -374,7 +430,7 @@ export default function HistorialAca() {
                     Asignación de Historial Académico
                   </h3>
                   <p className="text-xs text-slate-200 mt-1">
-                    Alumno: <span className="font-bold text-white">{selectedAlumno.nombres} {selectedAlumno.apellidoPaterno}</span> ({selectedAlumno.matricula})
+                    Alumno: <span className="font-bold text-white">{selectedAlumno.nombres} {selectedAlumno.apellidoPaterno}</span> ({selectedAlumno.matricula || `Folio: ${selectedAlumno.folio}`}) {esAlumnoRevalidante && <span className="bg-amber-500 text-black px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ml-2">Revalidación / Equivalencia</span>}
                   </p>
                 </div>
                 <button
@@ -392,7 +448,7 @@ export default function HistorialAca() {
                   </div>
                 )}
 
-                {/* Configuración de Plan (Fecha automática en BD) */}
+                {/* 1. Seleccionar Plan de Estudios */}
                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
                   <div className="flex flex-col gap-1">
                     <label className="font-bold text-slate-800 uppercase text-[10px]">
@@ -413,11 +469,26 @@ export default function HistorialAca() {
                   </div>
                 </div>
 
-                {/* Selección de Materias, Calificaciones (5-10) y Tipo de Examen */}
+                {/* 2. Fecha de Inicio de los Estudios */}
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+                  <div className="flex flex-col gap-1">
+                    <label className="font-bold text-slate-800 uppercase text-[10px]">
+                      2. Fecha de Inicio de los Estudios (Se reflejará en el historial y constancias)
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaInicioEstudios}
+                      onChange={(e) => setFechaInicioEstudios(e.target.value)}
+                      className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg outline-none font-semibold text-slate-800 w-full sm:w-64"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Selección de Materias y Configuración por Semestre */}
                 {planSeleccionado && (
                   <div className="space-y-3">
                     <h4 className="font-bold text-slate-900 uppercase text-[11px] border-b pb-1">
-                      2. Selecciona materias, tipo de examen y calificación (Enteros de 5 a 10):
+                      3. Selecciona materias, tipo de examen y calificaciones (5 a 10):
                     </h4>
 
                     {materiasDelPlan.length === 0 ? (
@@ -432,9 +503,47 @@ export default function HistorialAca() {
 
                           return (
                             <div key={sem} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
-                              <div className="bg-slate-900 text-white px-4 py-2 font-bold text-[10px] uppercase tracking-wider">
-                                {sem}° Semestre
+                              {/* Encabezado del Semestre con Clave/Folio (para Revalidación) y Selector de Área (para 5° y 6°) */}
+                              <div className="bg-slate-900 text-white px-4 py-2.5 font-bold text-[10px] uppercase tracking-wider flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                  <span>{sem}° Semestre</span>
+
+                                  {/* Selector de Área para Quinto y Sexto Semestre */}
+                                  {(sem === 5 || sem === 6) && (
+                                    <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+                                      <span className="text-[9px] text-cyan-300 font-semibold">Área:</span>
+                                      <select
+                                        value={areaSemestre[sem] || ''}
+                                        onChange={(e) => handleAreaSemestreChange(sem, e.target.value)}
+                                        className="bg-slate-900 text-white text-[10px] font-semibold border border-slate-600 rounded px-1.5 py-0.5 outline-none"
+                                      >
+                                        <option value="">-- Seleccionar Área --</option>
+                                        <option value="Físico – Matemáticas">Físico – Matemáticas</option>
+                                        <option value="Químico – Biológicas">Químico – Biológicas</option>
+                                        <option value="Económico – Administrativa">Económico – Administrativa</option>
+                                        <option value="Humanidades y Ciencias Sociales">Humanidades y Ciencias Sociales</option>
+                                      </select>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Clave / Folio de escuela de procedencia por semestre (Exclusivo Revalidación) */}
+                                {esAlumnoRevalidante && (
+                                  <div className="flex items-center gap-2 bg-slate-800/80 px-2 py-1 rounded border border-slate-700">
+                                    <span className="text-[9px] text-amber-300 font-semibold">Clave/Folio Ant.:</span>
+                                    <input
+                                      type="text"
+                                      placeholder="Clave o folio de procedencia"
+                                      maxLength={50}
+                                      value={claveFolioSemestre[sem] || ''}
+                                      onChange={(e) => handleClaveFolioSemestreChange(sem, e.target.value)}
+                                      className="px-2 py-1 bg-slate-900 border border-slate-700 text-white rounded font-mono text-[11px] w-48 outline-none normal-case"
+                                      title="Clave o folio correspondiente a la escuela de procedencia para este semestre"
+                                    />
+                                  </div>
+                                )}
                               </div>
+
                               <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {materiasSem.map((mat) => {
                                   const infoSel = materiasSeleccionadas[mat.id] || {
@@ -469,7 +578,6 @@ export default function HistorialAca() {
                                         </div>
                                       </div>
 
-                                      {/* Controles de Calificación y Tipo de Examen */}
                                       <div className="flex items-center gap-2 shrink-0">
                                         <select
                                           value={infoSel.tipoExamen}
@@ -477,10 +585,14 @@ export default function HistorialAca() {
                                           className="px-1.5 py-1 border border-slate-300 rounded-lg bg-white text-[11px] font-bold text-slate-700 outline-none shadow-2xs"
                                           title="Tipo de Examen"
                                         >
-                                          <option value="F">Ord (F)</option>
-                                          <option value="R">Reg (R)</option>
-                                          <option value="E">Ext (E)</option>
-                                          <option value="EQ">Equiv (EQ)</option>
+                                          <option value="R1">R1</option>
+                                          <option value="R2">R2</option>
+                                          <option value="R3">R3</option>
+                                          <option value="F">Ordinario (F)</option>
+                                          <option value="RE">Revalidación (RE)</option>
+                                          <option value="TS">Título Suficiencia (TS)</option>
+                                          <option value="AR">Acred. Reconocimiento (AR)</option>
+                                          <option value="AE">Acred. Especial (AE)</option>
                                         </select>
 
                                         <input
@@ -492,7 +604,7 @@ export default function HistorialAca() {
                                           value={infoSel.calificacion}
                                           onChange={(e) => handleCalificacionChange(mat.id, e.target.value)}
                                           className="w-16 text-center px-2 py-1 border border-slate-300 rounded-lg bg-white font-mono font-bold text-slate-900 outline-none shadow-2xs"
-                                          title="Calificación entera de 5 a 10 (5 es reprobatoria)"
+                                          title="Calificación entera de 5 a 10"
                                         />
                                       </div>
                                     </div>
