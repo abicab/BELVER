@@ -413,6 +413,9 @@ export const registrarAspirante = async (
               <p style="font-size: 12px; font-weight: bold; color: #b91c1c; text-align: left; margin-top: 15px;">
                 Fecha límite para modificaciones: ${fechaLimiteStr}
               </p>
+              <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
+                No responder a este correo electrónico.
+              </p>
               <div style="margin-top: 25px;">
                 <a href="${linkConsulta}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Consultar Folio de Inscripción</a>
               </div>
@@ -553,12 +556,10 @@ export const verDocumento = async (
     res.send(documento.archivoBlob);
   } catch (error) {
     console.error("Error al visualizar documento:", error);
-    res
-      .status(500)
-      .json({
-        ok: false,
-        mensaje: "Error interno al visualizar el documento.",
-      });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al visualizar el documento.",
+    });
   }
 };
 
@@ -595,20 +596,16 @@ export const modificarDocumento = async (
         comentario: null,
       },
     });
-    res
-      .status(200)
-      .json({
-        ok: true,
-        mensaje: "Documento modificado y enviado a revisión exitosamente.",
-      });
+    res.status(200).json({
+      ok: true,
+      mensaje: "Documento modificado y enviado a revisión exitosamente.",
+    });
   } catch (error) {
     console.error("Error al modificar el documento:", error);
-    res
-      .status(500)
-      .json({
-        ok: false,
-        mensaje: "Error interno al procesar la modificación del documento.",
-      });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al procesar la modificación del documento.",
+    });
   }
 };
 

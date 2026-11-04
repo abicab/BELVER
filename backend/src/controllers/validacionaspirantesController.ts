@@ -249,7 +249,7 @@ export const aprobarYGenerarCredencialesControl = async (
       return aspiranteActualizado;
     });
 
-    const portalEscolarUrl = "http://www.belver.clavijero.edu.mx";
+    const portalEscolarUrl = "http://belver.clavijero.edu.mx";
 
     // Envío del correo institucional de aprobación (Correo 1 oficial de BELVER)
     transporter
@@ -277,6 +277,7 @@ export const aprobarYGenerarCredencialesControl = async (
 
               <p style="font-size: 11px; color: #64748b;">Para una mejor experiencia, te sugerimos copiar y pegar tus datos de acceso, además de utilizar un equipo de cómputo para el óptimo acceso a tus cursos.</p>
               <p style="font-size: 11px; color: #64748b; font-weight: bold;">Guarda estos datos en un lugar seguro; los necesitarás para acceder a tu portal escolar.</p>
+              <p style="font-size: 11px; color: #64748b; font-weight: bold;">No responder a este correo electrónico.</p>
 
               <div style="margin-top: 25px; text-align: center;">
                 <a href="${portalEscolarUrl}" target="_blank" style="background-color: #0f172a; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block;">Acceder al Portal Escolar</a>
@@ -423,6 +424,9 @@ export const emitirObservacionesControl = async (
               </p>
               <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
                 En caso de no hacerlo dentro del periodo estipulado, tendrás que realizar tu proceso completo nuevamente.
+              </p>
+              <p style="font-size: 12px; color: #334155; line-height: 1.5; text-align: left;">
+                No responder a este correo electrónico.
               </p>
 
               <div style="margin-top: 25px;">
