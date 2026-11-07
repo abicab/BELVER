@@ -5,15 +5,6 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-// Normaliza acentos y mayúsculas para reconocer cualquier variante de revalidación.
-const esTipoRevalidacion = (tipo: string | null | undefined): boolean => {
-  return String(tipo || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .includes("revalidacion");
-};
-
 export const getAlumnosHistorial = async (req: Request, res: Response) => {
   try {
     const tipo = String(req.query.tipo || "").toLowerCase();
@@ -116,11 +107,11 @@ export const asignarMateriasHistorial = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "No se encontró el alumno seleccionado." });
     }
 
-    // Los alumnos regulares/de nuevo ingreso necesitan matrícula.
-    // Los revalidantes pueden capturarse con su folio de aspirante.
-    if (!alumnoVerif.matricula && !esTipoRevalidacion(alumnoVerif.tipoAdmision)) {
+    // Todos los alumnos necesitan matrícula para recibir un plan de estudios.
+    // La revalidación puede conservar sus campos de folio, pero no es una excepción.
+    if (!String(alumnoVerif.matricula || "").trim()) {
       return res.status(400).json({
-        error: "El alumno necesita matrícula para asignar su historial. La excepción aplica únicamente para alumnos de revalidación.",
+        error: "No se puede asignar el plan de estudios porque el alumno aún no tiene matrícula. Primero debe generarse su matrícula.",
       });
     }
 

@@ -73,10 +73,9 @@ export default function HistorialAca() {
   const handleOpenAssignModal = async (alumno) => {
     const esRevalidante = esTipoRevalidacion(alumno.tipoAdmision);
 
-    // Los alumnos de nuevo ingreso siguen requiriendo matrícula.
-    // Los alumnos de revalidación pueden capturarse usando su folio de aspirante.
-    if (!alumno.matricula && !esRevalidante) {
-      setErrorMsg(`El alumno ${alumno.nombres} es de nuevo ingreso y aún no cuenta con matrícula generada.`);
+    // Ningún alumno puede recibir un plan de estudios mientras no tenga matrícula.
+    if (!String(alumno.matricula || '').trim()) {
+      setErrorMsg(`El alumno ${alumno.nombres} aún no cuenta con matrícula. Primero debe generarse su matrícula para poder asignarle un plan de estudios.`);
       return;
     }
 
@@ -206,6 +205,12 @@ export default function HistorialAca() {
     if (!selectedAlumno) return;
 
     const esRevalidante = esTipoRevalidacion(selectedAlumno.tipoAdmision);
+
+    // Segunda validación en la interfaz para evitar guardar sin matrícula.
+    if (!String(selectedAlumno.matricula || '').trim()) {
+      setModalError('No se puede asignar el plan de estudios porque el alumno aún no tiene matrícula.');
+      return;
+    }
 
     if (!planSeleccionado) {
       setModalError('Debes seleccionar un plan de estudios.');
@@ -370,7 +375,8 @@ export default function HistorialAca() {
                     </tr>
                   ) : (
                     alumnosFiltrados.map((al) => {
-                      const puedeAsignar = Boolean(al.matricula) || esTipoRevalidacion(al.tipoAdmision);
+                      // Los alumnos sin matrícula aparecen en la tabla, pero no pueden asignarse.
+                      const puedeAsignar = Boolean(String(al.matricula || '').trim());
 
                       return (
                         <tr key={al.id} className="hover:bg-slate-50 transition">
