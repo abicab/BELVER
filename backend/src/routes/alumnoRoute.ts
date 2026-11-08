@@ -6,10 +6,10 @@ import {
 
 const router = Router();
 
-// Esta ruta debe registrarse antes de "/:id".
+// Mantener esta ruta antes de "/:id" para que no se interprete "documento" como ID.
 router.get("/documento/:documentoId", verDocumentoControl);
 
-// Perfil del alumno: GET /api/alumno/:id
+// Perfil completo del alumno: GET /api/alumno/:id
 router.get("/:id", getPerfilAlumno);
 
 export default router;
