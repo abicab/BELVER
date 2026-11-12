@@ -3,15 +3,31 @@ import * as XLSX from "xlsx";
 
 export default function ReportesPage() {
   const [datosReporte, setDatosReporte] = useState([]);
+  const [ciclos, setCiclos] = useState([]);
+  const [cicloFiltro, setCicloFiltro] = useState("TODOS");
+  const [tipoReporteFiltro, setTipoReporteFiltro] = useState("GENERAL");
   const [modalidadFiltro, setModalidadFiltro] = useState("TODOS");
   const [estatusFiltro, setEstatusFiltro] = useState("TODOS");
   const [cargando, setCargando] = useState(false);
+
+  // Cargar lista de ciclos escolares para el filtro dinámico
+  const cargarCiclos = async () => {
+    try {
+      const res = await fetch("http://localhost:4000/api/ciclos");
+      const resultado = await res.json();
+      if (res.ok && resultado.ok) {
+        setCiclos(resultado.data || []);
+      }
+    } catch (error) {
+      console.error("Error al cargar ciclos escolares:", error);
+    }
+  };
 
   const cargarDatosReporte = async () => {
     setCargando(true);
     try {
       const res = await fetch(
-        `http://localhost:4000/api/controlescolar/reportes?estatus=${estatusFiltro}&modalidad=${modalidadFiltro}`,
+        `http://localhost:4000/api/controlescolar/reportes?ciclo=${cicloFiltro}&estatus=${estatusFiltro}&modalidad=${modalidadFiltro}&tipoReporte=${tipoReporteFiltro}`,
       );
       const resultado = await res.json();
       if (res.ok && resultado.ok) {
@@ -24,10 +40,15 @@ export default function ReportesPage() {
     }
   };
 
-  // Se recargan los datos automáticamente cada vez que el usuario cambia un filtro
+  // Cargar los ciclos al montar el componente
+  useEffect(() => {
+    cargarCiclos();
+  }, []);
+
+  // Se recargan los datos automáticamente cada vez que el usuario cambia cualquier filtro
   useEffect(() => {
     cargarDatosReporte();
-  }, [estatusFiltro, modalidadFiltro]);
+  }, [cicloFiltro, estatusFiltro, modalidadFiltro, tipoReporteFiltro]);
 
   // Función para exportar a Excel
   const exportarAExcel = () => {
@@ -44,7 +65,7 @@ export default function ReportesPage() {
       "Apellido Materno": item.apellidoMaterno || "",
       Nombres: item.nombres,
       CURP: item.curp,
-      Modalidad: item.tipoAdmision.toUpperCase(),
+      Modalidad: item.tipoAdmision ? item.tipoAdmision.toUpperCase() : "N/A",
       "Correo Electrónico": item.correoElectronico1,
       "Teléfono Celular": item.telefonoCelular,
       "Escuela Procedencia": item.nombreEscuelaProcedencia || "N/A",
@@ -73,9 +94,8 @@ export default function ReportesPage() {
               Generación y Descarga de Reportes Institucionales
             </h1>
             <p className="text-xs text-slate-500">
-              Filtra el padrón de aspirantes y alumnos (incluyendo la prórroga
-              de 5 días para pendientes) para exportar la información
-              directamente a formato Excel.
+              Filtra por ciclo escolar, tipo de reporte, modalidad y estatus del
+              padrón para exportar la información directamente a formato Excel.
             </p>
           </div>
           <button
@@ -86,40 +106,86 @@ export default function ReportesPage() {
           </button>
         </div>
 
-        {/* Filtros de Reporte */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-700 uppercase">
-              Filtrar por Modalidad
-            </label>
-            <select
-              value={modalidadFiltro}
-              onChange={(e) => setModalidadFiltro(e.target.value)}
-              className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
-            >
-              <option value="TODOS">Todas las modalidades</option>
-              <option value="nuevo_ingreso">Nuevo Ingreso</option>
-              <option value="revalidacion">Revalidación</option>
-            </select>
+        {/* Sección de Filtros de Reporte */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          {/* Fila superior: Ciclo Escolar (primero) y Tipo de Reporte (preparado) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-700 uppercase">
+                1. Filtrar por Ciclo Escolar
+              </label>
+              <select
+                value={cicloFiltro}
+                onChange={(e) => setCicloFiltro(e.target.value)}
+                className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
+              >
+                <option value="TODOS">Todos los ciclos</option>
+                {ciclos.map((ciclo) => {
+                  const esInter = Boolean(ciclo.claveIntersemestral);
+                  const valorClave = esInter
+                    ? ciclo.claveIntersemestral
+                    : ciclo.clave;
+                  return (
+                    <option key={ciclo.id} value={valorClave}>
+                      {valorClave} ({esInter ? "Intersemestral" : "Regular"})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-700 uppercase">
+                2. Tipo de Reporte (Estructura Inicial)
+              </label>
+              <select
+                value={tipoReporteFiltro}
+                onChange={(e) => setTipoReporteFiltro(e.target.value)}
+                className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
+              >
+                <option value="GENERAL">Reporte General de Padrón</option>
+                <option value="OTRO" disabled>
+                  Próximamente más tipos...
+                </option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-slate-700 uppercase">
-              Filtrar por Estatus de Padrón
-            </label>
-            <select
-              value={estatusFiltro}
-              onChange={(e) => setEstatusFiltro(e.target.value)}
-              className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
-            >
-              <option value="TODOS">Todos (Aspirantes y Alumnos)</option>
-              <option value="ASPIRANTES">
-                Solo Aspirantes No Validados (Pendientes con prórroga)
-              </option>
-              <option value="ALUMNOS">
-                Solo Alumnos Validados (Con Matrícula Oficial)
-              </option>
-            </select>
+          {/* Fila inferior: Modalidad y Estatus de Padrón */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-700 uppercase">
+                3. Filtrar por Modalidad
+              </label>
+              <select
+                value={modalidadFiltro}
+                onChange={(e) => setModalidadFiltro(e.target.value)}
+                className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
+              >
+                <option value="TODOS">Todas las modalidades</option>
+                <option value="nuevo_ingreso">Nuevo Ingreso</option>
+                <option value="revalidacion">Revalidación</option>
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-slate-700 uppercase">
+                4. Filtrar por Estatus de Padrón
+              </label>
+              <select
+                value={estatusFiltro}
+                onChange={(e) => setEstatusFiltro(e.target.value)}
+                className="p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none font-semibold cursor-pointer"
+              >
+                <option value="TODOS">Todos (Aspirantes y Alumnos)</option>
+                <option value="ASPIRANTES">
+                  Solo Aspirantes No Validados (Pendientes con prórroga)
+                </option>
+                <option value="ALUMNOS">
+                  Solo Alumnos Validados (Con Matrícula Oficial)
+                </option>
+              </select>
+            </div>
           </div>
         </div>
 

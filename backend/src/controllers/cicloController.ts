@@ -13,12 +13,10 @@ export const obtenerCiclos = async (
     res.status(200).json({ ok: true, data: ciclos });
   } catch (error) {
     console.error("Error al obtener ciclos escolares:", error);
-    res
-      .status(500)
-      .json({
-        ok: false,
-        mensaje: "Error interno al obtener los ciclos escolares.",
-      });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al obtener los ciclos escolares.",
+    });
   }
 };
 
@@ -46,13 +44,12 @@ export const crearCiclo = async (
       fechaTallerInter,
     } = req.body;
 
-    if (!clave) {
-      res
-        .status(400)
-        .json({
-          ok: false,
-          mensaje: "La clave del ciclo escolar es obligatoria.",
-        });
+    // Validación flexible: Permite registrar si al menos una de las dos claves está presente
+    if (!clave && !claveIntersemestral) {
+      res.status(400).json({
+        ok: false,
+        mensaje: "La clave del ciclo escolar es obligatoria.",
+      });
       return;
     }
 
@@ -65,7 +62,7 @@ export const crearCiclo = async (
 
     const nuevoCiclo = await (prisma as any).cicloEscolar.create({
       data: {
-        clave: String(clave).trim().toUpperCase(),
+        clave: clave ? String(clave).trim().toUpperCase() : null,
         claveIntersemestral: claveIntersemestral
           ? String(claveIntersemestral).trim().toUpperCase()
           : null,
@@ -93,13 +90,11 @@ export const crearCiclo = async (
       },
     });
 
-    res
-      .status(201)
-      .json({
-        ok: true,
-        mensaje: "Ciclo escolar creado exitosamente.",
-        data: nuevoCiclo,
-      });
+    res.status(201).json({
+      ok: true,
+      mensaje: "Ciclo escolar creado exitosamente.",
+      data: nuevoCiclo,
+    });
   } catch (error: any) {
     console.error("Error al crear ciclo escolar:", error);
     if (error.code === "P2002") {
@@ -108,9 +103,10 @@ export const crearCiclo = async (
         .json({ ok: false, mensaje: "La clave del ciclo escolar ya existe." });
       return;
     }
-    res
-      .status(500)
-      .json({ ok: false, mensaje: "Error interno al crear el ciclo escolar." });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al crear el ciclo escolar.",
+    });
   }
 };
 
@@ -149,7 +145,12 @@ export const actualizarCiclo = async (
     const cicloActualizado = await (prisma as any).cicloEscolar.update({
       where: { id: Number(id) },
       data: {
-        clave: clave ? String(clave).trim().toUpperCase() : undefined,
+        clave:
+          clave !== undefined
+            ? clave
+              ? String(clave).trim().toUpperCase()
+              : null
+            : undefined,
         claveIntersemestral:
           claveIntersemestral !== undefined
             ? claveIntersemestral
@@ -219,21 +220,17 @@ export const actualizarCiclo = async (
       },
     });
 
-    res
-      .status(200)
-      .json({
-        ok: true,
-        mensaje: "Ciclo escolar actualizado exitosamente.",
-        data: cicloActualizado,
-      });
+    res.status(200).json({
+      ok: true,
+      mensaje: "Ciclo escolar actualizado exitosamente.",
+      data: cicloActualizado,
+    });
   } catch (error) {
     console.error("Error al actualizar ciclo escolar:", error);
-    res
-      .status(500)
-      .json({
-        ok: false,
-        mensaje: "Error interno al actualizar el ciclo escolar.",
-      });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al actualizar el ciclo escolar.",
+    });
   }
 };
 
@@ -252,11 +249,9 @@ export const eliminarCiclo = async (
       .json({ ok: true, mensaje: "Ciclo escolar eliminado exitosamente." });
   } catch (error) {
     console.error("Error al eliminar ciclo escolar:", error);
-    res
-      .status(500)
-      .json({
-        ok: false,
-        mensaje: "Error interno al eliminar el ciclo escolar.",
-      });
+    res.status(500).json({
+      ok: false,
+      mensaje: "Error interno al eliminar el ciclo escolar.",
+    });
   }
 };

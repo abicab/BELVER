@@ -1,31 +1,26 @@
 import { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import prisma from "../config/prisma.js";
 
-// Mapeo seguro de los nombres de catálogos enviados desde el frontend hacia los modelos de Prisma
+// Mapeo seguro y dinámico de los nombres de catálogos fijos del sistema
 const getModelByCatalogName = (catalogo: string) => {
-  switch (catalogo) {
-    case "subsistema":
-      return (prisma as any).subsistema;
-    case "genero":
-      return (prisma as any).genero;
-    case "identidadCultural":
-      return (prisma as any).identidadCultural;
-    case "discapacidad":
-      return (prisma as any).discapacidad;
-    case "parentesco":
-      return (prisma as any).parentesco;
-    case "tipoEstudiante":
-      return (prisma as any).tipoEstudiante;
-    case "semestre":
-      return (prisma as any).semestre;
-    case "tipoUsuario":
-      return (prisma as any).tipoUsuario;
-    default:
-      return null;
-  }
+  const modelosConocidos: Record<string, string> = {
+    subsistema: "subsistema",
+    genero: "genero",
+    identidadCultural: "identidadCultural",
+    discapacidad: "discapacidad",
+    parentesco: "parentesco",
+    tipoEstudiante: "tipoEstudiante",
+    semestre: "semestre",
+    tipoUsuario: "tipoUsuario",
+  };
+
+  const nombreModelo = modelosConocidos[catalogo] || catalogo;
+  return (prisma as any)[nombreModelo] || null;
 };
 
-// 1. Obtener todos los catálogos juntos (Ideal para formularios de aspirantes/alumnos)
+// 1. Obtener todos los catálogos fijos disponibles en el sistema
 export const obtenerCatalogos = async (
   req: Request,
   res: Response,
@@ -104,7 +99,7 @@ export const obtenerCatalogos = async (
   }
 };
 
-// 2. Obtener un catálogo individual por nombre (Modificado para el CRUD del Admin: muestra activos e inactivos)
+// 2. Obtener un catálogo individual por nombre (Soporta tablas fijas y tablas dinámicas por SQL)
 export const obtenerCatalogoPorNombre = async (
   req: Request,
   res: Response,
@@ -113,19 +108,18 @@ export const obtenerCatalogoPorNombre = async (
     const { nombreTabla } = req.params;
     const modeloActual = getModelByCatalogName(nombreTabla);
 
-    if (!modeloActual) {
-      res
-        .status(400)
-        .json({ ok: false, mensaje: "Modelo de catálogo no soportado." });
+    if (modeloActual) {
+      const registros = await modeloActual.findMany({ orderBy: { id: "asc" } });
+      res.status(200).json({ ok: true, data: registros });
       return;
     }
 
-    // Para el panel del Admin traemos todos los registros (para poder gestionar bajas lógicas)
-    const registros = await modeloActual.findMany({
-      orderBy: { id: "asc" },
-    });
+    const nombreLimpio = nombreTabla.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const registrosDinamicos = await prisma.$queryRawUnsafe(
+      `SELECT * FROM \`${nombreLimpio}\` ORDER BY id ASC`,
+    );
 
-    res.status(200).json({ ok: true, data: registros });
+    res.status(200).json({ ok: true, data: registrosDinamicos });
   } catch (error) {
     console.error("Error al obtener el catálogo individual:", error);
     res
@@ -134,7 +128,7 @@ export const obtenerCatalogoPorNombre = async (
   }
 };
 
-// 3. Crear un nuevo registro en el catálogo seleccionado (Para el CRUD del Administrador)
+// 3. Crear un nuevo registro en el catálogo seleccionado
 export const crearRegistroCatalogo = async (
   req: Request,
   res: Response,
@@ -143,13 +137,6 @@ export const crearRegistroCatalogo = async (
     const { nombreTabla } = req.params;
     const { nombre, activo } = req.body;
     const modeloActual = getModelByCatalogName(nombreTabla);
-
-    if (!modeloActual) {
-      res
-        .status(400)
-        .json({ ok: false, mensaje: "Modelo de catálogo no soportado." });
-      return;
-    }
 
     if (!nombre || !nombre.trim()) {
       res
@@ -161,24 +148,40 @@ export const crearRegistroCatalogo = async (
       return;
     }
 
-    // Estructura de datos adaptada si el modelo es tipoUsuario o usa la propiedad 'nombre'
-    const dataToCreate =
-      nombreTabla === "tipoUsuario"
-        ? { tipoUsuario: String(nombre).trim(), activo: activo ?? true }
-        : { nombre: String(nombre).trim(), activo: activo ?? true };
+    if (modeloActual) {
+      const dataToCreate =
+        nombreTabla === "tipoUsuario"
+          ? { tipoUsuario: String(nombre).trim(), activo: activo ?? true }
+          : { nombre: String(nombre).trim(), activo: activo ?? true };
 
-    const nuevoRegistro = await modeloActual.create({
-      data: dataToCreate,
-    });
+      const nuevoRegistro = await modeloActual.create({ data: dataToCreate });
+      res
+        .status(201)
+        .json({
+          ok: true,
+          mensaje: "Registro creado exitosamente.",
+          data: nuevoRegistro,
+        });
+      return;
+    }
+
+    const nombreLimpio = nombreTabla.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const estatusValido = activo !== undefined ? (activo ? 1 : 0) : 1;
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO \`${nombreLimpio}\` (nombre, activo) VALUES (?, ?)`,
+      String(nombre).trim(),
+      estatusValido,
+    );
 
     res.status(201).json({
       ok: true,
       mensaje: "Registro creado exitosamente.",
-      data: nuevoRegistro,
+      data: { nombre: String(nombre).trim(), activo: Boolean(estatusValido) },
     });
   } catch (error: any) {
     console.error("Error al crear registro en catálogo:", error);
-    if (error.code === "P2002") {
+    if (error.code === "ER_DUP_ENTRY") {
       res
         .status(400)
         .json({ ok: false, mensaje: "Ya existe un registro con este nombre." });
@@ -190,7 +193,7 @@ export const crearRegistroCatalogo = async (
   }
 };
 
-// 4. Actualizar o realizar baja lógica de un registro (Para el CRUD del Administrador)
+// 4. Actualizar o realizar baja lógica de un registro
 export const actualizarRegistroCatalogo = async (
   req: Request,
   res: Response,
@@ -200,39 +203,146 @@ export const actualizarRegistroCatalogo = async (
     const { nombre, activo } = req.body;
     const modeloActual = getModelByCatalogName(nombreTabla);
 
-    if (!modeloActual) {
+    if (modeloActual) {
+      const dataToUpdate: any = {};
+      if (nombre !== undefined) {
+        if (nombreTabla === "tipoUsuario") {
+          dataToUpdate.tipoUsuario = String(nombre).trim();
+        } else {
+          dataToUpdate.nombre = String(nombre).trim();
+        }
+      }
+      if (activo !== undefined) {
+        dataToUpdate.activo = Boolean(activo);
+      }
+
+      const registroActualizado = await modeloActual.update({
+        where: { id: Number(id) },
+        data: dataToUpdate,
+      });
+
       res
-        .status(400)
-        .json({ ok: false, mensaje: "Modelo de catálogo no soportado." });
+        .status(200)
+        .json({
+          ok: true,
+          mensaje: "Registro actualizado exitosamente.",
+          data: registroActualizado,
+        });
       return;
     }
 
-    const dataToUpdate: any = {};
-    if (nombre !== undefined) {
-      if (nombreTabla === "tipoUsuario") {
-        dataToUpdate.tipoUsuario = String(nombre).trim();
-      } else {
-        dataToUpdate.nombre = String(nombre).trim();
-      }
-    }
-    if (activo !== undefined) {
-      dataToUpdate.activo = Boolean(activo);
-    }
+    const nombreLimpio = nombreTabla.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const nuevoNombre = nombre !== undefined ? String(nombre).trim() : null;
+    const nuevoActivo = activo !== undefined ? (activo ? 1 : 0) : null;
 
-    const registroActualizado = await modeloActual.update({
-      where: { id: Number(id) },
-      data: dataToUpdate,
-    });
+    if (nuevoNombre !== null && nuevoActivo !== null) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE \`${nombreLimpio}\` SET nombre = ?, activo = ? WHERE id = ?`,
+        nuevoNombre,
+        nuevoActivo,
+        Number(id),
+      );
+    } else if (nuevoNombre !== null) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE \`${nombreLimpio}\` SET nombre = ? WHERE id = ?`,
+        nuevoNombre,
+        Number(id),
+      );
+    } else if (nuevoActivo !== null) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE \`${nombreLimpio}\` SET activo = ? WHERE id = ?`,
+        nuevoActivo,
+        Number(id),
+      );
+    }
 
     res.status(200).json({
       ok: true,
       mensaje: "Registro actualizado exitosamente.",
-      data: registroActualizado,
+      data: { id: Number(id), nombre: nuevoNombre, activo: nuevoActivo },
     });
   } catch (error) {
     console.error("Error al actualizar el registro del catálogo:", error);
     res
       .status(500)
       .json({ ok: false, mensaje: "Error interno al actualizar el registro." });
+  }
+};
+
+// 5. ENFOQUE HÍBRIDO: Crea la tabla física en MySQL por SQL y registra el modelo en el schema.prisma
+export const crearDefinicionCatalogo = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { label, endpoint } = req.body;
+
+    if (!label || !endpoint) {
+      res
+        .status(400)
+        .json({
+          ok: false,
+          mensaje: "El nombre y el endpoint son obligatorios.",
+        });
+      return;
+    }
+
+    const nombreTablaDb = endpoint.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const nombreModeloPrisma =
+      nombreTablaDb.charAt(0).toUpperCase() + nombreTablaDb.slice(1);
+
+    if (!nombreTablaDb) {
+      res
+        .status(400)
+        .json({
+          ok: false,
+          mensaje: "El identificador de endpoint no es válido.",
+        });
+      return;
+    }
+
+    // A. Crear la tabla físicamente en MySQL al instante sin depender de la CLI de Prisma
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS \`${nombreTablaDb}\` (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(150) NOT NULL UNIQUE,
+        activo BOOLEAN DEFAULT TRUE,
+        creado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // B. Registrar de manera limpia el modelo correspondiente al final del archivo schema.prisma
+    const schemaPath = path.join(process.cwd(), "prisma", "schema.prisma");
+    const schemaContent = fs.readFileSync(schemaPath, "utf8");
+
+    if (!schemaContent.includes(`model ${nombreModeloPrisma}`)) {
+      const nuevoModeloPrisma = `
+
+model ${nombreModeloPrisma} {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique @db.VarChar(150)
+  activo Boolean @default(true)
+
+  @@map("${nombreTablaDb}")
+}
+`;
+      fs.appendFileSync(schemaPath, nuevoModeloPrisma, "utf8");
+    }
+
+    res.status(201).json({
+      ok: true,
+      mensaje: `Catálogo "${label}" creado, tabla física generada en MySQL y registrado en el esquema exitosamente.`,
+      data: {
+        nombre: label.trim(),
+        endpoint: nombreTablaDb,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error al registrar el catálogo y su tabla física:", error);
+    res.status(500).json({
+      ok: false,
+      mensaje:
+        error.message || "Error interno al procesar la creación del catálogo.",
+    });
   }
 };

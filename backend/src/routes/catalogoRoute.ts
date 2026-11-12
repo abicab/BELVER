@@ -4,15 +4,17 @@ import {
   obtenerCatalogoPorNombre,
   crearRegistroCatalogo,
   actualizarRegistroCatalogo,
+  crearDefinicionCatalogo,
 } from "../controllers/catalogoController.js";
 
 const router = Router();
 
-// Rutas de lectura
+// Ruta para crear la tabla física en la base de datos (Scaffolding por SQL)
+router.post("/definicion", crearDefinicionCatalogo);
+
+// Rutas para listar y gestionar registros (tanto fijos como dinámicos)
 router.get("/", obtenerCatalogos);
 router.get("/:nombreTabla", obtenerCatalogoPorNombre);
-
-// Rutas de escritura y actualización para el CRUD de catálogos
 router.post("/:nombreTabla", crearRegistroCatalogo);
 router.put("/:nombreTabla/:id", actualizarRegistroCatalogo);
 

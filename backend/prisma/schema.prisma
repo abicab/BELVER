@@ -7,7 +7,9 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// CATÁLOGOS INDEPENDIENTES CON BAJA LÓGICA
+// ==========================================
+// CATÁLOGOS INDEPENDIENTES FIJOS
+// ==========================================
 
 model Subsistema {
   id         Int         @id @default(autoincrement())
@@ -84,15 +86,17 @@ model AspiranteDiscapacidad {
   @@map("aspirante_discapacidad")
 }
 
+// ==========================================
 // CONTROL DE TIPOS DE USUARIO Y ROLES
+// ==========================================
 
 model TipoUsuario {
   id          Int     @id @default(autoincrement())
   tipoUsuario String  @map("tipo_usuario") @db.VarChar(50)
   activo      Boolean @default(true)
 
-  usuarios   Usuario[]
-  aspirantes Aspirante[]
+  usuarios    Usuario[]
+  aspirantes  Aspirante[]
 
   @@map("tipo_usuario")
 }
@@ -115,11 +119,13 @@ model Usuario {
   @@map("usuarios")
 }
 
+// ==========================================
 // MODELO PRINCIPAL DE ASPIRANTES Y ALUMNOS
+// ==========================================
 
 model Aspirante {
-  id            Int       @id @default(autoincrement())
-  folio         String    @unique @db.VarChar(30)
+  id            Int      @id @default(autoincrement())
+  folio         String   @unique @db.VarChar(30)
   vigenciaFolio DateTime?
 
   matricula      String?     @unique @db.VarChar(15)
@@ -127,7 +133,6 @@ model Aspirante {
   tipoUsuarioId  Int         @default(2) @map("tipo_usuario_id")
   tipoUsuarioRel TipoUsuario @relation(fields: [tipoUsuarioId], references: [id], onDelete: Restrict)
 
-  // Campo clave para diferenciar alumnos nuevos (autoservicio) vs. migrados/históricos ("viejitos")
   esMigrado      Boolean     @default(false) @map("es_migrado")
 
   apellidoPaterno    String   @db.VarChar(30)
@@ -140,7 +145,7 @@ model Aspirante {
   telefonoCelular    String   @db.VarChar(10)
   telefonoParticular String?  @db.VarChar(10)
 
-  // Relaciones con Catálogos
+  // Relaciones con Catálogos Fijos
   generoId            Int?
   generoRel           Genero?            @relation(fields: [generoId], references: [id])
   identidadCulturalId Int?
@@ -163,13 +168,13 @@ model Aspirante {
   tutorParentescoRel   Parentesco? @relation(fields: [parentescoTutorId], references: [id])
   tutorTelefono        String?     @db.VarChar(10)
 
-  tipoAdmision               String  @db.VarChar(50)
-  subsistemaId               Int?
-  subsistema                 Subsistema? @relation(fields: [subsistemaId], references: [id])
-  cctEscuelaProcedencia      String? @db.VarChar(20)
-  nombreEscuelaProcedencia   String? @db.VarChar(150)
-  sistemaProcedenciaLetra    String? @db.VarChar(5)
-  otroSistemaProcedencia     String? @db.VarChar(100)
+  tipoAdmision             String  @db.VarChar(50)
+  subsistemaId             Int?
+  subsistema               Subsistema? @relation(fields: [subsistemaId], references: [id])
+  cctEscuelaProcedencia    String? @db.VarChar(20)
+  nombreEscuelaProcedencia String? @db.VarChar(150)
+  sistemaProcedenciaLetra  String? @db.VarChar(5)
+  otroSistemaProcedencia   String? @db.VarChar(100)
 
   semestresSeleccionados Json?
 
@@ -184,35 +189,33 @@ model Aspirante {
   creadoEn              DateTime        @default(now())
   updatedAt             DateTime        @updatedAt
 
-  documentos            Documento[]
-  historiales           HistorialAcademico[]
-  validacionExpedientes ValidacionExpediente?
-  pagos                 Pago[]
-  materiasInscritas     MateriaInscrita[]
-  calificaciones        Calificacion[]
+  documentos              Documento[]
+  historiales             HistorialAcademico[]
+  validacionExpedientes   ValidacionExpediente?
+  pagos                   Pago[]
+  materiasInscritas       MateriaInscrita[]
+  calificaciones          Calificacion[]
 
   @@map("aspirante")
 }
 
-// SUBMÓDULO DE VALIDACIÓN DE EXPEDIENTES
+// ==========================================
+// MÓDULOS ACADÉMICOS Y OPERATIVOS
+// ==========================================
 
 model ValidacionExpediente {
   id              Int       @id @default(autoincrement())
   aspiranteId     Int       @unique
   aspirante       Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-
   dictamenGeneral String    @default("PENDIENTE") @db.VarChar(50)
   observaciones   String?   @db.Text
   validadoPor     String?   @db.VarChar(50)
   fechaValidacion DateTime?
-
   creadoEn        DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@map("validacion_expedientes")
 }
-
-// MODELO DE DOCUMENTOS
 
 model Documento {
   id            Int       @id @default(autoincrement())
@@ -220,15 +223,13 @@ model Documento {
   aspirante     Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   tipoDoc       String    @db.VarChar(50)
   nombreArchivo String    @db.VarChar(255)
-  archivoBlob   Bytes?    @db.LongBlob // Opcional para alumnos migrados antes de subir su documento manual
+  archivoBlob   Bytes?    @db.LongBlob
   estatusDoc    String    @default("PENDIENTE") @db.VarChar(50)
   comentario    String?   @db.Text
   creadoEn      DateTime  @default(now())
 
   @@map("documento")
 }
-
-// AUDITORÍA Y PAGOS
 
 model Auditoria {
   id           Int      @id @default(autoincrement())
@@ -248,24 +249,20 @@ model Auditoria {
 }
 
 model Pago {
-  id                 Int      @id @default(autoincrement())
+  id                 Int       @id @default(autoincrement())
   aspiranteId        Int
   aspirante          Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  concepto           String   @db.VarChar(100)
+  concepto           String    @db.VarChar(100)
   monto              Float
-  referenciaBancaria String   @unique @db.VarChar(100)
-  fechaPago          DateTime @default(now())
-  metodo             String   @default("Captura Manual (Ventanilla)") @db.VarChar(100)
-  estatus            String   @default("CONCILIADO") @db.VarChar(50)
-  creadoEn           DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  referenciaBancaria String    @unique @db.VarChar(100)
+  fechaPago          DateTime  @default(now())
+  metodo             String    @default("Captura Manual (Ventanilla)") @db.VarChar(100)
+  estatus            String    @default("CONCILIADO") @db.VarChar(50)
+  creadoEn           DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@map("pago")
 }
-
-// ==========================================
-// PLAN DE ESTUDIOS, MATERIAS Y SERIACIÓN
-// ==========================================
 
 model PlanEstudio {
   id          Int      @id @default(autoincrement())
@@ -276,10 +273,10 @@ model PlanEstudio {
   creadoEn    DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  materias           Materia[]
-  historiales        HistorialAcademico[]
-  materiasInscritas  MateriaInscrita[]
-  calificaciones     Calificacion[]
+  materias          Materia[]
+  historiales       HistorialAcademico[]
+  materiasInscritas MateriaInscrita[]
+  calificaciones    Calificacion[]
 
   @@map("plan_estudio")
 }
@@ -293,8 +290,8 @@ model Materia {
   nombreCorto    String      @map("nombre_corto") @db.VarChar(100)
   semestre       Int
 
-  prerrequisitos      Seriacion[]      @relation("MateriaPrerrequisito")
-  esPrerrequisitoDe   Seriacion[]      @relation("MateriaSiguiente")
+  prerrequisitos      Seriacion[]          @relation("MateriaPrerrequisito")
+  esPrerrequisitoDe   Seriacion[]          @relation("MateriaSiguiente")
   historiales         HistorialAcademico[]
   materiasInscritas   MateriaInscrita[]
   calificaciones      Calificacion[]
@@ -313,10 +310,6 @@ model Seriacion {
   @@unique([materiaId, prerrequisitoMateriaId])
   @@map("seriacion")
 }
-
-// ==========================================
-// REGISTRO ACADÉMICO Y EVALUACIONES
-// ==========================================
 
 model MateriaInscrita {
   id            Int         @id @default(autoincrement())
@@ -347,7 +340,7 @@ model Calificacion {
   materiaInscrita   MateriaInscrita? @relation(fields: [materiaInscritaId], references: [id], onDelete: SetNull)
 
   parcial       Int      @default(1)
-  calificacion  Int      // Calificación entera de 5 a 10
+  calificacion  Int
   periodo       String   @db.VarChar(50)
   observaciones String?  @db.Text
   creadoEn      DateTime @default(now())
@@ -358,46 +351,43 @@ model Calificacion {
 }
 
 model HistorialAcademico {
-  id                    Int          @id @default(autoincrement())
+  id                    Int         @id @default(autoincrement())
   aspiranteId           Int
-  aspirante             Aspirante    @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+  aspirante             Aspirante   @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
   materiaId             Int
-  materia               Materia      @relation(fields: [materiaId], references: [id], onDelete: Cascade)
+  materia               Materia     @relation(fields: [materiaId], references: [id], onDelete: Cascade)
   planEstudioId         Int
-  planEstudio           PlanEstudio  @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
-  calificacion          Int?         
-  tipoExamen            String?      @default("F") @db.VarChar(50)
-  estatus               String       @default("CURSANDO") @db.VarChar(50)
-  fechaInicioEstudios   DateTime?    @db.Date 
-  claveFolioProcedencia String?      @db.VarChar(50) 
-  areaSemestre          String?      @db.VarChar(100) // <-- Nuevo campo para el área en 5° y 6° semestre
-  planEstudiosCapturado DateTime?    
+  planEstudio           PlanEstudio @relation(fields: [planEstudioId], references: [id], onDelete: Cascade)
+  calificacion          Int?
+  tipoExamen            String?     @default("F") @db.VarChar(50)
+  estatus               String      @default("CURSANDO") @db.VarChar(50)
+  fechaInicioEstudios   DateTime?   @db.Date
+  claveFolioProcedencia String?     @db.VarChar(50)
+  areaSemestre          String?     @db.VarChar(100)
+  planEstudiosCapturado DateTime?
 
   @@unique([aspiranteId, materiaId])
   @@map("historial_academico")
 }
 
-// MÓDULO DE CICLOS ESCOLARES Y CONTROL DE FECHAS
-
 model CicloEscolar {
   id                        Int       @id @default(autoincrement())
-  clave                     String    @unique @db.VarChar(45) // Ej: 2026-A
-  claveIntersemestral       String?   @db.VarChar(45)
-  inicia                    DateTime? @db.Date
-  iniciaIntersemestral      DateTime? @db.Date
-  termina                   DateTime? @db.Date
-  terminaIntersemestral     DateTime? @db.Date
-  activo                    Int       @default(1) // 1: Activo/Interruptor general, 0: Inactivo
-  fechaConformarExpediente  DateTime? @db.Date
-  fechaConformarExpEdInter  DateTime? @db.Date
-  ultimoFolio               String?   @db.VarChar(9)
-  ultimoFolioInter          String?   @db.VarChar(9)
-  inicioCurso               DateTime? @db.Date
-  inicioCursoInter          DateTime? @db.Date
-  fechaTaller               DateTime? @db.Date
-  fechaTallerInter          DateTime? @db.Date
+  clave                     String?   @unique // Opcional para permitir intersemestrales
+  claveIntersemestral       String?   @unique // Opcional para permitir regulares
+  inicia                    DateTime?
+  iniciaIntersemestral      DateTime?
+  termina                   DateTime?
+  terminaIntersemestral     DateTime?
+  activo                    Int       @default(1)
+  fechaConformarExpediente  DateTime?
+  fechaConformarExpEdInter  DateTime?
+  ultimoFolio               String?
+  ultimoFolioInter          String?
+  inicioCurso               DateTime?
+  inicioCursoInter          DateTime?
+  fechaTaller               DateTime?
+  fechaTallerInter          DateTime?
   creadoEn                  DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
 
   @@map("ciclo_escolar")
 }

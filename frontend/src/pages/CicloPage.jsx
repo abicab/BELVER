@@ -3,7 +3,9 @@ import React, { useState, useEffect } from "react";
 export default function CicloPage({ branding }) {
   const [ciclos, setCiclos] = useState([]);
   const [cargando, setCargando] = useState(true);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [tipoSeleccionado, setTipoSeleccionado] = useState(null); // "regular" o "intersemestral"
   const [modoEdicion, setModoEdicion] = useState(false);
   const [idSeleccionado, setIdSeleccionado] = useState(null);
 
@@ -65,6 +67,7 @@ export default function CicloPage({ branding }) {
   const abrirModalCrear = () => {
     setModoEdicion(false);
     setIdSeleccionado(null);
+    setTipoSeleccionado(null);
     setFormData({
       clave: "",
       claveIntersemestral: "",
@@ -88,6 +91,11 @@ export default function CicloPage({ branding }) {
   const abrirModalEditar = (ciclo) => {
     setModoEdicion(true);
     setIdSeleccionado(ciclo.id);
+    const esInter = Boolean(
+      ciclo.claveIntersemestral || ciclo.iniciaIntersemestral,
+    );
+    setTipoSeleccionado(esInter ? "intersemestral" : "regular");
+
     setFormData({
       clave: ciclo.clave || "",
       claveIntersemestral: ciclo.claveIntersemestral || "",
@@ -120,10 +128,41 @@ export default function CicloPage({ branding }) {
     setIsModalOpen(true);
   };
 
+  // Función para alternar estatus directamente desde la tabla (Baja / Alta lógica)
+  const toggleEstatus = async (ciclo) => {
+    try {
+      const nuevoEstatus = ciclo.activo === 1 ? 0 : 1;
+      const response = await fetch(
+        `http://localhost:4000/api/ciclos/${ciclo.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...ciclo, activo: nuevoEstatus }),
+        },
+      );
+      const resultado = await response.json();
+      if (response.ok && resultado.ok) {
+        obtenerCiclos();
+      } else {
+        mostrarAlerta("No se pudo actualizar el estatus del ciclo.");
+      }
+    } catch (error) {
+      console.error("Error al cambiar estatus:", error);
+      mostrarAlerta("Error de conexión al cambiar estatus.");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.clave) {
-      mostrarAlerta("La clave del ciclo escolar es obligatoria.");
+    if (tipoSeleccionado === "regular" && !formData.clave) {
+      mostrarAlerta("La clave del ciclo regular es obligatoria.");
+      return;
+    }
+    if (
+      tipoSeleccionado === "intersemestral" &&
+      !formData.claveIntersemestral
+    ) {
+      mostrarAlerta("La clave intersemestral es obligatoria.");
       return;
     }
 
@@ -183,6 +222,7 @@ export default function CicloPage({ branding }) {
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Cabecera del Módulo */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
           <div>
             <span className="text-[10px] font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-md uppercase tracking-wider">
@@ -192,8 +232,8 @@ export default function CicloPage({ branding }) {
               Gestión de Ciclos Escolares
             </h1>
             <p className="text-xs text-slate-500">
-              Administración de fechas límite, periodos semestrales e
-              intersemestrales del sistema.
+              Administración de periodos regulares e intersemestrales
+              centralizados en el sistema.
             </p>
           </div>
           <button
@@ -205,14 +245,15 @@ export default function CicloPage({ branding }) {
           </button>
         </div>
 
+        {/* Tabla Principal */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-bold">
-                  <th className="p-4">Clave</th>
+                  <th className="p-4">Clave del Ciclo</th>
                   <th className="p-4">Estatus</th>
-                  <th className="p-4">Periodo Regular (Inicia / Termina)</th>
+                  <th className="p-4">Periodo (Inicia / Termina)</th>
                   <th className="p-4">Límite Expediente</th>
                   <th className="p-4">Inicio Cursos</th>
                   <th className="p-4 text-center">Acciones</th>
@@ -232,226 +273,444 @@ export default function CicloPage({ branding }) {
                     </td>
                   </tr>
                 ) : (
-                  ciclos.map((ciclo) => (
-                    <tr
-                      key={ciclo.id}
-                      className="hover:bg-slate-50/80 transition"
-                    >
-                      <td className="p-4 font-mono font-bold text-slate-900">
-                        {ciclo.clave}
-                        {ciclo.claveIntersemestral && (
-                          <span className="block text-[10px] text-slate-400 font-normal">
-                            Inter: {ciclo.claveIntersemestral}
+                  ciclos.map((ciclo) => {
+                    const esInter = Boolean(ciclo.claveIntersemestral);
+                    return (
+                      <tr
+                        key={ciclo.id}
+                        className="hover:bg-slate-50/80 transition"
+                      >
+                        <td className="p-4 font-mono font-bold text-slate-900">
+                          {esInter ? ciclo.claveIntersemestral : ciclo.clave}
+                          <span
+                            className={`block text-[9px] px-2 py-0.5 mt-1 rounded-md w-max font-bold ${
+                              esInter
+                                ? "bg-blue-100 text-blue-900"
+                                : "bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            {esInter ? "Intersemestral" : "Regular"}
                           </span>
-                        )}
-                      </td>
-                      <td className="p-4">
-                        {ciclo.activo === 1 ? (
-                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-extrabold uppercase tracking-wide border border-emerald-200">
-                            ● Activo (Vigente)
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold uppercase tracking-wide">
-                            Inactivo
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-slate-600 font-mono">
-                        {ciclo.inicia ? ciclo.inicia.split("T")[0] : "N/A"} ➔{" "}
-                        {ciclo.termina ? ciclo.termina.split("T")[0] : "N/A"}
-                      </td>
-                      <td className="p-4 font-mono text-red-600 font-bold">
-                        {ciclo.fechaConformarExpediente
-                          ? ciclo.fechaConformarExpediente.split("T")[0]
-                          : "N/A"}
-                      </td>
-                      <td className="p-4 font-mono text-slate-700">
-                        {ciclo.inicioCurso
-                          ? ciclo.inicioCurso.split("T")[0]
-                          : "N/A"}
-                      </td>
-                      <td className="p-4 text-center space-x-2">
-                        <button
-                          onClick={() => abrirModalEditar(ciclo)}
-                          className="px-3 py-1.5 bg-blue-50 text-blue-900 hover:bg-blue-100 rounded-lg font-bold transition text-[11px]"
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          onClick={() => eliminarCiclo(ciclo.id)}
-                          className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg font-bold transition text-[11px]"
-                        >
-                          🗑️ Eliminar
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="p-4">
+                          <button
+                            onClick={() => toggleEstatus(ciclo)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wide border transition cursor-pointer ${
+                              ciclo.activo === 1
+                                ? "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-200"
+                                : "bg-red-100 text-red-800 border-red-200 hover:bg-red-200"
+                            }`}
+                          >
+                            {ciclo.activo === 1 ? "● Activo" : "○ Inactivo"}
+                          </button>
+                        </td>
+                        <td className="p-4 text-slate-600 font-mono">
+                          {esInter
+                            ? `${ciclo.iniciaIntersemestral ? ciclo.iniciaIntersemestral.split("T")[0] : "N/A"} ➔ ${ciclo.terminaIntersemestral ? ciclo.terminaIntersemestral.split("T")[0] : "N/A"}`
+                            : `${ciclo.inicia ? ciclo.inicia.split("T")[0] : "N/A"} ➔ ${ciclo.termina ? ciclo.termina.split("T")[0] : "N/A"}`}
+                        </td>
+                        <td className="p-4 font-mono text-red-600 font-bold">
+                          {esInter
+                            ? ciclo.fechaConformarExpEdInter
+                              ? ciclo.fechaConformarExpEdInter.split("T")[0]
+                              : "N/A"
+                            : ciclo.fechaConformarExpediente
+                              ? ciclo.fechaConformarExpediente.split("T")[0]
+                              : "N/A"}
+                        </td>
+                        <td className="p-4 font-mono text-slate-700">
+                          {esInter
+                            ? ciclo.inicioCursoInter
+                              ? ciclo.inicioCursoInter.split("T")[0]
+                              : "N/A"
+                            : ciclo.inicioCurso
+                              ? ciclo.inicioCurso.split("T")[0]
+                              : "N/A"}
+                        </td>
+                        <td className="p-4 text-center space-x-2">
+                          <button
+                            onClick={() => abrirModalEditar(ciclo)}
+                            className="px-3 py-1.5 bg-blue-50 text-blue-900 hover:bg-blue-100 rounded-lg font-bold transition text-[11px] cursor-pointer"
+                          >
+                            ✏️ Editar
+                          </button>
+                          <button
+                            onClick={() => eliminarCiclo(ciclo.id)}
+                            className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg font-bold transition text-[11px] cursor-pointer"
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
+        {/* Modal Interactivo con Dos Vistas Diferentes (Sin Emojis) */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto">
-            <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6">
-              <div className="px-6 py-4 bg-slate-950 text-white flex justify-between items-center">
-                <h3 className="text-xs font-bold uppercase tracking-wider">
-                  {modoEdicion
-                    ? "Editar Ciclo Escolar"
-                    : "Registrar Nuevo Ciclo Escolar"}
-                </h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-6">
+              <div className="px-6 py-5 bg-slate-950 text-white flex justify-between items-center border-b border-slate-800">
+                <div>
+                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+                    Configuración de Temporalidad
+                  </span>
+                  <h3 className="text-sm font-black uppercase tracking-wider mt-0.5">
+                    {modoEdicion
+                      ? `Editando Ciclo (${tipoSeleccionado?.toUpperCase()})`
+                      : "Nuevo Ciclo Escolar"}
+                  </h3>
+                </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="w-7 h-7 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold text-xs"
+                  className="w-8 h-8 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs flex items-center justify-center transition cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <form
-                onSubmit={handleSubmit}
-                className="p-6 sm:p-8 space-y-4 max-h-[75vh] overflow-y-auto text-xs"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Clave del Ciclo (Ej. 2026-A) *
-                    </label>
-                    <input
-                      name="clave"
-                      type="text"
-                      required
-                      value={formData.clave}
-                      onChange={handleInputChange}
-                      placeholder="2026-A"
-                      className="px-3 py-2 border border-slate-300 rounded-xl uppercase font-mono"
-                    />
+              {/* PASO 1: Selector Visual de Tipo de Ciclo (Sin Emojis) */}
+              {!tipoSeleccionado && !modoEdicion ? (
+                <div className="p-8 text-center space-y-6">
+                  <div className="space-y-2 max-w-md mx-auto">
+                    <h4 className="text-sm font-black text-slate-900 uppercase">
+                      Selecciona el tipo de periodo a configurar
+                    </h4>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Elige si vas a dar de alta un ciclo escolar regular o un
+                      periodo intersemestral especial. Ambos se almacenarán
+                      ordenadamente en la base de datos.
+                    </p>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Clave Intersemestral
-                    </label>
-                    <input
-                      name="claveIntersemestral"
-                      type="text"
-                      value={formData.claveIntersemestral}
-                      onChange={handleInputChange}
-                      placeholder="2026-INT"
-                      className="px-3 py-2 border border-slate-300 rounded-xl uppercase font-mono"
-                    />
-                  </div>
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 max-w-lg mx-auto">
+                    <button
+                      type="button"
+                      onClick={() => setTipoSeleccionado("regular")}
+                      className="p-6 bg-slate-50 hover:bg-slate-900 hover:text-white border-2 border-slate-200 hover:border-slate-900 rounded-2xl transition-all duration-200 group flex flex-col items-center text-center gap-3 cursor-pointer shadow-sm hover:shadow-lg"
+                    >
+                      <div>
+                        <h5 className="font-extrabold text-xs uppercase tracking-wider">
+                          Ciclo Regular
+                        </h5>
+                        <p className="text-[11px] text-slate-400 group-hover:text-slate-300 mt-1">
+                          Periodo escolar ordinario (Ej. 2026-A)
+                        </p>
+                      </div>
+                    </button>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Fecha de Inicio (Ciclo)
-                    </label>
-                    <input
-                      name="inicia"
-                      type="date"
-                      value={formData.inicia}
-                      onChange={handleInputChange}
-                      className="px-3 py-2 border border-slate-300 rounded-xl font-mono"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Fecha de Término (Ciclo)
-                    </label>
-                    <input
-                      name="termina"
-                      type="date"
-                      value={formData.termina}
-                      onChange={handleInputChange}
-                      className="px-3 py-2 border border-slate-300 rounded-xl font-mono"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setTipoSeleccionado("intersemestral")}
+                      className="p-6 bg-blue-50/40 hover:bg-blue-950 hover:text-white border-2 border-blue-100 hover:border-blue-950 rounded-2xl transition-all duration-200 group flex flex-col items-center text-center gap-3 cursor-pointer shadow-sm hover:shadow-lg"
+                    >
+                      <div>
+                        <h5 className="font-extrabold text-xs uppercase tracking-wider text-blue-900 group-hover:text-white">
+                          Intersemestral
+                        </h5>
+                        <p className="text-[11px] text-blue-700/70 group-hover:text-blue-200 mt-1">
+                          Periodo intensivo (Ej. 2026-INT)
+                        </p>
+                      </div>
+                    </button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-red-700 uppercase text-[10px]">
-                      Fecha Límite Expedientes (Candado Inscripción)
-                    </label>
-                    <input
-                      name="fechaConformarExpediente"
-                      type="date"
-                      value={formData.fechaConformarExpediente}
-                      onChange={handleInputChange}
-                      className="px-3 py-2 border border-red-300 rounded-xl font-mono bg-white"
-                    />
+              ) : (
+                /* PASO 2: Formulario Específico Rediseñado con Estética Moderna */
+                <form
+                  onSubmit={handleSubmit}
+                  className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto text-xs"
+                >
+                  <div className="flex justify-between items-center bg-slate-100 px-4 py-3 rounded-2xl border border-slate-200">
+                    <span className="font-bold text-slate-700 text-[11px] flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-900"></span>
+                      Configurando:{" "}
+                      <span className="text-blue-900 uppercase font-black">
+                        {tipoSeleccionado}
+                      </span>
+                    </span>
+                    {!modoEdicion && (
+                      <button
+                        type="button"
+                        onClick={() => setTipoSeleccionado(null)}
+                        className="text-[11px] text-blue-900 hover:underline font-bold bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs cursor-pointer"
+                      >
+                        ← Volver a elegir
+                      </button>
+                    )}
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Inicio de Cursos Oficial
-                    </label>
-                    <input
-                      name="inicioCurso"
-                      type="date"
-                      value={formData.inicioCurso}
-                      onChange={handleInputChange}
-                      className="px-3 py-2 border border-slate-300 rounded-xl font-mono bg-white"
-                    />
-                  </div>
-                </div>
+                  {/* CAMPOS CICLO REGULAR */}
+                  {tipoSeleccionado === "regular" && (
+                    <div className="space-y-5 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                      <div className="border-b border-slate-100 pb-3">
+                        <h4 className="font-black text-slate-900 uppercase text-[11px] tracking-wide">
+                          Datos Generales del Ciclo Regular
+                        </h4>
+                        <p className="text-[11px] text-slate-400">
+                          Complete los campos obligatorios para el periodo
+                          ordinario.
+                        </p>
+                      </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Fecha de Taller de Inducción
-                    </label>
-                    <input
-                      name="fechaTaller"
-                      type="date"
-                      value={formData.fechaTaller}
-                      onChange={handleInputChange}
-                      className="px-3 py-2 border border-slate-300 rounded-xl font-mono"
-                    />
-                  </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                          Clave del Ciclo Regular *
+                        </label>
+                        <input
+                          name="clave"
+                          type="text"
+                          required
+                          value={formData.clave}
+                          onChange={handleInputChange}
+                          placeholder="Ej. 2026-A"
+                          className="px-4 py-3 border border-slate-300 rounded-xl uppercase font-mono bg-slate-50/50 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition"
+                        />
+                      </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-slate-700 uppercase text-[10px]">
-                      Estatus Activo (Interruptor General)
-                    </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                            Fecha de Inicio
+                          </label>
+                          <input
+                            name="inicia"
+                            type="date"
+                            value={formData.inicia}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-slate-300 rounded-xl font-mono bg-slate-50/50 font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                            Fecha de Término
+                          </label>
+                          <input
+                            name="termina"
+                            type="date"
+                            value={formData.termina}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-slate-300 rounded-xl font-mono bg-slate-50/50 font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-red-700 uppercase text-[10px] tracking-wider">
+                            Límite Expedientes
+                          </label>
+                          <input
+                            name="fechaConformarExpediente"
+                            type="date"
+                            value={formData.fechaConformarExpediente}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-red-300 rounded-xl font-mono bg-red-50/20 font-semibold text-red-700 focus:bg-white focus:ring-2 focus:ring-red-600 focus:outline-none transition"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                            Inicio de Cursos Oficial
+                          </label>
+                          <input
+                            name="inicioCurso"
+                            type="date"
+                            value={formData.inicioCurso}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-slate-300 rounded-xl font-mono bg-slate-50/50 font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                            Último Folio (Al Cierre)
+                          </label>
+                          <input
+                            name="ultimoFolio"
+                            type="text"
+                            maxLength={9}
+                            value={formData.ultimoFolio}
+                            onChange={handleInputChange}
+                            placeholder="Ej. 00150"
+                            className="px-4 py-3 border border-slate-300 rounded-xl font-mono uppercase bg-slate-50/50 font-bold text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                            Fecha Taller de Inducción
+                          </label>
+                          <input
+                            name="fechaTaller"
+                            type="date"
+                            value={formData.fechaTaller}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-slate-300 rounded-xl font-mono bg-slate-50/50 font-semibold text-slate-700 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* CAMPOS PERIODO INTERSEMESTRAL */}
+                  {tipoSeleccionado === "intersemestral" && (
+                    <div className="space-y-5 bg-blue-50/20 p-6 rounded-2xl border border-blue-100 shadow-xs">
+                      <div className="border-b border-blue-100 pb-3">
+                        <h4 className="font-black text-blue-950 uppercase text-[11px] tracking-wide">
+                          Datos Generales del Periodo Intersemestral
+                        </h4>
+                        <p className="text-[11px] text-blue-700/70">
+                          Complete la información correspondiente al periodo
+                          intensivo.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-bold text-blue-900 uppercase text-[10px] tracking-wider">
+                          Clave Intersemestral *
+                        </label>
+                        <input
+                          name="claveIntersemestral"
+                          type="text"
+                          required
+                          value={formData.claveIntersemestral}
+                          onChange={handleInputChange}
+                          placeholder="Ej. 2026-INT"
+                          className="px-4 py-3 border border-blue-200 rounded-xl uppercase font-mono bg-white font-bold text-blue-950 focus:ring-2 focus:ring-blue-900 focus:outline-none transition"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-blue-900 uppercase text-[10px] tracking-wider">
+                            Inicio Intersemestral
+                          </label>
+                          <input
+                            name="iniciaIntersemestral"
+                            type="date"
+                            value={formData.iniciaIntersemestral}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-blue-200 rounded-xl font-mono bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-900 focus:outline-none transition"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-blue-900 uppercase text-[10px] tracking-wider">
+                            Término Intersemestral
+                          </label>
+                          <input
+                            name="terminaIntersemestral"
+                            type="date"
+                            value={formData.terminaIntersemestral}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-blue-200 rounded-xl font-mono bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-900 focus:outline-none transition"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-red-800 uppercase text-[10px] tracking-wider">
+                            Límite Expedientes Inter.
+                          </label>
+                          <input
+                            name="fechaConformarExpEdInter"
+                            type="date"
+                            value={formData.fechaConformarExpEdInter}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-red-200 rounded-xl font-mono bg-red-50/20 font-semibold text-red-700 focus:ring-2 focus:ring-red-600 focus:outline-none transition"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-blue-900 uppercase text-[10px] tracking-wider">
+                            Inicio Cursos Inter.
+                          </label>
+                          <input
+                            name="inicioCursoInter"
+                            type="date"
+                            value={formData.inicioCursoInter}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-blue-200 rounded-xl font-mono bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-900 focus:outline-none transition"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-blue-900 uppercase text-[10px] tracking-wider">
+                            Últ. Folio Inter.
+                          </label>
+                          <input
+                            name="ultimoFolioInter"
+                            type="text"
+                            maxLength={9}
+                            value={formData.ultimoFolioInter}
+                            onChange={handleInputChange}
+                            placeholder="000"
+                            className="px-4 py-3 border border-blue-200 rounded-xl font-mono uppercase bg-white font-bold text-blue-950 focus:ring-2 focus:ring-blue-900 focus:outline-none transition"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="font-bold text-blue-900 uppercase text-[10px] tracking-wider">
+                            Taller Inter.
+                          </label>
+                          <input
+                            name="fechaTallerInter"
+                            type="date"
+                            value={formData.fechaTallerInter}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 border border-blue-200 rounded-xl font-mono bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-900 focus:outline-none transition"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Interruptor de Estatus */}
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200 shadow-2xs">
+                    <span className="font-bold text-slate-700 uppercase text-[10px] tracking-wider">
+                      Estatus Activo (Vigencia Sistema)
+                    </span>
                     <select
                       name="activo"
                       value={formData.activo}
                       onChange={handleInputChange}
-                      className="px-3 py-2 border border-slate-300 rounded-xl font-bold bg-white"
+                      className="px-4 py-2.5 border border-slate-300 rounded-xl font-bold bg-white text-xs cursor-pointer shadow-2xs focus:ring-2 focus:ring-slate-900 focus:outline-none"
                     >
-                      <option value={1}>
-                        ACTIVO (Ciclo Vigente en Sistema)
-                      </option>
-                      <option value={0}>INACTIVO (Cerrado)</option>
+                      <option value={1}>ACTIVO</option>
+                      <option value={0}>INACTIVO</option>
                     </select>
                   </div>
-                </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t">
-                  <button
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl transition shadow-md"
-                  >
-                    {modoEdicion ? "Guardar Cambios" : "Crear Ciclo Escolar"}
-                  </button>
-                </div>
-              </form>
+                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      style={{
+                        backgroundColor: branding?.accentColor || "#0f172a",
+                      }}
+                      className="px-6 py-3 text-white font-bold rounded-xl transition shadow-md hover:opacity-95 cursor-pointer"
+                    >
+                      {modoEdicion ? "Guardar Cambios" : "Guardar en Sistema"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         )}
 
+        {/* Modal de Alertas */}
         {modalAlerta.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 p-6 text-center space-y-4">
@@ -463,9 +722,9 @@ export default function CicloPage({ branding }) {
               </p>
               <button
                 onClick={() =>
-                  setModalAlerta({ isOpen: false, mensaje: "", titulo: "" })
+                  setModalAlerta((prev) => ({ ...prev, isOpen: false }))
                 }
-                className="w-full py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition shadow-md"
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition cursor-pointer"
               >
                 Entendido
               </button>
