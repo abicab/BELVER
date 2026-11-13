@@ -249,7 +249,7 @@ export const aprobarYGenerarCredencialesControl = async (
       return aspiranteActualizado;
     });
 
-    const portalEscolarUrl = "http://belver.clavijero.edu.mx";
+    const portalEscolarUrl = "https://belver.clavijero.edu.mx/";
 
     // Envío del correo institucional de aprobación (Correo 1 oficial de BELVER)
     transporter
@@ -267,7 +267,7 @@ export const aprobarYGenerarCredencialesControl = async (
             <div style="padding: 30px;">
               <p>Estimado(a) <strong>${resultado.nombres} ${resultado.apellidoPaterno} ${resultado.apellidoMaterno || ""}</strong>,</p>
               <p>Te damos la bienvenida a Bachillerato en Línea de Veracruz, te comentamos que tus documentos han sido validados con éxito.</p>
-              <p>Te recordamos que debes ingresar a <a href="${portalEscolarUrl}" target="_blank" style="color: #1e3a8a; font-weight: bold;">www.belver.clavijero.edu.mx</a> donde encontrarás tu Taller de inducción <strong>“Estudiar a distancia en línea”</strong>, el cual debes cursar y aprobar para obtener tu asignación de materias.</p>
+              <p>Te recordamos que debes ingresar a <a href="${portalEscolarUrl}" target="_blank" style="color: #1e3a8a; font-weight: bold;">belver.clavijero.edu.mx</a> donde encontrarás tu Taller de inducción <strong>“Estudiar a distancia en línea”</strong>, el cual debes cursar y aprobar para obtener tu asignación de materias.</p>
 
               <p style="margin-top: 20px; font-weight: bold;">Tus datos de acceso son los siguientes:</p>
               <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 6px; margin: 10px 0;">

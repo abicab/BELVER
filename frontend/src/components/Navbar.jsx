@@ -39,17 +39,19 @@ export default function Navbar({
       label: "Planes de Estudio",
       roles: ["ADMIN", "CONTROL_ESCOLAR"],
     },
-    { id: "CaePage", label: "Panel CAE", roles: ["ADMIN", "CAE"] },
     {
       id: "PagosPage",
-      label: "Caja y Pagos",
-      roles: ["ADMIN", "FINANZAS", "CAE"],
+      label: "Pagos",
+      roles: ["ADMIN", "CONTROL_ESCOLAR"],
     },
+
+    { id: "CaePage", label: "Centro de Atención Estudiantil", roles: ["ADMIN","CAE"] },
     { id: "CatalogosPage", label: "Catálogos", roles: ["ADMIN"] },
     { id: "CicloPage", label: "Ciclos Escolares", roles: ["ADMIN"] },
     { id: "UsersPage", label: "Gestión de Usuarios", roles: ["ADMIN"] },
     { id: "BitacoraPage", label: "Bitácora", roles: ["ADMIN"] },
     { id: "AlumnoPage", label: "Portal Alumno", roles: ["ADMIN", "ALUMNO"] },
+
     {
       id: "AlumnoUnicoPage",
       label: "Expediente Único",
@@ -68,12 +70,8 @@ export default function Navbar({
         "HistorialAca",
         "ReportesPage",
         "PlanEstudiosPage",
+        "PagosPage",
       ],
-    },
-    {
-      key: "administracion",
-      label: "Administración",
-      modules: ["CaePage", "PagosPage"],
     },
   ];
 
@@ -85,6 +83,7 @@ export default function Navbar({
     "BitacoraPage",
     "AlumnoPage",
     "AlumnoUnicoPage",
+    "CaePage",
   ];
 
   const currentRole = userProfile?.roleCode || "GUEST";
@@ -127,12 +126,10 @@ export default function Navbar({
       {/* 1. Cintillo Institucional Superior */}
       <div className="bg-black/30 px-4 sm:px-8 py-1 flex justify-between items-center text-[10px] text-slate-300 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-white tracking-wide">
-            SEV / ICC
-          </span>
+          <span className="font-semibold text-white tracking-wide">BELVER</span>
           <span className="text-slate-500">•</span>
           <span className="hidden sm:inline text-slate-300">
-            Secretaría de Educación de Veracruz
+            Bachillerato en Línea de Veracruz
           </span>
         </div>
         <div className="flex items-center gap-2">

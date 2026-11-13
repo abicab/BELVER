@@ -167,8 +167,8 @@ export default function CaePage() {
               Seguimiento y Consulta de Expedientes
             </h1>
             <p className="text-xs text-slate-500">
-              Módulo de soporte interno para consulta de trayectoria académica y
-              expedientes de alumnos.
+              Módulo para la consulta de trayectoria académica y expedientes de
+              alumnos.
             </p>
           </div>
         </div>
@@ -271,7 +271,7 @@ export default function CaePage() {
                         <td className="p-4 text-center space-x-2">
                           <button
                             onClick={() => setAlumnoSeleccionado(alumn)}
-                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold text-xs transition shadow-sm inline-block"
+                            className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition shadow-sm inline-block"
                           >
                             Expediente
                           </button>
@@ -281,6 +281,13 @@ export default function CaePage() {
                             className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition shadow-sm inline-block"
                           >
                             Calificaciones
+                          </button>
+
+                          <button
+                            onClick={() => abrirModalPagos(alumn)}
+                            className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-semibold text-xs transition shadow-sm inline-block"
+                          >
+                            Pagos
                           </button>
                         </td>
                       </tr>
@@ -482,27 +489,6 @@ export default function CaePage() {
                           <span className="px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold">
                             {doc.estatusDoc || "APROBADO"}
                           </span>
-
-                          <label className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs flex items-center gap-1">
-                            {doc.archivoBlob
-                              ? "Editar / Subir"
-                              : "Subir Archivo"}
-                            <input
-                              type="file"
-                              accept=".pdf,image/jpeg,image/png"
-                              className="hidden"
-                              onChange={(e) => {
-                                e.preventDefault();
-                                const nuevoArchivo = e.target.files[0];
-                                if (nuevoArchivo) {
-                                  handleSubirDocumentoManual(
-                                    doc.id,
-                                    nuevoArchivo,
-                                  );
-                                }
-                              }}
-                            />
-                          </label>
                         </div>
                       </div>
                     ))}

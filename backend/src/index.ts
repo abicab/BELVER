@@ -10,12 +10,16 @@ import reportesRoutes from "./routes/reportesRoutes";
 import cicloRoutes from "./routes/cicloRoute.js";
 import catalogoRoute from "./routes/catalogoRoute.js";
 import alumnoRoute from "./routes/alumnoRoute.js";
+import pagosRoute from "./routes/pagosRoute.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// Montar las rutas de pagos
+app.use("/api/pagos", pagosRoute);
 
 // Montar las rutas de ciclos escolares
 app.use("/api/ciclos", cicloRoutes);

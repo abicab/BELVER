@@ -249,17 +249,18 @@ model Auditoria {
 }
 
 model Pago {
-  id                 Int       @id @default(autoincrement())
-  aspiranteId        Int
-  aspirante          Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
-  concepto           String    @db.VarChar(100)
-  monto              Float
-  referenciaBancaria String    @unique @db.VarChar(100)
-  fechaPago          DateTime  @default(now())
-  metodo             String    @default("Captura Manual (Ventanilla)") @db.VarChar(100)
-  estatus            String    @default("CONCILIADO") @db.VarChar(50)
-  creadoEn           DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id          Int       @id @default(autoincrement())
+  aspiranteId Int       @map("aspirante_id")
+  aspirante   Aspirante @relation(fields: [aspiranteId], references: [id], onDelete: Cascade)
+
+  concepto    String    @db.VarChar(150) // Ej. "Emisión de Credencial Escolar" o "Constancia de Estudios"
+  monto       Float
+  fechaPago   String    @db.VarChar(20)  // Fecha automática generada
+  metodo      String    @db.VarChar(100) // 'Captura Manual (Ventanilla)' o 'Archivo Bancario (Layout)'
+  estatus     String    @default("CONCILIADO") @db.VarChar(50)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("pago")
 }
@@ -390,4 +391,13 @@ model CicloEscolar {
   creadoEn                  DateTime  @default(now())
 
   @@map("ciclo_escolar")
+}
+
+
+model Actas {
+  id     Int     @id @default(autoincrement())
+  nombre String  @unique @db.VarChar(150)
+  activo Boolean @default(true)
+
+  @@map("actas")
 }

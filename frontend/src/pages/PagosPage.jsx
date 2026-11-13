@@ -1,238 +1,378 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 
-// Pagos iniciales simulados (enfocados solo en constancias y credenciales)
-const INITIAL_PAGOS = [
-  {
-    id: 1,
-    matricula: 'B26000001',
-    aspirante: 'María Fernanda Ruiz Morales',
-    concepto: 'Emisión de Credencial Escolar',
-    monto: 150.00,
-    referenciaBancaria: 'REF98234190',
-    fechaPago: '2026-08-24',
-    metodo: 'Archivo Bancario (Layout)',
-    estatus: 'CONCILIADO'
-  },
-  {
-    id: 2,
-    matricula: 'B26000002',
-    aspirante: 'Carlos Eduardo Domínguez',
-    concepto: 'Constancia de Estudios con Calificaciones',
-    monto: 85.00,
-    referenciaBancaria: 'REF77341200',
-    fechaPago: '2026-08-25',
-    metodo: 'Captura Manual (Ventanilla)',
-    estatus: 'CONCILIADO'
-  }
-];
+const API_BASE_URL = "http://localhost:4000/api/pagos"; // Ajusta tu URL base si es necesario
 
 const CONCEPTOS_COBRO = [
-  'Emisión de Credencial Escolar',
-  'Constancia de Estudios',
-  'Duplicado de Certificado',
-  'Examen Extraordinario / Regularización'
+  "Emisión de Credencial Escolar",
+  "Constancia de Estudios",
 ];
 
 export default function PagosPage() {
-  const [pagos, setPagos] = useState(INITIAL_PAGOS);
-  const [filtroConcepto, setFiltroConcepto] = useState('TODOS');
-  const [busqueda, setBusqueda] = useState('');
+  const [pagos, setPagos] = useState([]);
+  const [busquedaEstudiante, setBusquedaEstudiante] = useState("");
+  const [estudiantesFiltrados, setEstudiantesFiltrados] = useState([]);
+  const [estudianteSeleccionado, setEstudianteSeleccionado] = useState(null);
+  const [filtroConcepto, setFiltroConcepto] = useState("TODOS");
+  const [busqueda, setBusqueda] = useState("");
 
-  // Estado para el modal de Carga Masiva (Archivo del Banco)
+  // Estados para modales
   const [isLayoutOpen, setIsLayoutOpen] = useState(false);
   const [archivoBanco, setArchivoBanco] = useState(null);
   const [logProcesamiento, setLogProcesamiento] = useState(null);
 
-  // Estado para el modal de Captura Manual
   const [isManualOpen, setIsManualOpen] = useState(false);
   const [formManual, setFormManual] = useState({
-    matricula: '',
-    aspirante: '',
-    concepto: 'Emisión de Credencial Escolar',
-    monto: '150.00',
-    referenciaBancaria: '',
-    fechaPago: new Date().toISOString().split('T')[0]
+    concepto: "Emisión de Credencial Escolar",
+    monto: "150.00",
   });
 
-  // Manejador para la subida y "traducción" del archivo del banco
-  const handleProcesarLayout = (e) => {
-    e.preventDefault();
-    if (!archivoBanco) {
-      alert('Por favor selecciona un archivo proporcionado por el banco (.txt o .csv).');
-      return;
-    }
+  // 1. Cargar pagos recientes desde la base de datos al iniciar
+  useEffect(() => {
+    cargarPagosRecientes();
+  }, []);
 
-    // Simulación de lectura y traducción del archivo bancario por el sistema
-    // Aquí el backend lee los caracteres fijos o separados por comas del banco y genera los registros
-    setTimeout(() => {
-      const nuevosPagosSimulados = [
-        {
-          id: Date.now(),
-          matricula: 'B26000005',
-          aspirante: 'Diana Laura Pérez (Carga Bancaria)',
-          concepto: 'Constancia de Estudios',
-          monto: 85.00,
-          referenciaBancaria: `BNK-${Math.floor(100000 + Math.random() * 900000)}`,
-          fechaPago: new Date().toISOString().split('T')[0],
-          metodo: 'Archivo Bancario (Layout)',
-          estatus: 'CONCILIADO'
+  const cargarPagosRecientes = async () => {
+    try {
+      const res = await fetch(API_BASE_URL);
+      const data = await res.json();
+      if (data.ok) {
+        setPagos(data.data);
+      }
+    } catch (error) {
+      console.error("Error al cargar historial de pagos:", error);
+    }
+  };
+
+  // 2. Búsqueda de estudiantes en tiempo real contra la BD
+  useEffect(() => {
+    const delayDebounce = setTimeout(async () => {
+      if (busquedaEstudiante.trim() === "") {
+        setEstudiantesFiltrados([]);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/estudiantes?q=${encodeURIComponent(busquedaEstudiante)}`,
+        );
+        const data = await res.json();
+        if (data.ok) {
+          setEstudiantesFiltrados(data.data);
         }
-      ];
+      } catch (error) {
+        console.error("Error al buscar estudiantes:", error);
+      }
+    }, 300);
 
-      setPagos((prev) => [...nuevosPagosSimulados, ...prev]);
-      setLogProcesamiento(`Archivo "${archivoBanco.name}" procesado con éxito. 1 pago traducido y conciliado automáticamente.`);
-      setArchivoBanco(null);
-    }, 600);
-  };
+    return () => clearTimeout(delayDebounce);
+  }, [busquedaEstudiante]);
 
-  // Manejador para captura manual de pagos
-  const handleGuardarManual = (e) => {
+  // 3. Guardar pago manual en la BD
+  const handleGuardarManual = async (e) => {
     e.preventDefault();
-    if (!formManual.matricula || !formManual.aspirante || !formManual.referenciaBancaria) {
-      alert('Completa todos los campos obligatorios para el registro manual.');
+    if (!estudianteSeleccionado) {
+      alert("Debe seleccionar un estudiante previamente.");
       return;
     }
 
-    const nuevoPago = {
-      id: Date.now(),
-      matricula: formManual.matricula.trim().toUpperCase(),
-      aspirante: formManual.aspirante.trim(),
-      concepto: formManual.concepto,
-      monto: parseFloat(formManual.monto),
-      referenciaBancaria: formManual.referenciaBancaria.trim().toUpperCase(),
-      fechaPago: formManual.fechaPago,
-      metodo: 'Captura Manual (Ventanilla)',
-      estatus: 'CONCILIADO'
-    };
+    try {
+      const res = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          aspiranteId: estudianteSeleccionado.id,
+          concepto: formManual.concepto,
+          monto: parseFloat(formManual.monto),
+          metodo: "Captura Manual (Ventanilla)",
+        }),
+      });
 
-    setPagos((prev) => [nuevoPago, ...prev]);
-    setIsManualOpen(false);
-    setFormManual({
-      matricula: '',
-      aspirante: '',
-      concepto: 'Emisión de Credencial Escolar',
-      monto: '150.00',
-      referenciaBancaria: '',
-      fechaPago: new Date().toISOString().split('T')[0]
-    });
-    alert('Pago registrado y conciliado manualmente con éxito.');
+      const data = await res.json();
+      if (data.ok) {
+        setPagos((prev) => [data.data, ...prev].slice(0, 5));
+        setIsManualOpen(false);
+        setFormManual({
+          concepto: "Emisión de Credencial Escolar",
+          monto: "150.00",
+        });
+        alert("Pago registrado y conciliado con éxito.");
+      } else {
+        alert(data.mensaje || "Error al registrar el pago.");
+      }
+    } catch (error) {
+      console.error("Error en petición de pago manual:", error);
+      alert("Error de conexión con el servidor.");
+    }
   };
 
-  // Filtrado de pagos
+  // 4. Procesar Layout Bancario en la BD
+  const handleProcesarLayout = async (e) => {
+    e.preventDefault();
+    if (!archivoBanco || !estudianteSeleccionado) {
+      alert(
+        "Seleccione un estudiante y un archivo bancario válido (.txt o .csv).",
+      );
+      return;
+    }
+
+    try {
+      const res = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          aspiranteId: estudianteSeleccionado.id,
+          concepto: formManual.concepto,
+          monto: parseFloat(formManual.monto) || 150.0,
+          metodo: "Archivo Bancario (Layout)",
+        }),
+      });
+
+      const data = await res.json();
+      if (data.ok) {
+        setPagos((prev) => [data.data, ...prev].slice(0, 5));
+        setLogProcesamiento(
+          `Archivo "${archivoBanco.name}" procesado y vinculado correctamente.`,
+        );
+        setArchivoBanco(null);
+      } else {
+        alert(data.mensaje || "Error al procesar el layout.");
+      }
+    } catch (error) {
+      console.error("Error en procesamiento de layout:", error);
+      alert("Error de conexión con el servidor.");
+    }
+  };
+
   const pagosFiltrados = pagos.filter((p) => {
     const matchText =
       p.aspirante.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.matricula.toLowerCase().includes(busqueda.toLowerCase()) ||
-      p.referenciaBancaria.toLowerCase().includes(busqueda.toLowerCase());
-
-    const matchConcepto = filtroConcepto === 'TODOS' ? true : p.concepto === filtroConcepto;
+      p.matricula.toLowerCase().includes(busqueda.toLowerCase());
+    const matchConcepto =
+      filtroConcepto === "TODOS" ? true : p.concepto === filtroConcepto;
     return matchText && matchConcepto;
   });
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-
-        {/* Encabezado */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Encabezado Principal */}
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-950 text-white px-2.5 py-1 rounded-md">
-              Departamento de Finanzas y Servicios Escolares
+            <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-900 text-blue-50 px-3 py-1 rounded-md">
+              Control Escolar - Finanzas
             </span>
-            <h1 className="text-2xl font-bold text-slate-900 mt-2">
+            <h1 className="text-2xl font-black text-slate-900 mt-1.5">
               Control de Pagos (Credenciales y Constancias)
             </h1>
-            <p className="text-xs text-slate-500">
-              Módulo exclusivo para trámites secundarios (sin cobro de inscripción por programa gratuito). Conciliación bancaria y captura manual.
+            <p className="text-xs text-slate-500 mt-0.5">
+              Gestión de trámites secundarios con base de datos en tiempo real.
             </p>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto">
-            <button
-              onClick={() => setIsManualOpen(true)}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition shadow-sm"
+        {/* SELECCIÓN Y ACCIONES */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                1. Selección de Estudiante
+              </h3>
+              {estudianteSeleccionado && (
+                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">
+                  Alumno Activo
+                </span>
+              )}
+            </div>
+
+            {!estudianteSeleccionado ? (
+              <div className="space-y-3">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Buscar por Matrícula o Nombre en la Base de Datos..."
+                    value={busquedaEstudiante}
+                    onChange={(e) => setBusquedaEstudiante(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 text-xs bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition"
+                  />
+                </div>
+
+                {busquedaEstudiante.trim() !== "" && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2 max-h-48 overflow-y-auto space-y-1">
+                    {estudiantesFiltrados.length === 0 ? (
+                      <p className="text-xs text-slate-400 p-3 text-center">
+                        No se encontraron estudiantes en la base de datos.
+                      </p>
+                    ) : (
+                      estudiantesFiltrados.map((est) => (
+                        <div
+                          key={est.id}
+                          onClick={() => {
+                            setEstudianteSeleccionado(est);
+                            setBusquedaEstudiante("");
+                            setEstudiantesFiltrados([]);
+                          }}
+                          className="p-3 hover:bg-white rounded-xl cursor-pointer flex justify-between items-center text-xs transition border border-transparent hover:border-slate-200 shadow-2xs"
+                        >
+                          <span className="font-mono font-bold text-blue-950">
+                            {est.matricula}
+                          </span>
+                          <span className="font-semibold text-slate-800 uppercase">
+                            {est.nombre}
+                          </span>
+                          <span className="text-[10px] bg-slate-900 text-white px-3 py-1 rounded-lg font-bold">
+                            Seleccionar
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Alumno Vinculado
+                  </span>
+                  <span className="font-mono font-bold text-blue-950 text-sm">
+                    {estudianteSeleccionado.matricula}
+                  </span>
+                  <p className="font-bold text-slate-800 text-xs uppercase">
+                    {estudianteSeleccionado.nombre}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEstudianteSeleccionado(null)}
+                  className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Cambiar Alumno
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                2. Acciones de Cobro
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Se habilitan al seleccionar alumno.
+              </p>
+            </div>
+
+            <div
+              className={`space-y-2.5 transition-all ${!estudianteSeleccionado ? "opacity-40 pointer-events-none" : ""}`}
             >
-              ＋ Captura Manual
-            </button>
-            <button
-              onClick={() => { setIsLayoutOpen(true); setLogProcesamiento(null); }}
-              className="px-3.5 py-2 bg-blue-950 hover:bg-blue-900 text-white rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-1.5"
-            >
-              📂 Cargar Archivo Bancario (Layout)
-            </button>
+              <button
+                onClick={() => setIsManualOpen(true)}
+                disabled={!estudianteSeleccionado}
+                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>＋</span> Captura Manual (Ventanilla)
+              </button>
+              <button
+                onClick={() => {
+                  setIsLayoutOpen(true);
+                  setLogProcesamiento(null);
+                }}
+                disabled={!estudianteSeleccionado}
+                className="w-full py-3 bg-blue-950 hover:bg-blue-900 text-white rounded-2xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>📂</span> Cargar Archivo Bancario
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Filtros y Búsqueda */}
-        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-3">
-          <div className="relative w-full lg:w-96">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
-            <input
-              type="text"
-              placeholder="Buscar por Matrícula, Alumno o Referencia..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-800"
-            />
+        {/* TABLA E HISTORIAL */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 uppercase">
+                Historial Reciente (Últimos 5 Registros)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Transacciones persistidas en MySQL.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="Filtrar registros..."
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="w-full sm:w-64 px-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-slate-900"
+              />
+
+              <select
+                value={filtroConcepto}
+                onChange={(e) => setFiltroConcepto(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold py-2 px-3 rounded-xl outline-none cursor-pointer w-full sm:w-auto"
+              >
+                <option value="TODOS">Todos los conceptos</option>
+                {CONCEPTOS_COBRO.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200 text-xs w-full lg:w-auto justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Concepto:</span>
-            <select
-              value={filtroConcepto}
-              onChange={(e) => setFiltroConcepto(e.target.value)}
-              className="bg-white border border-slate-200 text-slate-800 text-xs font-semibold py-1 px-2.5 rounded-lg outline-none cursor-pointer"
-            >
-              <option value="TODOS">Todos los conceptos</option>
-              {CONCEPTOS_COBRO.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Tabla de Pagos Registrados */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 uppercase text-[10px]">
+              <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="p-4">Matrícula / Alumno</th>
-                  <th className="p-4">Concepto de Cobro</th>
-                  <th className="p-4">Referencia Bancaria</th>
+                  <th className="p-4">Concepto Oficial</th>
                   <th className="p-4">Monto</th>
                   <th className="p-4">Fecha</th>
-                  <th className="p-4">Método de Registro</th>
+                  <th className="p-4">Método</th>
                   <th className="p-4 text-center">Estatus</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 font-medium">
                 {pagosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="p-8 text-center text-slate-400 text-xs">
-                      No se encontraron registros de pagos.
+                    <td colSpan="6" className="p-8 text-center text-slate-400">
+                      No hay registros recientes de pagos.
                     </td>
                   </tr>
                 ) : (
                   pagosFiltrados.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50 transition">
                       <td className="p-4">
-                        <span className="font-mono font-bold text-blue-950 block">{p.matricula}</span>
-                        <span className="font-semibold text-slate-900">{p.aspirante}</span>
+                        <span className="font-mono font-bold text-slate-900 block">
+                          {p.matricula}
+                        </span>
+                        <span className="text-slate-500 uppercase">
+                          {p.aspirante}
+                        </span>
                       </td>
-                      <td className="p-4 font-medium text-slate-800">{p.concepto}</td>
-                      <td className="p-4 font-mono text-slate-600">{p.referenciaBancaria}</td>
-                      <td className="p-4 font-mono font-bold text-emerald-700">${p.monto.toFixed(2)} MXN</td>
-                      <td className="p-4 font-mono text-slate-500">{p.fechaPago}</td>
+                      <td className="p-4 text-slate-800">{p.concepto}</td>
+                      <td className="p-4 font-mono font-bold text-emerald-700">
+                        ${p.monto.toFixed(2)} MXN
+                      </td>
+                      <td className="p-4 font-mono text-slate-500">
+                        {p.fechaPago}
+                      </td>
                       <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          p.metodo.includes('Banco') ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                        }`}>
+                        <span
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                            p.metodo.includes("Banco")
+                              ? "bg-indigo-50 text-indigo-800 border border-indigo-100"
+                              : "bg-amber-50 text-amber-800 border border-amber-100"
+                          }`}
+                        >
                           {p.metodo}
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                           {p.estatus}
                         </span>
                       </td>
@@ -244,144 +384,121 @@ export default function PagosPage() {
           </div>
         </div>
 
-        {/* MODAL DE CARGA DE ARCHIVO BANCARIO (LAYOUT / TRADUCTOR) */}
+        {/* MODAL LAYOUT */}
         {isLayoutOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-              <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 className="font-bold text-xs">Traductor y Conciliador de Archivo Bancario (Layout)</h3>
-                <button onClick={() => setIsLayoutOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                    Conciliación Bancaria
+                  </span>
+                  <h3 className="text-sm font-black uppercase tracking-wider mt-0.5">
+                    Carga de Layout
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsLayoutOpen(false)}
+                  className="w-8 h-8 bg-slate-800 text-white rounded-xl font-bold text-xs flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
 
-              <form onSubmit={handleProcesarLayout} className="p-6 space-y-4 text-xs">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-950 space-y-1">
-                  <span className="font-bold block">💡 Instrucciones de Conciliación:</span>
-                  <p>Sube el archivo de texto (.txt / .csv) enviado por la institución bancaria con los depósitos del día. El sistema traducirá automáticamente las referencias y liberará los trámites de constancias o credenciales.</p>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="font-semibold text-slate-700">Seleccionar Archivo del Banco</label>
-                  <input
-                    type="file"
-                    accept=".txt,.csv"
-                    onChange={(e) => setArchivoBanco(e.target.files[0])}
-                    className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 border border-slate-300 rounded-lg p-1 bg-white"
-                  />
-                  {archivoBanco && <span className="text-[10px] text-slate-500 font-mono">Archivo listo: {archivoBanco.name}</span>}
-                </div>
-
-                {logProcesamiento && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl font-semibold text-center">
-                    {logProcesamiento}
+              <form
+                onSubmit={handleProcesarLayout}
+                className="p-6 overflow-y-auto space-y-5 text-xs"
+              >
+                <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                      Estudiante Vinculado
+                    </span>
+                    <span className="font-mono font-bold text-blue-300 text-sm bg-slate-800 px-2.5 py-1 rounded-lg inline-block">
+                      {estudianteSeleccionado?.matricula}
+                    </span>
+                    <p className="font-bold text-base uppercase tracking-wide mt-1">
+                      {estudianteSeleccionado?.nombre}
+                    </p>
                   </div>
-                )}
-
-                <div className="flex justify-end gap-2 pt-2 border-t">
-                  <button
-                    type="button"
-                    onClick={() => setIsLayoutOpen(false)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold"
-                  >
-                    Cerrar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl font-bold shadow-md"
-                  >
-                    Procesar y Traducir Archivo
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL DE CAPTURA MANUAL DE PAGO */}
-        {isManualOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-              <div className="p-4 bg-slate-900 text-white flex justify-between items-center">
-                <h3 className="font-bold text-xs">Registro Manual de Pago (Ventanilla)</h3>
-                <button onClick={() => setIsManualOpen(false)} className="text-slate-400 hover:text-white font-bold text-sm">✕</button>
-              </div>
-
-              <form onSubmit={handleGuardarManual} className="p-6 space-y-4 text-xs">
-                <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-700">Matrícula del Alumno</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. B26000001"
-                    value={formManual.matricula}
-                    onChange={(e) => setFormManual({ ...formManual, matricula: e.target.value })}
-                    className="px-3 py-2 border rounded-lg uppercase font-mono"
-                  />
+                  <div className="w-2 h-12 bg-blue-500 rounded-full"></div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-700">Nombre Completo del Alumno</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nombre del alumno"
-                    value={formManual.aspirante}
-                    onChange={(e) => setFormManual({ ...formManual, aspirante: e.target.value })}
-                    className="px-3 py-2 border rounded-lg"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-700">Concepto</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-bold text-slate-700 uppercase text-[10px]">
+                      Concepto Oficial
+                    </label>
                     <select
                       value={formManual.concepto}
-                      onChange={(e) => setFormManual({ ...formManual, concepto: e.target.value })}
-                      className="px-3 py-2 border rounded-lg bg-white"
+                      onChange={(e) =>
+                        setFormManual({
+                          ...formManual,
+                          concepto: e.target.value,
+                        })
+                      }
+                      className="px-3.5 py-3 border border-slate-300 rounded-xl bg-white font-semibold"
                     >
                       {CONCEPTOS_COBRO.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
                       ))}
                     </select>
                   </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-semibold text-slate-700">Monto ($ MXN)</label>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-bold text-slate-700 uppercase text-[10px]">
+                      Cantidad ($ MXN)
+                    </label>
                     <input
                       type="number"
                       step="0.01"
                       required
                       value={formManual.monto}
-                      onChange={(e) => setFormManual({ ...formManual, monto: e.target.value })}
-                      className="px-3 py-2 border rounded-lg font-mono"
+                      onChange={(e) =>
+                        setFormManual({ ...formManual, monto: e.target.value })
+                      }
+                      className="px-3.5 py-3 border border-slate-300 rounded-xl font-mono font-bold"
                     />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="font-semibold text-slate-700">Folio o Referencia Bancaria</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="font-bold text-slate-700 uppercase text-[10px]">
+                    Seleccionar Archivo del Banco (.txt / .csv)
+                  </label>
                   <input
-                    type="text"
-                    required
-                    placeholder="Ej. REF12345678"
-                    value={formManual.referenciaBancaria}
-                    onChange={(e) => setFormManual({ ...formManual, referenciaBancaria: e.target.value })}
-                    className="px-3 py-2 border rounded-lg uppercase font-mono"
+                    type="file"
+                    accept=".txt,.csv"
+                    onChange={(e) => setArchivoBanco(e.target.files[0])}
+                    className="w-full text-xs text-slate-500 file:mr-3 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-slate-900 file:text-white border border-slate-300 rounded-xl p-1.5 bg-slate-50 cursor-pointer"
                   />
+                  {archivoBanco && (
+                    <span className="text-[10px] text-slate-500 font-mono mt-1 block">
+                      Archivo seleccionado: {archivoBanco.name}
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2 border-t">
+                {logProcesamiento && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl font-bold text-center">
+                    {logProcesamiento}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
                   <button
                     type="button"
-                    onClick={() => setIsManualOpen(false)}
-                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold"
+                    onClick={() => setIsLayoutOpen(false)}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
                   >
-                    Cancelar
+                    Cerrar
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-md"
+                    className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md cursor-pointer"
                   >
-                    Guardar y Conciliar
+                    Procesar Layout
                   </button>
                 </div>
               </form>
@@ -389,6 +506,112 @@ export default function PagosPage() {
           </div>
         )}
 
+        {/* MODAL MANUAL */}
+        {isManualOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center border-b border-slate-800 shrink-0">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
+                    Caja Escolar
+                  </span>
+                  <h3 className="text-sm font-black uppercase tracking-wider mt-0.5">
+                    Registro Manual
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsManualOpen(false)}
+                  className="w-8 h-8 bg-slate-800 text-white rounded-xl font-bold text-xs flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                onSubmit={handleGuardarManual}
+                className="p-6 overflow-y-auto space-y-5 text-xs"
+              >
+                <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-sm flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                      Estudiante Seleccionado
+                    </span>
+                    <span className="font-mono font-bold text-blue-300 text-sm bg-slate-800 px-2.5 py-1 rounded-lg inline-block">
+                      {estudianteSeleccionado?.matricula}
+                    </span>
+                    <p className="font-bold text-base uppercase tracking-wide mt-1">
+                      {estudianteSeleccionado?.nombre}
+                    </p>
+                  </div>
+                  <div className="w-2 h-12 bg-blue-500 rounded-full"></div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-bold text-slate-700 uppercase text-[10px]">
+                      Concepto Oficial
+                    </label>
+                    <select
+                      value={formManual.concepto}
+                      onChange={(e) =>
+                        setFormManual({
+                          ...formManual,
+                          concepto: e.target.value,
+                        })
+                      }
+                      className="px-3.5 py-3 border border-slate-300 rounded-xl bg-white font-semibold"
+                    >
+                      {CONCEPTOS_COBRO.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="font-bold text-slate-700 uppercase text-[10px]">
+                      Monto ($ MXN)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={formManual.monto}
+                      onChange={(e) =>
+                        setFormManual({ ...formManual, monto: e.target.value })
+                      }
+                      className="px-3.5 py-3 border border-slate-300 rounded-xl font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 text-[11px] flex justify-between items-center">
+                  <span>Fecha de registro:</span>
+                  <span className="font-mono font-bold text-slate-800">
+                    {new Date().toISOString().split("T")[0]} (Automática)
+                  </span>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsManualOpen(false)}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md cursor-pointer"
+                  >
+                    Guardar Pago
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
